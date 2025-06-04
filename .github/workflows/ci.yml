@@ -14,7 +14,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     container:
-      image: robnomad/crystal:${{ env.CRYSTAL_VERSION }}
+      image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
     
     steps:
     - name: Checkout code
@@ -34,7 +34,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     container:
-      image: robnomad/crystal:${{ env.CRYSTAL_VERSION }}
+      image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
     
     steps:
     - name: Checkout code
@@ -47,13 +47,18 @@ jobs:
       run: crystal tool format --check
 
     - name: Run Ameba linter
-      run: ./bin/ameba
+      run: |
+        if [ -f "./bin/ameba" ]; then
+          ./bin/ameba
+        else
+          shards run ameba
+        fi
 
   build:
     name: Build
     runs-on: ubuntu-latest
     container:
-      image: robnomad/crystal:${{ env.CRYSTAL_VERSION }}
+      image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
     
     steps:
     - name: Checkout code
@@ -78,7 +83,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     container:
-      image: robnomad/crystal:${{ env.CRYSTAL_VERSION }}
+      image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
     
     steps:
     - name: Checkout code

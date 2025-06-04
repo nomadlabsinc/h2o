@@ -202,11 +202,11 @@ crystal spec --coverage
 Use the official Crystal image for development:
 
 ```bash
-# Pull the robnomad/crystal image
-docker pull robnomad/crystal:1.16.0
+# Pull the official Crystal image
+docker pull crystallang/crystal:1.16.0
 
 # Run development container
-docker run -it --rm -v $(pwd):/workspace robnomad/crystal:1.16.0 bash
+docker run -it --rm -v $(pwd):/workspace crystallang/crystal:1.16.0 bash
 
 # Inside container
 cd /workspace
