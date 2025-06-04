@@ -10,7 +10,7 @@ module H2O
 
     def self.verify_preface(io : IO) : Bool
       received = Bytes.new(CONNECTION_PREFACE_LENGTH)
-      bytes_read = io.read_fully(received)
+      io.read_fully(received)
       received == CONNECTION_PREFACE
     rescue IO::Error
       false

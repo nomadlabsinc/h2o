@@ -82,6 +82,10 @@ module H2O
       true
     end
 
+    def closed? : Bool
+      @closed
+    end
+
     def close : Nil
       return if @closed
 

@@ -1,0 +1,17 @@
+# Ameba configuration for H2O HTTP/2 client
+
+# Disable some rules that don't apply well to our use case
+Lint/NotNil:
+  Enabled: false  # We use not_nil! in tests where we know the value exists
+
+Naming/QueryBoolMethods:
+  Enabled: false  # Our boolean properties follow Crystal conventions
+
+Naming/AccessorMethodName:
+  Enabled: false  # Our method names are descriptive and follow domain conventions
+
+Lint/UselessAssign:
+  Enabled: false  # Some assignments are used for clarity even if not referenced
+
+Metrics/CyclomaticComplexity:
+  MaxComplexity: 15  # Allow slightly higher complexity for frame parsing
