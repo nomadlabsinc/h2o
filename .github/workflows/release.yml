@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CRYSTAL_VERSION: 1.16.0
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    
+    steps:
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+  build-and-upload:
+    name: Build and Upload Assets
+    runs-on: ubuntu-latest
+    needs: create-release
+    container:
+      image: robnomad/crystal:${{ env.CRYSTAL_VERSION }}
+    
+    strategy:
+      matrix:
+        target:
+          - x86_64-linux-gnu
+          - x86_64-linux-musl
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: shards install --production
+
+    - name: Build release binary
+      run: |
+        crystal build src/h2o.cr \
+          --release \
+          --no-debug \
+          --static \
+          --target ${{ matrix.target }} \
+          -o h2o-${{ matrix.target }}
+
+    - name: Create tarball
+      run: |
+        tar -czf h2o-${{ matrix.target }}.tar.gz h2o-${{ matrix.target }}
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./h2o-${{ matrix.target }}.tar.gz
+        asset_name: h2o-${{ matrix.target }}.tar.gz
+        asset_content_type: application/gzip
+
+  publish-docs:
+    name: Publish Documentation
+    runs-on: ubuntu-latest
+    needs: create-release
+    container:
+      image: robnomad/crystal:${{ env.CRYSTAL_VERSION }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: shards install
+
+    - name: Generate documentation
+      run: crystal docs
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs

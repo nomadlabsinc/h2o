@@ -1,0 +1,24 @@
+FROM robnomad/crystal:1.16.0
+
+# Install development tools
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    wget \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create development user
+RUN useradd -m -s /bin/bash crystal && \
+    chown -R crystal:crystal /home/crystal
+
+USER crystal
+WORKDIR /workspace
+
+# Set up shell environment
+RUN echo 'alias ll="ls -la"' >> ~/.bashrc && \
+    echo 'alias la="ls -A"' >> ~/.bashrc && \
+    echo 'alias l="ls -CF"' >> ~/.bashrc
+
+# Install development dependencies when container starts
+CMD ["bash"]

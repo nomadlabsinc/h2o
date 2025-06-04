@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  h2o-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/workspace
+      - crystal-cache:/home/crystal/.cache
+    working_dir: /workspace
+    command: bash
+    stdin_open: true
+    tty: true
+
+  h2o-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/workspace
+      - crystal-cache:/home/crystal/.cache
+    working_dir: /workspace
+    command: crystal spec
+    environment:
+      - CI=true
+
+  h2o-docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/workspace
+      - crystal-cache:/home/crystal/.cache
+      - ./docs:/workspace/docs
+    working_dir: /workspace
+    command: crystal docs
+    ports:
+      - "8080:8080"
+
+volumes:
+  crystal-cache:
