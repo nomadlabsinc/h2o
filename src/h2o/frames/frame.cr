@@ -15,7 +15,7 @@ module H2O
 
     def self.from_io(io : IO) : Frame
       header = Bytes.new(FRAME_HEADER_SIZE)
-      bytes_read = io.read_fully(header)
+      io.read_fully(header)
 
       length = (header[0].to_u32 << 16) | (header[1].to_u32 << 8) | header[2].to_u32
       frame_type = FrameType.new(header[3])
@@ -51,29 +51,60 @@ module H2O
     abstract def payload_to_bytes : Bytes
 
     private def self.create_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+      create_frame_by_type(frame_type, length, flags, stream_id, payload)
+    end
+
+    private def self.create_frame_by_type(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
       case frame_type
       when .data?
         DataFrame.from_payload(length, flags, stream_id, payload)
+      when .headers?, .continuation?
+        create_header_frame(frame_type, length, flags, stream_id, payload)
+      when .priority?, .rst_stream?
+        create_control_frame(frame_type, length, flags, stream_id, payload)
+      when .settings?, .ping?, .goaway?, .window_update?
+        create_connection_frame(frame_type, length, flags, stream_id, payload)
+      when .push_promise?
+        PushPromiseFrame.from_payload(length, flags, stream_id, payload)
+      else
+        raise FrameError.new("Unknown frame type: #{frame_type}")
+      end
+    end
+
+    private def self.create_header_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+      case frame_type
       when .headers?
         HeadersFrame.from_payload(length, flags, stream_id, payload)
+      when .continuation?
+        ContinuationFrame.from_payload(length, flags, stream_id, payload)
+      else
+        raise FrameError.new("Invalid header frame type: #{frame_type}")
+      end
+    end
+
+    private def self.create_control_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+      case frame_type
       when .priority?
         PriorityFrame.from_payload(length, flags, stream_id, payload)
       when .rst_stream?
         RstStreamFrame.from_payload(length, flags, stream_id, payload)
+      else
+        raise FrameError.new("Invalid control frame type: #{frame_type}")
+      end
+    end
+
+    private def self.create_connection_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+      case frame_type
       when .settings?
         SettingsFrame.from_payload(length, flags, stream_id, payload)
-      when .push_promise?
-        PushPromiseFrame.from_payload(length, flags, stream_id, payload)
       when .ping?
         PingFrame.from_payload(length, flags, stream_id, payload)
       when .goaway?
         GoawayFrame.from_payload(length, flags, stream_id, payload)
       when .window_update?
         WindowUpdateFrame.from_payload(length, flags, stream_id, payload)
-      when .continuation?
-        ContinuationFrame.from_payload(length, flags, stream_id, payload)
       else
-        raise FrameError.new("Unknown frame type: #{frame_type}")
+        raise FrameError.new("Invalid connection frame type: #{frame_type}")
       end
     end
 

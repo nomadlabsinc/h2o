@@ -11,15 +11,19 @@ describe H2O::HPACK::StaticTable do
     it "returns correct entries for valid indices" do
       entry = H2O::HPACK::StaticTable[1]
       entry.should_not be_nil
-      entry.not_nil!.name.should eq(":authority")
-      entry.not_nil!.value.should eq("")
+      if entry
+        entry.name.should eq(":authority")
+        entry.value.should eq("")
+      end
     end
 
     it "returns :method GET for index 2" do
       entry = H2O::HPACK::StaticTable[2]
       entry.should_not be_nil
-      entry.not_nil!.name.should eq(":method")
-      entry.not_nil!.value.should eq("GET")
+      if entry
+        entry.name.should eq(":method")
+        entry.value.should eq("GET")
+      end
     end
 
     it "returns nil for invalid indices" do

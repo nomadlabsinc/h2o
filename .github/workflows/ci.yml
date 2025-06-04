@@ -47,13 +47,11 @@ jobs:
 
     - name: Run Ameba linter
       run: |
-        echo "Skipping Ameba linter for initial setup"
-        # TODO: Fix linting issues and re-enable
-        # if [ -f "./bin/ameba" ]; then
-        #   ./bin/ameba
-        # else
-        #   crystal run lib/ameba/bin/ameba.cr -- src/ spec/
-        # fi
+        if [ -f "./bin/ameba" ]; then
+          ./bin/ameba
+        else
+          crystal run lib/ameba/bin/ameba.cr -- src/ spec/
+        fi
 
   build:
     name: Build

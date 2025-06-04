@@ -17,7 +17,7 @@ module H2O::HPACK
       result.to_slice
     end
 
-    def set_dynamic_table_size(size : Int32) : Bytes
+    def dynamic_table_size=(size : Int32) : Bytes
       @dynamic_table.resize(size)
       encode_table_size_update(size)
     end

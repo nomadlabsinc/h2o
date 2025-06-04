@@ -38,7 +38,9 @@ module H2O
 
     def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil) : Response?
       uri = parse_url(url)
-      connection = get_connection(uri.host.not_nil!, uri.port || 443)
+      host = uri.host
+      raise ArgumentError.new("Invalid URL: missing host") unless host
+      connection = get_connection(host, uri.port || 443)
 
       path = uri.path
       path = "/" if path.empty?
@@ -82,7 +84,7 @@ module H2O
       connection_key = "#{host}:#{port}"
 
       existing_connection = @connections[connection_key]?
-      if existing_connection && !existing_connection.closed
+      if existing_connection && !existing_connection.closed?
         return existing_connection
       end
 
@@ -102,16 +104,18 @@ module H2O
     end
 
     private def cleanup_closed_connections : Nil
-      @connections.reject! { |_, connection| connection.closed }
+      @connections.reject! { |_, connection| connection.closed? }
     end
 
     private def prepare_headers(headers : Headers, uri : URI) : Headers
       prepared_headers = headers.dup
 
       unless prepared_headers.has_key?("host")
-        host_header = uri.host.not_nil!
-        host_header += ":#{uri.port}" if uri.port && uri.port != 443
-        prepared_headers["host"] = host_header
+        if host = uri.host
+          host_header = host
+          host_header += ":#{uri.port}" if uri.port && uri.port != 443
+          prepared_headers["host"] = host_header
+        end
       end
 
       unless prepared_headers.has_key?("user-agent")
@@ -125,12 +129,12 @@ module H2O
       prepared_headers
     end
 
-    private def with_timeout(timeout : Time::Span, &block : -> T) : T forall T
+    private def with_timeout(timeout : Time::Span, &) : T forall T
       start_time = Time.monotonic
       result = nil
       exception = nil
 
-      fiber = spawn do
+      spawn do
         begin
           result = yield
         rescue ex
@@ -149,7 +153,11 @@ module H2O
         raise ex
       end
 
-      result.not_nil!
+      if final_result = result
+        final_result
+      else
+        raise TimeoutError.new("Operation timed out after #{timeout}")
+      end
     end
   end
 end

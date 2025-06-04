@@ -18,7 +18,6 @@ module H2O
       raise FrameError.new("PING frame must have stream ID 0") if stream_id != 0
       raise FrameError.new("PING frame must have 8-byte payload") if payload.size != PING_PAYLOAD_SIZE
 
-      ack = (flags & FLAG_ACK) != 0
       frame = allocate
       frame.initialize_from_payload(length, flags, stream_id, payload)
       frame
