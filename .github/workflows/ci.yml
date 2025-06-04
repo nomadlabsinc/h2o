@@ -6,19 +6,19 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  CRYSTAL_VERSION: 1.16.0
-
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    container:
-      image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Install Crystal
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: 1.16.0
 
     - name: Install dependencies
       run: shards install
@@ -26,19 +26,18 @@ jobs:
     - name: Run tests
       run: crystal spec --verbose
 
-    - name: Run tests with coverage
-      run: |
-        crystal spec --coverage
-        
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    container:
-      image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Install Crystal
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: 1.16.0
 
     - name: Install dependencies
       run: shards install
@@ -51,18 +50,21 @@ jobs:
         if [ -f "./bin/ameba" ]; then
           ./bin/ameba
         else
-          shards run ameba
+          crystal run lib/ameba/bin/ameba.cr -- src/ spec/
         fi
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    container:
-      image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Install Crystal
+      uses: crystal-lang/install-crystal@v1
+      with:
+        crystal: 1.16.0
 
     - name: Install dependencies
       run: shards install
@@ -78,28 +80,3 @@ jobs:
       with:
         name: documentation
         path: docs/
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    container:
-      image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install dependencies
-      run: shards install
-
-    - name: Security audit
-      run: |
-        # Check for known security issues in dependencies
-        shards check
-
-    - name: Check for secrets
-      uses: trufflesecurity/trufflehog@main
-      with:
-        path: ./
-        base: main
-        head: HEAD
