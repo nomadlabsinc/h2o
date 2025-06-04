@@ -8,7 +8,7 @@ module H2O
       tcp_socket = TCPSocket.new(hostname, port)
       context = OpenSSL::SSL::Context::Client.new
       context.verify_mode = verify_mode
-      context.alpn_protocol = ["h2", "http/1.1"]
+      context.alpn_protocol = "h2"
 
       @socket = OpenSSL::SSL::Socket::Client.new(tcp_socket, context, hostname: hostname)
     end
