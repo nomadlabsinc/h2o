@@ -37,27 +37,12 @@ module H2O
     end
 
     def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil) : Response?
-      uri = parse_url(url)
-      host = uri.host.not_nil!
-
-      connection = get_connection(host, uri.port || 443)
-
-      path = uri.path
-      path = "/" if path.empty?
-      if query = uri.query
-        path += "?" + query
-      end
-
-      request_headers = prepare_headers(headers, uri)
-
-      begin
-        Timeout(Response?).execute(@timeout) do
-          connection.request(method, path, request_headers, body)
-        end
-      rescue ex : Exception
-        Log.error { "Request failed: #{ex.message}" }
-        nil
-      end
+      uri : URI = parse_url(url)
+      host : String = uri.host.not_nil!
+      connection : BaseConnection = get_connection(host, uri.port || 443)
+      request_path : String = build_request_path(uri)
+      request_headers : Headers = prepare_headers(headers, uri)
+      execute_request(connection, method, request_path, request_headers, body)
     end
 
     def close : Nil
@@ -80,58 +65,108 @@ module H2O
       uri
     end
 
-    private def get_connection(host : String, port : Int32) : Connection
+    private def get_connection(host : String, port : Int32) : BaseConnection
       connection_key : String = "#{host}:#{port}"
-
-      existing_connection : Connection? = @connections[connection_key]?
-      if existing_connection && !existing_connection.closed?
-        return existing_connection
-      end
-
-      cleanup_closed_connections
-
-      if @connections.size >= @connection_pool_size
-        oldest_connection : Connection? = @connections.values.first?
-        if oldest_connection
-          oldest_connection.close
-          @connections.delete(@connections.key_for(oldest_connection))
-        end
-      end
-
-      connection : Connection? = Timeout(Connection?).execute(@timeout) do
-        Connection.new(host, port, connect_timeout: @timeout)
-      end
-
-      raise ConnectionError.new("Connection timeout") unless connection
-
-      @connections[connection_key] = connection
-      connection
+      existing_connection : BaseConnection? = find_existing_connection(connection_key)
+      return existing_connection if existing_connection
+      create_new_connection(connection_key, host, port)
     end
 
     private def cleanup_closed_connections : Nil
       @connections.reject! { |_, connection| connection.closed? }
     end
 
+    private def create_connection_with_fallback(host : String, port : Int32) : BaseConnection?
+      try_http2_connection(host, port) || try_http1_connection(host, port)
+    rescue ex : Exception
+      Log.error { "Connection creation failed: #{ex.message}" }
+      nil
+    end
+
+    private def build_request_path(uri : URI) : String
+      path : String = uri.path
+      path = "/" if path.empty?
+      query : String? = uri.query
+      query ? "#{path}?#{query}" : path
+    end
+
+    private def execute_request(connection : BaseConnection, method : String, path : String, headers : Headers, body : String?) : Response?
+      Timeout(Response?).execute(@timeout) do
+        connection.request(method, path, headers, body)
+      end
+    rescue ex : Exception
+      Log.error { "Request failed: #{ex.message}" }
+      nil
+    end
+
+    private def find_existing_connection(connection_key : String) : BaseConnection?
+      existing_connection : BaseConnection? = @connections[connection_key]?
+      return nil if !existing_connection || existing_connection.closed?
+      existing_connection
+    end
+
+    private def create_new_connection(connection_key : String, host : String, port : Int32) : BaseConnection
+      cleanup_closed_connections
+      enforce_pool_size_limit
+      connection : BaseConnection? = create_connection_with_fallback(host, port)
+      raise ConnectionError.new("Connection failed") unless connection
+      @connections[connection_key] = connection
+      connection
+    end
+
+    private def enforce_pool_size_limit : Nil
+      return unless @connections.size >= @connection_pool_size
+      oldest_connection : BaseConnection? = @connections.values.first?
+      return unless oldest_connection
+      oldest_connection.close
+      @connections.delete(@connections.key_for(oldest_connection))
+    end
+
+    private def try_http2_connection(host : String, port : Int32) : BaseConnection?
+      connection : H2::Client = H2::Client.new(host, port, connect_timeout: @timeout)
+      Log.debug { "Using HTTP/2 for #{host}:#{port}" }
+      connection
+    rescue ConnectionError
+      Log.debug { "HTTP/2 not available for #{host}:#{port}, falling back to HTTP/1.1" }
+      nil
+    end
+
+    private def try_http1_connection(host : String, port : Int32) : BaseConnection?
+      verify_ssl : Bool = !(host == "localhost" || host == "127.0.0.1")
+      connection : H1::Client = H1::Client.new(host, port, connect_timeout: @timeout, verify_ssl: verify_ssl)
+      Log.debug { "Using HTTP/1.1 for #{host}:#{port}" }
+      connection
+    end
+
     private def prepare_headers(headers : Headers, uri : URI) : Headers
-      prepared_headers = headers.dup
-
-      unless prepared_headers.has_key?("host")
-        if host = uri.host
-          host_header = host
-          host_header += ":#{uri.port}" if uri.port && uri.port != 443
-          prepared_headers["host"] = host_header
-        end
-      end
-
-      unless prepared_headers.has_key?("user-agent")
-        prepared_headers["user-agent"] = "h2o/#{VERSION}"
-      end
-
-      unless prepared_headers.has_key?("accept")
-        prepared_headers["accept"] = "*/*"
-      end
-
+      prepared_headers : Headers = headers.dup
+      add_host_header(prepared_headers, uri)
+      add_user_agent_header(prepared_headers)
+      add_accept_header(prepared_headers)
       prepared_headers
+    end
+
+    private def add_host_header(headers : Headers, uri : URI) : Nil
+      return if headers.has_key?("host")
+      host : String? = uri.host
+      return unless host
+      host_header : String = build_host_header(host, uri.port)
+      headers["host"] = host_header
+    end
+
+    private def build_host_header(host : String, port : Int32?) : String
+      return host unless port && port != 443
+      "#{host}:#{port}"
+    end
+
+    private def add_user_agent_header(headers : Headers) : Nil
+      return if headers.has_key?("user-agent")
+      headers["user-agent"] = "h2o/#{VERSION}"
+    end
+
+    private def add_accept_header(headers : Headers) : Nil
+      return if headers.has_key?("accept")
+      headers["accept"] = "*/*"
     end
   end
 end

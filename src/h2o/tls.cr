@@ -45,6 +45,10 @@ module H2O
       alpn_protocol == "h2"
     end
 
+    def negotiated_http11? : Bool
+      alpn_protocol == "http/1.1" || alpn_protocol.nil?
+    end
+
     def read(slice : Bytes) : Int32
       socket = @socket
       raise IO::Error.new("Socket is closed") if @closed || !socket
