@@ -162,9 +162,9 @@ module H2O
 
       private def fiber_still_running? : Bool
         # Check if any fiber is still alive and not finished
-        reader_alive : Bool = @reader_fiber ? !@reader_fiber.not_nil!.dead? : false
-        writer_alive : Bool = @writer_fiber ? !@writer_fiber.not_nil!.dead? : false
-        dispatcher_alive : Bool = @dispatcher_fiber ? !@dispatcher_fiber.not_nil!.dead? : false
+        reader_alive : Bool = @reader_fiber.try(&.dead?) == false
+        writer_alive : Bool = @writer_fiber.try(&.dead?) == false
+        dispatcher_alive : Bool = @dispatcher_fiber.try(&.dead?) == false
 
         reader_alive || writer_alive || dispatcher_alive
       end

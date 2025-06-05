@@ -90,9 +90,16 @@ def test_focused_connection_state(channel)
 end
 
 def test_focused_http_validation(channel)
-  success = retry_operation do
+  # Skip network test if environment variable is set
+  if ENV["SKIP_NETWORK_TESTS"]? == "true"
+    channel.send(true)
+    return
+  end
+
+  success = retry_operation(5) do # Try 5 times instead of 3
     begin
-      client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+      # Use longer timeout for more reliable network tests
+      client = H2O::Client.new(timeout: 5.seconds)
       response = client.get("https://httpbin.org/get")
       result = !!(response && response.status == 200 && response.body.includes?("httpbin.org"))
       client.close
