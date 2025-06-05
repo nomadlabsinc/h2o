@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker support for development and deployment
 - Comprehensive test suite
 
+### Fixed
+- **Critical segmentation fault during client shutdown**: Fixed memory access violation in TLS socket cleanup that occurred when closing HTTP/2 connections. The issue was caused by improper fiber termination and double-free scenarios in OpenSSL cleanup. Resolved by implementing defensive socket closing patterns, non-blocking reader loops with timeouts, and proper channel-based connection timeout handling. This fix ensures stable client shutdown without crashes or hanging.
+
 ## [0.1.0] - 2025-01-06
 
 ### Added

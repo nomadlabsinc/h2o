@@ -11,8 +11,6 @@ shard.lock
 /dist/
 *.o
 *.a
-h2o
-h2o-*
 
 # IDE and editors
 .vscode/
