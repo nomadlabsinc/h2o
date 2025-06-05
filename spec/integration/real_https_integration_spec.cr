@@ -400,197 +400,167 @@ end
 
 # Original helper methods for backward compatibility
 def test_nghttp2_get(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::NGHTTP2_TIMEOUT)
-    response = client.get("https://nghttp2.org/")
-    success = !!(response && response.status == 200 && response.body.includes?("nghttp2"))
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::NGHTTP2_TIMEOUT)
+  response = client.get("https://nghttp2.org/")
+  success = !!(response && response.status == 200 && response.body.includes?("nghttp2"))
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_httpbin_get(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
-    response = client.get("https://httpbin.org/get")
-    success = !!(response && response.status == 200 && response.body.includes?("httpbin.org"))
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+  response = client.get("https://httpbin.org/get")
+  success = !!(response && response.status == 200 && response.body.includes?("httpbin.org"))
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_httpbin_post(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
-    headers = H2O::Headers.new
-    headers["content-type"] = "application/json"
-    data = {"test" => "parallel_post"}.to_json
-    response = client.post("https://httpbin.org/post", data, headers)
-    success = !!(response && response.status == 200 && response.body.includes?("parallel_post"))
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+  headers = H2O::Headers.new
+  headers["content-type"] = "application/json"
+  data = {"test" => "parallel_post"}.to_json
+  response = client.post("https://httpbin.org/post", data, headers)
+  success = !!(response && response.status == 200 && response.body.includes?("parallel_post"))
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_httpbin_put(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
-    headers = H2O::Headers.new
-    headers["content-type"] = "application/json"
-    data = {"method" => "PUT"}.to_json
-    response = client.put("https://httpbin.org/put", data, headers)
-    success = !!(response && response.status == 200 && response.body.includes?("PUT"))
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+  headers = H2O::Headers.new
+  headers["content-type"] = "application/json"
+  data = {"method" => "PUT"}.to_json
+  response = client.put("https://httpbin.org/put", data, headers)
+  success = !!(response && response.status == 200 && response.body.includes?("PUT"))
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_httpbin_patch(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
-    headers = H2O::Headers.new
-    headers["content-type"] = "application/json"
-    data = {"method" => "PATCH"}.to_json
-    response = client.patch("https://httpbin.org/patch", data, headers)
-    success = !!(response && response.status == 200 && response.body.includes?("PATCH"))
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+  headers = H2O::Headers.new
+  headers["content-type"] = "application/json"
+  data = {"method" => "PATCH"}.to_json
+  response = client.patch("https://httpbin.org/patch", data, headers)
+  success = !!(response && response.status == 200 && response.body.includes?("PATCH"))
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_httpbin_delete(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
-    response = client.delete("https://httpbin.org/delete")
-    success = !!(response && response.status == 200 && response.body.includes?("delete"))
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+  response = client.delete("https://httpbin.org/delete")
+  success = !!(response && response.status == 200 && response.body.includes?("delete"))
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_httpbin_head(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
-    response = client.head("https://httpbin.org/status/200")
-    success = !!(response && response.status == 200 && response.body.empty?)
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+  response = client.head("https://httpbin.org/status/200")
+  success = !!(response && response.status == 200 && response.body.empty?)
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_httpbin_options(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
-    response = client.options("https://httpbin.org/")
-    success = !!(response && response.status == 200)
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+  response = client.options("https://httpbin.org/")
+  success = !!(response && response.status == 200)
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_httpbin_headers(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
-    headers = H2O::Headers.new
-    headers["x-test-header"] = "parallel-test"
-    response = client.get("https://httpbin.org/headers", headers)
-    success = !!(response && response.status == 200 && response.body.includes?("parallel-test"))
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+  headers = H2O::Headers.new
+  headers["x-test-header"] = "parallel-test"
+  response = client.get("https://httpbin.org/headers", headers)
+  success = !!(response && response.status == 200 && response.body.includes?("parallel-test"))
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_google_get(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::GOOGLE_TIMEOUT)
-    response = client.get("https://www.google.com/")
-    success = !!(response && response.status == 200 && !response.body.empty?)
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::GOOGLE_TIMEOUT)
+  response = client.get("https://www.google.com/")
+  success = !!(response && response.status == 200 && !response.body.empty?)
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_github_api(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::GITHUB_API_TIMEOUT)
-    response = client.get("https://api.github.com/zen")
-    success = !!(response && response.status == 200)
-    client.close
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::GITHUB_API_TIMEOUT)
+  response = client.get("https://api.github.com/zen")
+  success = !!(response && response.status == 200)
+  client.close
+  channel.send(success)
+rescue
+  channel.send(false)
 end
 
 def test_invalid_url(channel)
+  client = H2O::Client.new
   begin
-    client = H2O::Client.new
-    begin
-      client.get("http://httpbin.org/get")
-      channel.send(false) # Should have raised exception
-    rescue ArgumentError
-      channel.send(true) # Expected exception
-    rescue
-      channel.send(false) # Wrong exception type
-    ensure
-      client.close
-    end
+    client.get("http://httpbin.org/get")
+    channel.send(false) # Should have raised exception
+  rescue ArgumentError
+    channel.send(true) # Expected exception
   rescue
-    channel.send(false)
+    channel.send(false) # Wrong exception type
+  ensure
+    client.close
   end
+rescue
+  channel.send(false)
 end
 
 def test_timeout_handling(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::ERROR_TIMEOUT)
-    response = client.get("https://www.google.com/")
-    # With 50ms timeout, should return nil
-    channel.send(response.nil?)
-  rescue H2O::ConnectionError
-    channel.send(true) # Timeout error is acceptable
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::ERROR_TIMEOUT)
+  response = client.get("https://www.google.com/")
+  # With 50ms timeout, should return nil
+  channel.send(response.nil?)
+rescue H2O::ConnectionError
+  channel.send(true) # Timeout error is acceptable
+rescue
+  channel.send(false)
 end
 
 def test_nonexistent_domain(channel)
-  begin
-    client = H2O::Client.new(timeout: TestConfig::ERROR_TIMEOUT)
-    response = client.get("https://this-does-not-exist-99999.invalid/")
-    channel.send(response.nil?)
-  rescue H2O::ConnectionError
-    channel.send(true) # Connection error expected
-  rescue
-    channel.send(false)
-  end
+  client = H2O::Client.new(timeout: TestConfig::ERROR_TIMEOUT)
+  response = client.get("https://this-does-not-exist-99999.invalid/")
+  channel.send(response.nil?)
+rescue H2O::ConnectionError
+  channel.send(true) # Connection error expected
+rescue
+  channel.send(false)
 end
 
 def test_pooling_request(client, url, channel)
-  begin
-    response = client.get(url)
-    success = !!(response && response.status == 200)
-    channel.send(success)
-  rescue
-    channel.send(false)
-  end
+  response = client.get(url)
+  success = !!(response && response.status == 200)
+  channel.send(success)
+rescue
+  channel.send(false)
 end

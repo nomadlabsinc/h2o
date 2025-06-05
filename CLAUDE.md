@@ -346,6 +346,10 @@ crystal tool format && find . -name "*.cr" -type f -exec sed -i '' 's/[[:space:]
 - Write tests for all public methods
 - Keep test methods small and focused
 - Use descriptive test names
+- **ALWAYS set timeouts such that integration tests time out within the code in 5s, rather than 2m**
+  - Integration tests should use `timeout: 1.seconds` or similar short timeouts
+  - This prevents CLI timeout issues and ensures fast feedback cycles
+  - Example: `client = H2O::Client.new(timeout: 1.seconds)` instead of longer timeouts
 
 ## 🚀 Quick Reference
 
@@ -358,7 +362,8 @@ crystal tool format && find . -name "*.cr" -type f -exec sed -i '' 's/[[:space:]
 6. Check class lengths (≤100 lines)
 7. Ensure explicit types everywhere
 8. Use type aliases to shorten code where needed
-9. Run tests
+9. Verify integration tests use 5s or shorter timeouts
+10. Run tests
 
 **Code Review Checklist:**
 - [ ] All types are explicit
@@ -367,6 +372,7 @@ crystal tool format && find . -name "*.cr" -type f -exec sed -i '' 's/[[:space:]
 - [ ] Classes are 100 lines or less
 - [ ] Arguments are alphabetized
 - [ ] Hash keys are alphabetized
+- [ ] Integration tests use 5s or shorter timeouts
 - [ ] No trailing whitespace
 - [ ] All files have trailing newlines
 - [ ] Code is properly formatted
