@@ -9,35 +9,33 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
+    container:
+      image: robnomad/crystal:dev-hoard
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Install Crystal
-      uses: crystal-lang/install-crystal@v1
-      with:
-        crystal: 1.16.0
 
     - name: Install dependencies
       run: shards install
 
-    - name: Run tests
-      run: crystal spec --verbose
+    - name: Run unit tests (no network calls)
+      run: crystal spec spec/h2o_spec.cr spec/h2o/ --verbose
+
+    - name: Run integration tests (requires network, only if tagged)
+      if: contains(github.event.pull_request.labels.*.name, 'integration-tests') || contains(github.ref, 'integration-tests')
+      run: crystal spec spec/integration/ --verbose
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
+    container:
+      image: robnomad/crystal:dev-hoard
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Install Crystal
-      uses: crystal-lang/install-crystal@v1
-      with:
-        crystal: 1.16.0
 
     - name: Install dependencies
       run: shards install
@@ -55,16 +53,13 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
+    container:
+      image: robnomad/crystal:dev-hoard
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Install Crystal
-      uses: crystal-lang/install-crystal@v1
-      with:
-        crystal: 1.16.0
 
     - name: Install dependencies
       run: shards install
