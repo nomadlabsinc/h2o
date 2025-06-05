@@ -102,16 +102,16 @@ describe H2O::HeadersFrame do
 
     it "creates frame from payload with priority" do
       original_headers = "test headers".to_slice
-      priority_dependency = 0x1234_u32
+      priority_dependency = 123_u32
       priority_weight = 42_u8
 
       payload = Bytes.new(5 + original_headers.size)
-      payload[0] = (priority_dependency >> 24).to_u8
-      payload[1] = (priority_dependency >> 16).to_u8
-      payload[2] = (priority_dependency >> 8).to_u8
+      payload[0] = 0_u8
+      payload[1] = 0_u8
+      payload[2] = 0_u8
       payload[3] = priority_dependency.to_u8
       payload[4] = priority_weight
-      payload[5, original_headers.size].copy_from(original_headers) if original_headers.size > 0
+      original_headers.copy_to(payload[5, original_headers.size])
 
       frame = H2O::HeadersFrame.from_payload(payload.size.to_u32, H2O::HeadersFrame::FLAG_PRIORITY, 1_u32, payload)
 
@@ -144,7 +144,7 @@ describe H2O::HeadersFrame do
 
     it "serializes headers with priority" do
       header_block = "test headers".to_slice
-      priority_dependency = 0x1234_u32
+      priority_dependency = 123_u32
       priority_weight = 42_u8
       frame = H2O::HeadersFrame.new(1_u32, header_block, H2O::HeadersFrame::FLAG_PRIORITY, 0_u8, false, priority_dependency, priority_weight)
 
@@ -155,7 +155,7 @@ describe H2O::HeadersFrame do
                             (payload[2].to_u32 << 8) | payload[3].to_u32)
       decoded_dependency.should eq(priority_dependency)
       payload[4].should eq(priority_weight)
-      payload[5, header_block.size].should eq(header_block) if header_block.size > 0
+      payload[5, header_block.size].should eq(header_block)
     end
   end
 end
