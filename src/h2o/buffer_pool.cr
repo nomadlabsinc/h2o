@@ -53,7 +53,7 @@ module H2O
       end
     end
 
-    def self.with_header_buffer(&block : Bytes -> T) : T forall T
+    def self.with_header_buffer(& : Bytes -> T) : T forall T
       buffer = get_header_buffer
       begin
         yield buffer
@@ -62,7 +62,7 @@ module H2O
       end
     end
 
-    def self.with_frame_buffer(size : Int32 = MAX_FRAME_BUFFER_SIZE, &block : Bytes -> T) : T forall T
+    def self.with_frame_buffer(size : Int32 = MAX_FRAME_BUFFER_SIZE, & : Bytes -> T) : T forall T
       buffer = get_frame_buffer(size)
       begin
         yield buffer
