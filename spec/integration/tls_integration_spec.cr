@@ -4,13 +4,13 @@ describe H2O::TlsSocket do
   describe "ALPN protocol configuration" do
     it "compiles successfully with current Crystal version" do
       # This test ensures that the ALPN protocol setting doesn't cause compilation errors
-      # The actual TLS socket creation is tested, which validates the ALPN configuration
+      # Test against nghttp2.org - the reference HTTP/2 implementation
       begin
-        # Try to create a socket - this will fail with connection error but will
-        # validate that the ALPN protocol setting is syntactically correct
-        H2O::TlsSocket.new("nonexistent.example.com", 443)
-      rescue Socket::ConnectError | Socket::Addrinfo::Error
-        # Expected - the important thing is that compilation succeeded
+        socket = H2O::TlsSocket.new("nghttp2.org", 443, connect_timeout: TestConfig::NGHTTP2_TIMEOUT)
+        socket.should_not be_nil
+        socket.close
+      rescue Socket::ConnectError | Socket::Addrinfo::Error | IO::TimeoutError
+        # Network timeouts are acceptable - the important thing is compilation succeeded
         true.should be_true
       rescue ex
         # If we get any other error, the ALPN configuration might be wrong
@@ -19,21 +19,18 @@ describe H2O::TlsSocket do
     end
 
     it "uses h2 as ALPN protocol for HTTP/2 compatibility" do
-      # This test verifies that we're setting up ALPN for HTTP/2
-      # While we can't test the actual negotiation without a server,
-      # we can verify the socket creation doesn't crash
+      # Test against Google's reliable HTTP/2 endpoint
       begin
-        socket = H2O::TlsSocket.new("httpbin.org", 443)
+        socket = H2O::TlsSocket.new("www.google.com", 443, connect_timeout: TestConfig::GOOGLE_TIMEOUT)
 
-        # If we successfully connect, verify HTTP/2 preference
+        # If we successfully connect, verify HTTP/2 negotiation
         if socket.alpn_protocol
-          # The ALPN protocol should be negotiated by the server
-          # Most modern servers support h2, so this should work
-          socket.alpn_protocol.should_not be_nil
+          # Google reliably supports HTTP/2, so this should be "h2"
+          socket.alpn_protocol.should eq("h2")
         end
 
         socket.close
-      rescue Socket::ConnectError | OpenSSL::SSL::Error
+      rescue Socket::ConnectError | OpenSSL::SSL::Error | IO::TimeoutError
         # Network issues or SSL handshake failures are acceptable
         # The important thing is that our ALPN configuration doesn't cause crashes
         true.should be_true
@@ -58,9 +55,9 @@ describe H2O::TlsSocket do
     end
 
     it "maintains HTTP/2 priority in ALPN negotiation" do
-      # Verify that our ALPN setting prioritizes HTTP/2
+      # Test against nghttp2.org - guaranteed to support HTTP/2
       begin
-        socket = H2O::TlsSocket.new("httpbin.org", 443)
+        socket = H2O::TlsSocket.new("nghttp2.org", 443, connect_timeout: TestConfig::NGHTTP2_TIMEOUT)
 
         # The negotiated_http2? method should work correctly
         # It returns true if ALPN protocol is "h2"
@@ -68,7 +65,7 @@ describe H2O::TlsSocket do
         result.should be_a(Bool)
 
         socket.close
-      rescue Socket::ConnectError | OpenSSL::SSL::Error
+      rescue Socket::ConnectError | OpenSSL::SSL::Error | IO::TimeoutError
         # Network/SSL errors are acceptable for this test
         true.should be_true
       end
