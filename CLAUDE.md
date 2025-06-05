@@ -337,6 +337,32 @@ crystal tool format && find . -name "*.cr" -type f -exec sed -i '' 's/[[:space:]
 - Provide meaningful error messages
 - Use `begin/rescue/ensure/end` blocks properly
 
+### Safe Null Handling (CRITICAL)
+- **NEVER use `.not_nil!`** - This is an unsafe pattern that can cause runtime crashes
+- **Use safe alternatives instead**:
+  - `.try(&.method)` for conditional method calls
+  - `if value = nullable_var` for safe assignment
+  - `.as(Type)` for guaranteed type casts (when type is known to be safe)
+  - Explicit nil checks with proper error handling
+
+```crystal
+# ❌ DANGEROUS: Using .not_nil!
+host = uri.host.not_nil!  # Can crash at runtime
+fiber_alive = @fiber.not_nil!.dead?
+
+# ✅ SAFE: Use proper null handling
+host = uri.host || raise ArgumentError.new("Missing host")
+fiber_alive = @fiber.try(&.dead?) == false
+
+# ✅ SAFE: Safe assignment pattern
+if response = @response
+  response.status = 200
+end
+
+# ✅ SAFE: Type cast when guaranteed by prior validation
+value = validated_value.as(String)  # Only when validation ensures non-nil
+```
+
 ### Documentation
 - Document public APIs
 - Use Crystal's documentation format
@@ -373,6 +399,8 @@ crystal tool format && find . -name "*.cr" -type f -exec sed -i '' 's/[[:space:]
 - [ ] Arguments are alphabetized
 - [ ] Hash keys are alphabetized
 - [ ] Integration tests use 5s or shorter timeouts
+- [ ] **NO `.not_nil!` usage** - Use safe alternatives
+- [ ] Proper null handling with `.try()` or explicit checks
 - [ ] No trailing whitespace
 - [ ] All files have trailing newlines
 - [ ] Code is properly formatted
