@@ -165,23 +165,56 @@ h2o is designed for high performance with:
 
 ## Development
 
-### Building
+### Setup
 
 ```bash
+# Clone the repository
+git clone https://github.com/nomadlabsinc/h2o.git
+cd h2o
+
 # Install dependencies
 shards install
 
+# Set up Git hooks for code quality
+./scripts/setup-git-hooks.sh
+```
+
+### Pre-Commit Hooks
+
+This project uses pre-commit hooks to ensure code quality standards:
+
+```bash
+# The hooks automatically check:
+# ✓ Crystal code formatting (crystal tool format)
+# ✓ Trailing newlines on all text files
+# ✓ No trailing whitespace
+# ✓ Crystal specs pass
+# ✓ Crystal syntax is valid
+
+# Run checks manually
+./scripts/pre-commit-checks.sh
+
+# Skip hooks for a commit (not recommended)
+git commit --no-verify
+```
+
+### Building
+
+```bash
 # Build the library
 crystal build src/h2o.cr
 
-# Run tests
-crystal spec
+# Build with optimizations
+crystal build --release src/h2o.cr
 
-# Run linter
-./bin/ameba
+# Check syntax without building
+crystal build --no-codegen src/h2o.cr
 
 # Format code
 crystal tool format
+
+# Check formatting
+crystal tool format --check
 ```
 
 ### Testing

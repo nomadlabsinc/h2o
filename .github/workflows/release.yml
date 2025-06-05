@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
-    
+
     steps:
     - name: Create Release
       id: create_release
@@ -33,13 +33,13 @@ jobs:
     needs: create-release
     container:
       image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
-    
+
     strategy:
       matrix:
         target:
           - x86_64-linux-gnu
           - x86_64-linux-musl
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -76,7 +76,7 @@ jobs:
     needs: create-release
     container:
       image: crystallang/crystal:${{ env.CRYSTAL_VERSION }}
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
