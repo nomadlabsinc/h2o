@@ -18,6 +18,4 @@ module H2O
       super(message)
     end
   end
-
-  class TimeoutError < Error; end
 end

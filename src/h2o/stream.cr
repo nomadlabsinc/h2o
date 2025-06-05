@@ -9,7 +9,7 @@ module H2O
     property local_window_size : Int32
     property remote_window_size : Int32
     property incoming_data : IO::Memory
-    property response_channel : Channel(Response?)
+    property response_channel : ResponseChannel
 
     def initialize(@id : StreamId, @local_window_size : Int32 = 65535, @remote_window_size : Int32 = 65535)
       @state = StreamState::Idle
@@ -18,7 +18,7 @@ module H2O
       @headers_complete = false
       @data_complete = false
       @incoming_data = IO::Memory.new
-      @response_channel = Channel(Response?).new(1)
+      @response_channel = ResponseChannel.new(1)
     end
 
     def send_headers(headers_frame : HeadersFrame) : Nil
@@ -33,15 +33,42 @@ module H2O
       transition_on_send_data(data_frame.end_stream?)
     end
 
-    def receive_headers(headers_frame : HeadersFrame) : Nil
+    def receive_headers(headers_frame : HeadersFrame, decoded_headers : Headers? = nil) : Nil
       validate_can_receive_headers
 
+      # Create response if it doesn't exist
       if @response.nil?
         @response = Response.new(0)
       end
 
+      # Process decoded headers if provided
+      if decoded_headers
+        response = @response.not_nil!
+
+        # Set status from :status pseudo-header
+        if status = decoded_headers[":status"]?
+          response.status = status.to_i32
+        end
+
+        # Add regular headers (excluding pseudo-headers)
+        decoded_headers.each do |name, value|
+          unless name.starts_with?(":")
+            response.headers[name] = value
+          end
+        end
+      end
+
       @headers_complete = headers_frame.end_headers?
+      if headers_frame.end_stream?
+        @data_complete = true
+      end
+
       transition_on_receive_headers(headers_frame.end_stream?)
+
+      # Check if response is complete (headers only, no data)
+      if @data_complete && @headers_complete
+        finalize_response
+      end
     end
 
     def receive_data(data_frame : DataFrame) : Nil
@@ -67,7 +94,11 @@ module H2O
     end
 
     def await_response : Response?
-      @response_channel.receive
+      Timeout(Response?).execute(5.seconds) do
+        @response_channel.receive
+      end
+    rescue Channel::ClosedError
+      nil
     end
 
     def closed? : Bool
@@ -185,13 +216,19 @@ module H2O
   end
 
   class StreamPool
-    property streams : Hash(StreamId, Stream)
+    property streams : StreamsHash
     property next_stream_id : StreamId
     property max_concurrent_streams : UInt32?
+    @cached_active_streams : StreamArray?
+    @cached_closed_streams : StreamArray?
+    @cache_valid : Bool
 
     def initialize(@max_concurrent_streams : UInt32? = nil)
-      @streams = Hash(StreamId, Stream).new
+      @streams = StreamsHash.new
       @next_stream_id = 1_u32
+      @cached_active_streams = nil
+      @cached_closed_streams = nil
+      @cache_valid = false
     end
 
     def create_stream : Stream
@@ -200,6 +237,7 @@ module H2O
       stream_id = allocate_stream_id
       stream = Stream.new(stream_id)
       @streams[stream_id] = stream
+      invalidate_cache
 
       stream
     end
@@ -210,24 +248,57 @@ module H2O
 
     def remove_stream(id : StreamId) : Nil
       @streams.delete(id)
+      invalidate_cache
     end
 
-    def active_streams : Array(Stream)
-      @streams.values.select { |stream| !stream.closed? }
+    def active_streams : StreamArray
+      return @cached_active_streams.not_nil! if @cache_valid && @cached_active_streams
+
+      refresh_cache
+      @cached_active_streams.not_nil!
     end
 
-    def closed_streams : Array(Stream)
-      @streams.values.select(&.closed?)
+    def closed_streams : StreamArray
+      return @cached_closed_streams.not_nil! if @cache_valid && @cached_closed_streams
+
+      refresh_cache
+      @cached_closed_streams.not_nil!
     end
 
     def cleanup_closed_streams : Nil
-      closed_streams.each do |stream|
+      # Get closed streams before deletion to avoid cache invalidation during iteration
+      streams_to_remove : StreamArray = closed_streams
+      streams_to_remove.each do |stream|
         @streams.delete(stream.id)
       end
+      invalidate_cache
     end
 
     def stream_count : Int32
       active_streams.size
+    end
+
+    private def invalidate_cache : Nil
+      @cache_valid = false
+      @cached_active_streams = nil
+      @cached_closed_streams = nil
+    end
+
+    private def refresh_cache : Nil
+      active : StreamArray = StreamArray.new
+      closed : StreamArray = StreamArray.new
+
+      @streams.each_value do |stream|
+        if stream.closed?
+          closed << stream
+        else
+          active << stream
+        end
+      end
+
+      @cached_active_streams = active
+      @cached_closed_streams = closed
+      @cache_valid = true
     end
 
     private def validate_can_create_stream : Nil

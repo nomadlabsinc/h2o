@@ -81,10 +81,10 @@ module H2O
       if priority?
         priority_data = @priority_dependency
         priority_data |= 0x80000000_u32 if @priority_exclusive
-        result[offset] = (priority_data >> 24).to_u8
-        result[offset + 1] = (priority_data >> 16).to_u8
-        result[offset + 2] = (priority_data >> 8).to_u8
-        result[offset + 3] = priority_data.to_u8
+        result[offset] = ((priority_data >> 24) & 0xff).to_u8
+        result[offset + 1] = ((priority_data >> 16) & 0xff).to_u8
+        result[offset + 2] = ((priority_data >> 8) & 0xff).to_u8
+        result[offset + 3] = (priority_data & 0xff).to_u8
         result[offset + 4] = @priority_weight
         offset += 5
       end

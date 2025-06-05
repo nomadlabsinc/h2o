@@ -31,15 +31,15 @@ module H2O
     def to_bytes : Bytes
       header = Bytes.new(FRAME_HEADER_SIZE)
 
-      header[0] = (@length >> 16).to_u8
-      header[1] = (@length >> 8).to_u8
-      header[2] = @length.to_u8
+      header[0] = ((@length >> 16) & 0xff).to_u8
+      header[1] = ((@length >> 8) & 0xff).to_u8
+      header[2] = (@length & 0xff).to_u8
       header[3] = @frame_type.value
       header[4] = @flags
-      header[5] = (@stream_id >> 24).to_u8
-      header[6] = (@stream_id >> 16).to_u8
-      header[7] = (@stream_id >> 8).to_u8
-      header[8] = @stream_id.to_u8
+      header[5] = ((@stream_id >> 24) & 0xff).to_u8
+      header[6] = ((@stream_id >> 16) & 0xff).to_u8
+      header[7] = ((@stream_id >> 8) & 0xff).to_u8
+      header[8] = (@stream_id & 0xff).to_u8
 
       payload_bytes = payload_to_bytes
       result = Bytes.new(FRAME_HEADER_SIZE + payload_bytes.size)
@@ -58,11 +58,11 @@ module H2O
       @flags = flags
     end
 
-    private def self.create_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+    private def self.create_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : FramePayload) : Frame
       create_frame_by_type(frame_type, length, flags, stream_id, payload)
     end
 
-    private def self.create_frame_by_type(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+    private def self.create_frame_by_type(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : FramePayload) : Frame
       case frame_type
       when .data?
         DataFrame.from_payload(length, flags, stream_id, payload)

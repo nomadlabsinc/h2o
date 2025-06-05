@@ -36,10 +36,10 @@ module H2O
       dependency_value = @dependency
       dependency_value |= 0x80000000_u32 if @exclusive
 
-      result[0] = (dependency_value >> 24).to_u8
-      result[1] = (dependency_value >> 16).to_u8
-      result[2] = (dependency_value >> 8).to_u8
-      result[3] = dependency_value.to_u8
+      result[0] = ((dependency_value >> 24) & 0xff).to_u8
+      result[1] = ((dependency_value >> 16) & 0xff).to_u8
+      result[2] = ((dependency_value >> 8) & 0xff).to_u8
+      result[3] = (dependency_value & 0xff).to_u8
       result[4] = @weight
 
       result

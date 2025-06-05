@@ -2,9 +2,9 @@ module H2O
   class SettingsFrame < Frame
     FLAG_ACK = 0x1_u8
 
-    property settings : Hash(SettingIdentifier, UInt32)
+    property settings : SettingsHash
 
-    def initialize(settings : Hash(SettingIdentifier, UInt32) = Hash(SettingIdentifier, UInt32).new, ack : Bool = false)
+    def initialize(settings : SettingsHash = SettingsHash.new, ack : Bool = false)
       @settings = settings
       flags = ack ? FLAG_ACK : 0_u8
       length = ack ? 0_u32 : (settings.size * 6).to_u32
@@ -45,7 +45,7 @@ module H2O
 
       @settings.each do |identifier, value|
         id = identifier.value
-        result[offset] = (id >> 8).to_u8
+        result[offset] = ((id >> 8) & 0xff).to_u8
         result[offset + 1] = (id & 0xFF).to_u8
         result[offset + 2] = ((value >> 24) & 0xFF).to_u8
         result[offset + 3] = ((value >> 16) & 0xFF).to_u8

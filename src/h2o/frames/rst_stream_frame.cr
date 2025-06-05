@@ -26,10 +26,10 @@ module H2O
     def payload_to_bytes : Bytes
       result = Bytes.new(4)
       error_value = @error_code.value
-      result[0] = (error_value >> 24).to_u8
-      result[1] = (error_value >> 16).to_u8
-      result[2] = (error_value >> 8).to_u8
-      result[3] = error_value.to_u8
+      result[0] = ((error_value >> 24) & 0xff).to_u8
+      result[1] = ((error_value >> 16) & 0xff).to_u8
+      result[2] = ((error_value >> 8) & 0xff).to_u8
+      result[3] = (error_value & 0xff).to_u8
       result
     end
   end

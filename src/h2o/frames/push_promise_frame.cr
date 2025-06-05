@@ -69,10 +69,10 @@ module H2O
         offset += 1
       end
 
-      result[offset] = (@promised_stream_id >> 24).to_u8
-      result[offset + 1] = (@promised_stream_id >> 16).to_u8
-      result[offset + 2] = (@promised_stream_id >> 8).to_u8
-      result[offset + 3] = @promised_stream_id.to_u8
+      result[offset] = ((@promised_stream_id >> 24) & 0xff).to_u8
+      result[offset + 1] = ((@promised_stream_id >> 16) & 0xff).to_u8
+      result[offset + 2] = ((@promised_stream_id >> 8) & 0xff).to_u8
+      result[offset + 3] = (@promised_stream_id & 0xff).to_u8
       offset += 4
 
       result[offset, @header_block.size].copy_from(@header_block)
