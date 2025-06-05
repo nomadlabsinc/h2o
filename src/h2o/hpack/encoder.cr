@@ -1,4 +1,12 @@
 module H2O::HPACK
+  # HPACK-specific type aliases for clarity
+  alias EncodedBytes = Bytes
+  alias HuffmanData = Bytes
+  alias IntegerValue = Int32
+  alias StringLength = Int32
+  alias HeaderIndex = Int32?
+  alias HeaderEntry = {String, String}
+
   class Encoder
     property dynamic_table : DynamicTable
     property huffman_encoding : Bool
@@ -7,7 +15,7 @@ module H2O::HPACK
       @dynamic_table = DynamicTable.new(table_size)
     end
 
-    def encode(headers : Headers) : Bytes
+    def encode(headers : Headers) : EncodedBytes
       result = IO::Memory.new
 
       headers.each do |name, value|
@@ -84,7 +92,7 @@ module H2O::HPACK
       end
     end
 
-    private def encode_integer(io : IO, value : Int32, prefix_bits : Int32, pattern : UInt8) : Nil
+    private def encode_integer(io : IO, value : IntegerValue, prefix_bits : IntegerValue, pattern : UInt8) : Nil
       max_value = (1 << prefix_bits) - 1
 
       if value < max_value

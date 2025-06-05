@@ -31,16 +31,16 @@ module H2O
     def payload_to_bytes : Bytes
       result = Bytes.new(8 + @debug_data.size)
 
-      result[0] = (@last_stream_id >> 24).to_u8
-      result[1] = (@last_stream_id >> 16).to_u8
-      result[2] = (@last_stream_id >> 8).to_u8
-      result[3] = @last_stream_id.to_u8
+      result[0] = ((@last_stream_id >> 24) & 0xff).to_u8
+      result[1] = ((@last_stream_id >> 16) & 0xff).to_u8
+      result[2] = ((@last_stream_id >> 8) & 0xff).to_u8
+      result[3] = (@last_stream_id & 0xff).to_u8
 
       error_value = @error_code.value
-      result[4] = (error_value >> 24).to_u8
-      result[5] = (error_value >> 16).to_u8
-      result[6] = (error_value >> 8).to_u8
-      result[7] = error_value.to_u8
+      result[4] = ((error_value >> 24) & 0xff).to_u8
+      result[5] = ((error_value >> 16) & 0xff).to_u8
+      result[6] = ((error_value >> 8) & 0xff).to_u8
+      result[7] = (error_value & 0xff).to_u8
 
       result[8, @debug_data.size].copy_from(@debug_data) unless @debug_data.empty?
 

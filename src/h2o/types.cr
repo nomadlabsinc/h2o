@@ -74,7 +74,7 @@ module H2O
     end
   end
 
-  struct Response
+  class Response
     property status : Int32
     property headers : Headers
     property body : String

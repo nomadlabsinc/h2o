@@ -27,10 +27,10 @@ module H2O
 
     def payload_to_bytes : Bytes
       result = Bytes.new(4)
-      result[0] = (@window_size_increment >> 24).to_u8
-      result[1] = (@window_size_increment >> 16).to_u8
-      result[2] = (@window_size_increment >> 8).to_u8
-      result[3] = @window_size_increment.to_u8
+      result[0] = ((@window_size_increment >> 24) & 0xff).to_u8
+      result[1] = ((@window_size_increment >> 16) & 0xff).to_u8
+      result[2] = ((@window_size_increment >> 8) & 0xff).to_u8
+      result[3] = (@window_size_increment & 0xff).to_u8
       result
     end
   end

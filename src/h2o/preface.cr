@@ -17,7 +17,7 @@ module H2O
     end
 
     def self.create_initial_settings : SettingsFrame
-      settings = Hash(SettingIdentifier, UInt32).new
+      settings = SettingsHash.new
       settings[SettingIdentifier::HeaderTableSize] = 4096_u32
       settings[SettingIdentifier::EnablePush] = 0_u32
       settings[SettingIdentifier::MaxConcurrentStreams] = 100_u32

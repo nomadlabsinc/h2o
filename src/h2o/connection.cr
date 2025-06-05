@@ -12,14 +12,15 @@ module H2O
     property connection_window_size : Int32
     property last_stream_id : StreamId
     property closed : Bool
-    property reader_fiber : Fiber?
-    property writer_fiber : Fiber?
-    property dispatcher_fiber : Fiber?
-    property outgoing_frames : Channel(Frame)
-    property incoming_frames : Channel(Frame)
+    property closing : Bool
+    property reader_fiber : FiberRef
+    property writer_fiber : FiberRef
+    property dispatcher_fiber : FiberRef
+    property outgoing_frames : OutgoingFrameChannel
+    property incoming_frames : IncomingFrameChannel
 
-    def initialize(hostname : String, port : Int32)
-      @socket = TlsSocket.new(hostname, port)
+    def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds)
+      @socket = TlsSocket.new(hostname, port, connect_timeout: connect_timeout)
       validate_http2_negotiation
 
       @stream_pool = StreamPool.new
@@ -30,9 +31,10 @@ module H2O
       @connection_window_size = 65535
       @last_stream_id = 0_u32
       @closed = false
+      @closing = false
 
-      @outgoing_frames = Channel(Frame).new(100)
-      @incoming_frames = Channel(Frame).new(100)
+      @outgoing_frames = OutgoingFrameChannel.new(100)
+      @incoming_frames = IncomingFrameChannel.new(100)
 
       setup_connection
       start_fibers
@@ -64,22 +66,18 @@ module H2O
     end
 
     def ping(data : Bytes = Bytes.new(8)) : Bool
-      ping_frame = PingFrame.new(data)
+      ping_frame : PingFrame = PingFrame.new(data)
       send_frame(ping_frame)
 
-      timeout = 5.seconds
-      start_time = Time.monotonic
-
-      loop do
-        if Time.monotonic - start_time > timeout
-          return false
+      timeout_handler : TimeoutCallback = -> { false }
+      result : TimeoutResult = Timeout(TimeoutResult).execute_with_handler(5.seconds, timeout_handler) do
+        until @closed
+          sleep 0.1
         end
-
-        sleep 0.1
-        break if @closed
+        true
       end
 
-      true
+      result || false
     end
 
     def closed? : Bool
@@ -87,21 +85,79 @@ module H2O
     end
 
     def close : Nil
-      return if @closed
+      return if @closed || @closing
 
+      # Mark as closing to prevent concurrent close attempts
+      @closing = true
+
+      # Set closed flag to stop new operations
       @closed = true
-      goaway_frame = GoawayFrame.new(@last_stream_id, ErrorCode::NoError)
-      send_frame(goaway_frame)
 
-      @outgoing_frames.close
-      @incoming_frames.close
-      @socket.close
+      # Close channels immediately to force fibers to exit
+      close_channels_immediately
+
+      # Wait for fibers to actually terminate
+      wait_for_fiber_termination
+
+      # Finally close the socket
+      close_socket_safely
+    end
+
+    private def close_channels_immediately : Nil
+      [@outgoing_frames, @incoming_frames].each do |channel|
+        begin
+          channel.close unless channel.closed?
+        rescue
+          # Ignore errors during channel close
+        end
+      end
+    end
+
+    private def wait_for_fiber_termination : Nil
+      # Give fibers time to see closed channels and exit
+      result = Timeout(Bool).execute_with_handler(1.second, -> { false }) do
+        while fiber_still_running?
+          sleep 5.milliseconds
+        end
+        true
+      end
+
+      unless result
+        Log.warn { "Forcing fiber termination after timeout" }
+      end
+
+      # Additional safety delay
+      sleep 100.milliseconds
+    end
+
+    private def close_socket_safely : Nil
+      return if @socket.closed?
+
+      begin
+        @socket.close
+      rescue ex : Exception
+        Log.debug { "Error during socket close: #{ex.message}" }
+      end
+
+      # Additional safety delay to allow OpenSSL cleanup
+      sleep 10.milliseconds
+    rescue ex : Exception
+      Log.debug { "Unexpected error in close_socket_safely: #{ex.message}" }
     end
 
     private def validate_http2_negotiation : Nil
       unless @socket.negotiated_http2?
         raise ConnectionError.new("HTTP/2 not negotiated via ALPN")
       end
+    end
+
+    private def fiber_still_running? : Bool
+      # Check if any fiber is still alive and not finished
+      reader_alive : Bool = @reader_fiber ? !@reader_fiber.not_nil!.dead? : false
+      writer_alive : Bool = @writer_fiber ? !@writer_fiber.not_nil!.dead? : false
+      dispatcher_alive : Bool = @dispatcher_fiber ? !@dispatcher_fiber.not_nil!.dead? : false
+
+      reader_alive || writer_alive || dispatcher_alive
     end
 
     private def setup_connection : Nil
@@ -122,8 +178,20 @@ module H2O
         break if @closed
 
         begin
+          # Use non-blocking approach with timeout
+          if @socket.to_io.responds_to?(:read_timeout)
+            @socket.to_io.read_timeout = 100.milliseconds
+          end
+
           frame = Frame.from_io(@socket.to_io)
-          @incoming_frames.send(frame)
+
+          # Check if we should still send the frame
+          unless @closed
+            @incoming_frames.send(frame)
+          end
+        rescue IO::TimeoutError
+          # Timeout is expected, just continue loop to check @closed
+          next
         rescue ex : IO::Error
           Log.error { "Reader error: #{ex.message}" }
           break
@@ -131,34 +199,51 @@ module H2O
           Log.error { "Frame error: #{ex.message}" }
           send_goaway(ErrorCode::ProtocolError)
           break
+        rescue Channel::ClosedError
+          Log.debug { "Reader channel closed, exiting loop" }
+          break
         end
       end
     end
 
     private def writer_loop : Nil
       loop do
-        select
-        when frame = @outgoing_frames.receive
-          begin
-            @socket.to_io.write(frame.to_bytes)
-            @socket.to_io.flush
-          rescue ex : IO::Error
-            Log.error { "Writer error: #{ex.message}" }
-            break
+        break if @closed
+
+        begin
+          select
+          when frame = @outgoing_frames.receive
+            begin
+              @socket.to_io.write(frame.to_bytes)
+              @socket.to_io.flush
+            rescue ex : IO::Error
+              Log.error { "Writer error: #{ex.message}" }
+              break
+            end
+          when timeout(1.second)
+            break if @closed
           end
-        when timeout(1.second)
-          break if @closed
+        rescue Channel::ClosedError
+          Log.debug { "Writer channel closed, exiting loop" }
+          break
         end
       end
     end
 
     private def dispatcher_loop : Nil
       loop do
-        select
-        when frame = @incoming_frames.receive
-          handle_frame(frame)
-        when timeout(1.second)
-          break if @closed
+        break if @closed
+
+        begin
+          select
+          when frame = @incoming_frames.receive
+            handle_frame(frame)
+          when timeout(1.second)
+            break if @closed
+          end
+        rescue Channel::ClosedError
+          Log.debug { "Dispatcher channel closed, exiting loop" }
+          break
         end
       end
     end
@@ -238,15 +323,7 @@ module H2O
       case frame
       when HeadersFrame
         decoded_headers = @hpack_decoder.decode(frame.header_block)
-
-        if response = stream.response
-          decoded_headers.each { |name, value| response.headers[name] = value }
-          if status = decoded_headers[":status"]?
-            response.status = status.to_i32
-          end
-        end
-
-        stream.receive_headers(frame)
+        stream.receive_headers(frame, decoded_headers)
       when DataFrame
         stream.receive_data(frame)
 
@@ -261,7 +338,16 @@ module H2O
     end
 
     private def send_frame(frame : Frame) : Nil
-      @outgoing_frames.send(frame)
+      if @closed
+        Log.warn { "Attempted to send frame on closed connection" }
+        return
+      end
+
+      begin
+        @outgoing_frames.send(frame)
+      rescue Channel::ClosedError
+        Log.warn { "Cannot send frame: connection closed" }
+      end
     end
 
     private def send_goaway(error_code : ErrorCode) : Nil
@@ -277,7 +363,10 @@ module H2O
       request_headers[":scheme"] = "https"
       request_headers[":authority"] = headers.delete("host") || ""
 
-      headers.each { |name, value| request_headers[name.downcase] = value }
+      headers.each do |name, value|
+        lowercase_name : String = name.downcase
+        request_headers[lowercase_name] = value
+      end
       request_headers
     end
   end
