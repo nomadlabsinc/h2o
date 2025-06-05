@@ -374,3 +374,61 @@ This document contains research findings from analyzing production-grade HTTP/2 
 - [ ] **Study both implementations' test suites** for comprehensive testing strategies
 
 This research roadmap provides a structured approach to implementing a production-grade HTTP/2 client in Crystal, informed by lessons learned from the most successful implementations in the ecosystem.
+
+## 🔧 Implementation Findings & Bug Fixes
+
+### Settings Frame Serialization Bug (Issue #11)
+
+**Problem Identified**: Arithmetic overflow in `settings_frame.cr:53` caused by incorrect UInt8 conversion of 32-bit values.
+
+**Root Cause Analysis**:
+- HTTP/2 SETTINGS frame values are 32-bit unsigned integers (per RFC 7540 Section 6.5.1)
+- Original code attempted direct `.to_u8` conversion: `result[offset + 5] = value.to_u8`
+- Values like `header_table_size = 4096_u32` exceed UInt8 range (0-255), causing `OverflowError`
+- All default settings in `preface.cr` exceed UInt8 limits:
+  - `HeaderTableSize: 4096_u32` (requires 2 bytes)
+  - `InitialWindowSize: 65535_u32` (requires 2 bytes)
+  - `MaxFrameSize: 16384_u32` (requires 2 bytes)
+  - `MaxHeaderListSize: 8192_u32` (requires 2 bytes)
+
+**RFC 7540 Specification Compliance**:
+According to RFC 7540 Section 6.5.1, SETTINGS frame format is:
+```
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|       Identifier (16)         |                               |
++-------------------------------+                               |
+|                        Value (32)                            |
++---------------------------------------------------------------+
+```
+
+**Solution Implemented**:
+- Fixed byte extraction using proper masking: `(value & 0xFF).to_u8`
+- Applied masking to all bit shift operations to ensure valid UInt8 range
+- Added comprehensive test coverage for edge cases
+- Verified against RFC 7540 specification for proper 32-bit value encoding
+
+**Before**:
+```crystal
+result[offset + 5] = value.to_u8  # OverflowError for values > 255
+```
+
+**After**:
+```crystal
+result[offset + 5] = (value & 0xFF).to_u8  # Proper byte extraction
+```
+
+**Test Coverage Added**:
+- Normal values within UInt8 range (≤255)
+- Large values requiring full 32-bit encoding (>255)
+- Multiple settings with mixed value sizes
+- Integration test reproducing exact bug scenario from issue #11
+- Proper byte-level verification of serialization format
+
+**Impact**: Resolves complete inability to use HTTP/2 functionality, enabling all HTTP/2 requests to work correctly.
+
+**Reference Implementations Consulted**:
+- Go's `net/http` HTTP/2 implementation uses proper 32-bit value handling
+- Rust's `hyper` crate correctly implements RFC 7540 SETTINGS frame format
+- Both implementations use proper byte masking for multi-byte value serialization
