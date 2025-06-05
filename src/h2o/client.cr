@@ -1,11 +1,11 @@
 module H2O
   class Client
-    property connections : Hash(String, Connection)
+    property connections : ConnectionsHash
     property connection_pool_size : Int32
     property timeout : Time::Span
 
     def initialize(@connection_pool_size : Int32 = 10, @timeout : Time::Span = 30.seconds)
-      @connections = Hash(String, Connection).new
+      @connections = ConnectionsHash.new
     end
 
     def get(url : String, headers : Headers = Headers.new) : Response?
@@ -38,8 +38,8 @@ module H2O
 
     def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil) : Response?
       uri = parse_url(url)
-      host = uri.host
-      raise ArgumentError.new("Invalid URL: missing host") unless host
+      host = uri.host.not_nil!
+
       connection = get_connection(host, uri.port || 443)
 
       path = uri.path
@@ -51,12 +51,9 @@ module H2O
       request_headers = prepare_headers(headers, uri)
 
       begin
-        with_timeout(@timeout) do
+        Timeout(Response?).execute(@timeout) do
           connection.request(method, path, request_headers, body)
         end
-      rescue ex : TimeoutError
-        Log.error { "Request timeout: #{ex.message}" }
-        nil
       rescue ex : Exception
         Log.error { "Request failed: #{ex.message}" }
         nil
@@ -75,7 +72,8 @@ module H2O
         raise ArgumentError.new("Only HTTPS URLs are supported")
       end
 
-      unless uri.host
+      host = uri.host
+      if !host || host.empty?
         raise ArgumentError.new("Invalid URL: missing host")
       end
 
@@ -83,9 +81,9 @@ module H2O
     end
 
     private def get_connection(host : String, port : Int32) : Connection
-      connection_key = "#{host}:#{port}"
+      connection_key : String = "#{host}:#{port}"
 
-      existing_connection = @connections[connection_key]?
+      existing_connection : Connection? = @connections[connection_key]?
       if existing_connection && !existing_connection.closed?
         return existing_connection
       end
@@ -93,14 +91,19 @@ module H2O
       cleanup_closed_connections
 
       if @connections.size >= @connection_pool_size
-        oldest_connection = @connections.values.first?
+        oldest_connection : Connection? = @connections.values.first?
         if oldest_connection
           oldest_connection.close
           @connections.delete(@connections.key_for(oldest_connection))
         end
       end
 
-      connection = Connection.new(host, port)
+      connection : Connection? = Timeout(Connection?).execute(@timeout) do
+        Connection.new(host, port, connect_timeout: @timeout)
+      end
+
+      raise ConnectionError.new("Connection timeout") unless connection
+
       @connections[connection_key] = connection
       connection
     end
@@ -129,37 +132,6 @@ module H2O
       end
 
       prepared_headers
-    end
-
-    private def with_timeout(timeout : Time::Span, &block)
-      start_time = Time.monotonic
-      result = nil
-      exception = nil
-
-      spawn do
-        begin
-          result = block.call
-        rescue ex
-          exception = ex
-        end
-      end
-
-      while result.nil? && exception.nil?
-        if Time.monotonic - start_time > timeout
-          raise TimeoutError.new("Operation timed out after #{timeout}")
-        end
-        Fiber.yield
-      end
-
-      if ex = exception
-        raise ex
-      end
-
-      if final_result = result
-        final_result
-      else
-        raise TimeoutError.new("Operation timed out after #{timeout}")
-      end
     end
   end
 end
