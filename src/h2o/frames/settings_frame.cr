@@ -46,11 +46,11 @@ module H2O
       @settings.each do |identifier, value|
         id = identifier.value
         result[offset] = (id >> 8).to_u8
-        result[offset + 1] = id.to_u8
-        result[offset + 2] = (value >> 24).to_u8
-        result[offset + 3] = (value >> 16).to_u8
-        result[offset + 4] = (value >> 8).to_u8
-        result[offset + 5] = value.to_u8
+        result[offset + 1] = (id & 0xFF).to_u8
+        result[offset + 2] = ((value >> 24) & 0xFF).to_u8
+        result[offset + 3] = ((value >> 16) & 0xFF).to_u8
+        result[offset + 4] = ((value >> 8) & 0xFF).to_u8
+        result[offset + 5] = (value & 0xFF).to_u8
         offset += 6
       end
 

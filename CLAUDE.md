@@ -295,6 +295,35 @@ find . -name "*.cr" -type f -exec sh -c 'tail -c1 {} | read -r _ || echo >> {}' 
 crystal tool format && find . -name "*.cr" -type f -exec sed -i '' 's/[[:space:]]*$//' {} + && find . -name "*.cr" -type f -exec sh -c 'tail -c1 {} | read -r _ || echo >> {}' \;
 ```
 
+## 🔀 Git Workflow and GitHub Integration
+
+### Branch Strategy (MANDATORY)
+- **NEVER work directly on main branch** - Always create feature branches
+- **ALWAYS submit Pull Requests** - Never push directly to main
+- **Use descriptive branch names** - Follow pattern: `fix-`, `feature-`, `refactor-`, etc.
+
+### GitHub Integration
+- **Use `gh` CLI for all GitHub operations** when asked to interact with GitHub
+- **Always create PRs through `gh pr create`** with proper titles and descriptions
+- **Monitor GitHub Actions** until all workflow checks pass
+- **Address any PR feedback** promptly and thoroughly
+
+### Workflow Steps
+1. **Create feature branch**: `git checkout -b feature-name`
+2. **Make changes and commit**: Follow pre-commit checklist
+3. **Push feature branch**: `git push -u origin feature-name`
+4. **Create PR**: `gh pr create --title "Title" --body "Description"`
+5. **Monitor workflows**: Ensure all GitHub Actions pass
+6. **Address feedback**: Make changes if requested
+7. **Merge only after approval**: Never merge your own PRs
+
+### PR Requirements
+- **Clear title** describing the change
+- **Detailed description** with context and impact
+- **Link to related issues** if applicable
+- **Test coverage** for all changes
+- **Documentation updates** when needed
+
 ## 📝 Additional Guidelines
 
 ### Naming Conventions
