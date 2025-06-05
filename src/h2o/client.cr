@@ -37,8 +37,7 @@ module H2O
     end
 
     def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil) : Response?
-      uri : URI = parse_url(url)
-      host : String = uri.host.not_nil!
+      uri, host = parse_url_with_host(url)
       connection : BaseConnection = get_connection(host, uri.port || 443)
       request_path : String = build_request_path(uri)
       request_headers : Headers = prepare_headers(headers, uri)
@@ -50,7 +49,7 @@ module H2O
       @connections.clear
     end
 
-    private def parse_url(url : String) : URI
+    private def parse_url_with_host(url : String) : {URI, String}
       uri = URI.parse(url)
 
       unless uri.scheme == "https"
@@ -62,7 +61,7 @@ module H2O
         raise ArgumentError.new("Invalid URL: missing host")
       end
 
-      uri
+      {uri, host}
     end
 
     private def get_connection(host : String, port : Int32) : BaseConnection

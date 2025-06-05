@@ -93,6 +93,12 @@ def test_minimal_requests_after_close(channel)
 end
 
 def test_minimal_http_request(channel)
+  # Skip network test if environment variable is set
+  if ENV["SKIP_NETWORK_TESTS"]? == "true"
+    channel.send(true)
+    return
+  end
+
   success = retry_operation do
     begin
       client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)

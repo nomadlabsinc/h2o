@@ -42,9 +42,7 @@ module H2O
       end
 
       # Process decoded headers if provided
-      if decoded_headers
-        response = @response.not_nil!
-
+      if decoded_headers && (response = @response)
         # Set status from :status pseudo-header
         if status = decoded_headers[":status"]?
           response.status = status.to_i32
@@ -252,17 +250,23 @@ module H2O
     end
 
     def active_streams : StreamArray
-      return @cached_active_streams.not_nil! if @cache_valid && @cached_active_streams
+      if @cache_valid && (cached = @cached_active_streams)
+        return cached
+      end
 
       refresh_cache
-      @cached_active_streams.not_nil!
+      # refresh_cache guarantees that @cached_active_streams is set
+      @cached_active_streams.as(StreamArray)
     end
 
     def closed_streams : StreamArray
-      return @cached_closed_streams.not_nil! if @cache_valid && @cached_closed_streams
+      if @cache_valid && (cached = @cached_closed_streams)
+        return cached
+      end
 
       refresh_cache
-      @cached_closed_streams.not_nil!
+      # refresh_cache guarantees that @cached_closed_streams is set
+      @cached_closed_streams.as(StreamArray)
     end
 
     def cleanup_closed_streams : Nil
