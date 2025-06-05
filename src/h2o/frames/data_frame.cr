@@ -28,13 +28,13 @@ module H2O
         data_end = payload.size - padding_length
         data = payload[1, data_end - 1]
 
-        frame = allocate
-        frame.initialize_from_payload(length, flags, stream_id, data, padding_length)
+        frame = new(stream_id, data, flags, padding_length)
+        frame.set_length(length)
         frame
       else
         data = payload
-        frame = allocate
-        frame.initialize_from_payload(length, flags, stream_id, data, 0_u8)
+        frame = new(stream_id, data, flags, 0_u8)
+        frame.set_length(length)
         frame
       end
     end
@@ -56,16 +56,6 @@ module H2O
 
     def padded? : Bool
       (@flags & FLAG_PADDED) != 0
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, data : Bytes, padding_length : UInt8)
-      @length = length
-      @frame_type = FrameType::Data
-      @flags = flags
-      @stream_id = stream_id
-      @data = data
-      @padding_length = padding_length
-      validate_stream_id_non_zero
     end
 
     private def validate_stream_id_non_zero : Nil

@@ -22,8 +22,9 @@ module H2O
                                  (payload[6].to_u32 << 8) | payload[7].to_u32)
       debug_data = payload[8, payload.size - 8]
 
-      frame = allocate
-      frame.initialize_from_payload(length, flags, stream_id, last_stream_id, error_code, debug_data)
+      frame = new(last_stream_id, error_code, debug_data)
+      frame.set_length(length)
+      frame.set_flags(flags)
       frame
     end
 
@@ -44,17 +45,6 @@ module H2O
       result[8, @debug_data.size].copy_from(@debug_data) unless @debug_data.empty?
 
       result
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId,
-                                          last_stream_id : StreamId, error_code : ErrorCode, debug_data : Bytes)
-      @length = length
-      @frame_type = FrameType::Goaway
-      @flags = flags
-      @stream_id = stream_id
-      @last_stream_id = last_stream_id
-      @error_code = error_code
-      @debug_data = debug_data
     end
   end
 end

@@ -17,8 +17,9 @@ module H2O
       error_code = ErrorCode.new((payload[0].to_u32 << 24) | (payload[1].to_u32 << 16) |
                                  (payload[2].to_u32 << 8) | payload[3].to_u32)
 
-      frame = allocate
-      frame.initialize_from_payload(length, flags, stream_id, error_code)
+      frame = new(stream_id, error_code)
+      frame.set_length(length)
+      frame.set_flags(flags)
       frame
     end
 
@@ -30,14 +31,6 @@ module H2O
       result[2] = (error_value >> 8).to_u8
       result[3] = error_value.to_u8
       result
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, error_code : ErrorCode)
-      @length = length
-      @frame_type = FrameType::RstStream
-      @flags = flags
-      @stream_id = stream_id
-      @error_code = error_code
     end
   end
 end

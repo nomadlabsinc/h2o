@@ -18,8 +18,9 @@ module H2O
       raise FrameError.new("PING frame must have stream ID 0") if stream_id != 0
       raise FrameError.new("PING frame must have 8-byte payload") if payload.size != PING_PAYLOAD_SIZE
 
-      frame = allocate
-      frame.initialize_from_payload(length, flags, stream_id, payload)
+      ack = (flags & FLAG_ACK) != 0
+      frame = new(payload, ack)
+      frame.set_length(length)
       frame
     end
 
@@ -33,14 +34,6 @@ module H2O
 
     def create_ack : PingFrame
       PingFrame.new(@opaque_data, ack: true)
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, opaque_data : Bytes)
-      @length = length
-      @frame_type = FrameType::Ping
-      @flags = flags
-      @stream_id = stream_id
-      @opaque_data = opaque_data
     end
   end
 end

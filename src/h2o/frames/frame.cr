@@ -50,6 +50,14 @@ module H2O
 
     abstract def payload_to_bytes : Bytes
 
+    protected def set_length(length : UInt32) : Nil
+      @length = length
+    end
+
+    protected def set_flags(flags : UInt8) : Nil
+      @flags = flags
+    end
+
     private def self.create_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
       create_frame_by_type(frame_type, length, flags, stream_id, payload)
     end

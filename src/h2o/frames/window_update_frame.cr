@@ -19,8 +19,9 @@ module H2O
 
       raise FrameError.new("WINDOW_UPDATE increment must be non-zero") if window_size_increment == 0
 
-      frame = allocate
-      frame.initialize_from_payload(length, flags, stream_id, window_size_increment)
+      frame = new(stream_id, window_size_increment)
+      frame.set_length(length)
+      frame.set_flags(flags)
       frame
     end
 
@@ -31,14 +32,6 @@ module H2O
       result[2] = (@window_size_increment >> 8).to_u8
       result[3] = @window_size_increment.to_u8
       result
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, window_size_increment : UInt32)
-      @length = length
-      @frame_type = FrameType::WindowUpdate
-      @flags = flags
-      @stream_id = stream_id
-      @window_size_increment = window_size_increment
     end
   end
 end

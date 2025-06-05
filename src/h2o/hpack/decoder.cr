@@ -10,7 +10,7 @@ module H2O::HPACK
       headers = Headers.new
       io = IO::Memory.new(data)
 
-      while !io.pos.at_end?
+      while io.pos < io.size
         decode_header(io, headers)
       end
 

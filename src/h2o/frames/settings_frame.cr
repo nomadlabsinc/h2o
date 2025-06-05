@@ -31,8 +31,9 @@ module H2O
         settings[identifier] = value
       end
 
-      frame = allocate
-      frame.initialize_from_payload(length, flags, stream_id, settings)
+      frame = new(settings)
+      frame.set_length(length)
+      frame.set_flags(flags)
       frame
     end
 
@@ -66,14 +67,6 @@ module H2O
 
     def []=(identifier : SettingIdentifier, value : UInt32) : UInt32
       @settings[identifier] = value
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, settings : Hash(SettingIdentifier, UInt32))
-      @length = length
-      @frame_type = FrameType::Settings
-      @flags = flags
-      @stream_id = stream_id
-      @settings = settings
     end
 
     private def validate_ack_frame : Nil
