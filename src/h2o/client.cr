@@ -44,7 +44,9 @@ module H2O
 
       path = uri.path
       path = "/" if path.empty?
-      path += "?" + uri.query if uri.query
+      if query = uri.query
+        path += "?" + query
+      end
 
       request_headers = prepare_headers(headers, uri)
 
@@ -129,14 +131,14 @@ module H2O
       prepared_headers
     end
 
-    private def with_timeout(timeout : Time::Span, &) : T forall T
+    private def with_timeout(timeout : Time::Span, &block)
       start_time = Time.monotonic
       result = nil
       exception = nil
 
       spawn do
         begin
-          result = yield
+          result = block.call
         rescue ex
           exception = ex
         end

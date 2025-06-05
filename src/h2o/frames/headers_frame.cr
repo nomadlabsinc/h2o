@@ -58,9 +58,9 @@ module H2O
 
       header_block = payload[offset, header_block_end - offset]
 
-      frame = allocate
-      frame.initialize_from_payload(length, flags, stream_id, header_block, padding_length,
+      frame = new(stream_id, header_block, flags, padding_length,
         priority_exclusive, priority_dependency, priority_weight)
+      frame.set_length(length)
       frame
     end
 
@@ -107,22 +107,6 @@ module H2O
 
     def priority? : Bool
       (@flags & FLAG_PRIORITY) != 0
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId,
-                                          header_block : Bytes, padding_length : UInt8,
-                                          priority_exclusive : Bool, priority_dependency : StreamId,
-                                          priority_weight : UInt8)
-      @length = length
-      @frame_type = FrameType::Headers
-      @flags = flags
-      @stream_id = stream_id
-      @header_block = header_block
-      @padding_length = padding_length
-      @priority_exclusive = priority_exclusive
-      @priority_dependency = priority_dependency
-      @priority_weight = priority_weight
-      validate_stream_id_non_zero
     end
 
     private def validate_stream_id_non_zero : Nil

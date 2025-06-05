@@ -49,8 +49,10 @@ module H2O
 
       header_block = payload[offset, header_block_end - offset]
 
-      frame = allocate
-      frame.initialize_from_payload(length, flags, stream_id, promised_stream_id, header_block, padding_length)
+      end_headers = (flags & FLAG_END_HEADERS) != 0
+      frame = new(stream_id, promised_stream_id, header_block, end_headers, padding_length)
+      frame.set_length(length)
+      frame.set_flags(flags)
       frame
     end
 
@@ -83,17 +85,6 @@ module H2O
 
     def padded? : Bool
       (@flags & FLAG_PADDED) != 0
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId,
-                                          promised_stream_id : StreamId, header_block : Bytes, padding_length : UInt8)
-      @length = length
-      @frame_type = FrameType::PushPromise
-      @flags = flags
-      @stream_id = stream_id
-      @promised_stream_id = promised_stream_id
-      @header_block = header_block
-      @padding_length = padding_length
     end
   end
 end

@@ -24,8 +24,9 @@ module H2O
       dependency = dependency_data & 0x7fffffff_u32
       weight = payload[4]
 
-      frame = allocate
-      frame.initialize_from_payload(length, flags, stream_id, exclusive, dependency, weight)
+      frame = new(stream_id, exclusive, dependency, weight)
+      frame.set_length(length)
+      frame.set_flags(flags)
       frame
     end
 
@@ -42,17 +43,6 @@ module H2O
       result[4] = @weight
 
       result
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId,
-                                          exclusive : Bool, dependency : StreamId, weight : UInt8)
-      @length = length
-      @frame_type = FrameType::Priority
-      @flags = flags
-      @stream_id = stream_id
-      @exclusive = exclusive
-      @dependency = dependency
-      @weight = weight
     end
   end
 end

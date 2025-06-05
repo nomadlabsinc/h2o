@@ -105,7 +105,7 @@ module H2O
     end
 
     private def setup_connection : Nil
-      Preface.send_preface(@socket)
+      Preface.send_preface(@socket.to_io)
 
       initial_settings = Preface.create_initial_settings
       send_frame(initial_settings)
@@ -122,7 +122,7 @@ module H2O
         break if @closed
 
         begin
-          frame = Frame.from_io(@socket)
+          frame = Frame.from_io(@socket.to_io)
           @incoming_frames.send(frame)
         rescue ex : IO::Error
           Log.error { "Reader error: #{ex.message}" }
@@ -140,8 +140,8 @@ module H2O
         select
         when frame = @outgoing_frames.receive
           begin
-            @socket.write(frame.to_bytes)
-            @socket.flush
+            @socket.to_io.write(frame.to_bytes)
+            @socket.to_io.flush
           rescue ex : IO::Error
             Log.error { "Writer error: #{ex.message}" }
             break

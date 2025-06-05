@@ -16,8 +16,10 @@ module H2O
     def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : ContinuationFrame
       raise FrameError.new("CONTINUATION frame must have non-zero stream ID") if stream_id == 0
 
-      frame = allocate
-      frame.initialize_from_payload(length, flags, stream_id, payload)
+      end_headers = (flags & FLAG_END_HEADERS) != 0
+      frame = new(stream_id, payload, end_headers)
+      frame.set_length(length)
+      frame.set_flags(flags)
       frame
     end
 
@@ -27,14 +29,6 @@ module H2O
 
     def end_headers? : Bool
       (@flags & FLAG_END_HEADERS) != 0
-    end
-
-    protected def initialize_from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, header_block : Bytes)
-      @length = length
-      @frame_type = FrameType::Continuation
-      @flags = flags
-      @stream_id = stream_id
-      @header_block = header_block
     end
   end
 end
