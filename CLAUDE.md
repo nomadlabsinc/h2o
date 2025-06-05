@@ -16,6 +16,14 @@ Adhere to these principles to ensure a high-quality, performant, and maintainabl
     *   Be mindful of fiber context switching overhead; ensure fibers are used strategically for concurrency, not for trivial tasks.
     *   Connection pooling (as noted in development tasks) is a critical performance optimization to minimize TLS handshake and connection overhead.
 
+3.  **HTTP/2 Protocol Performance Optimizations (CRITICAL):**
+    *   **Use hash-based lookups instead of linear search** - Replace O(n) operations with O(1) hash lookups, especially in HPACK table operations
+    *   **Implement connection health validation** - Check stream capacity and connection state before reusing connections to prevent unnecessary new connections
+    *   **Use buffer pooling for frame operations** - Reuse byte buffers to reduce GC pressure during frame serialization/deserialization
+    *   **Cache protocol support per host** - Store HTTP/2 vs HTTP/1.1 support information to avoid redundant negotiation attempts
+    *   **Optimize fiber usage** - Minimize fiber creation overhead, consider shared fiber pools for high-frequency operations
+    *   **Implement adaptive buffer sizing** - Size buffers based on expected data patterns rather than fixed large allocations
+
 4.  **Test-Driven Development (TDD):**
     *   Write tests *before* or concurrently with implementation.
     *   Ensure high unit test coverage for all components.

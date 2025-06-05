@@ -6,6 +6,7 @@ module H2O
 
     def initialize(@connection_pool_size : Int32 = 10, @timeout : Time::Span = 30.seconds)
       @connections = ConnectionsHash.new
+      @protocol_cache = ProtocolCache.new
     end
 
     def get(url : String, headers : Headers = Headers.new) : Response?
@@ -76,10 +77,39 @@ module H2O
     end
 
     private def create_connection_with_fallback(host : String, port : Int32) : BaseConnection?
-      try_http2_connection(host, port) || try_http1_connection(host, port)
+      @protocol_cache.cleanup_expired
+
+      if preferred = @protocol_cache.get_preferred_protocol(host, port)
+        case preferred
+        when .http2?
+          return try_http2_connection(host, port) || try_http1_connection_with_cache(host, port)
+        when .http11?
+          return try_http1_connection(host, port)
+        end
+      end
+
+      # No cache entry, try HTTP/2 first then fallback
+      if connection = try_http2_connection(host, port)
+        @protocol_cache.cache_protocol(host, port, ProtocolVersion::Http2)
+        connection
+      elsif connection = try_http1_connection(host, port)
+        @protocol_cache.cache_protocol(host, port, ProtocolVersion::Http11)
+        connection
+      else
+        nil
+      end
     rescue ex : Exception
       Log.error { "Connection creation failed: #{ex.message}" }
       nil
+    end
+
+    private def try_http1_connection_with_cache(host : String, port : Int32) : BaseConnection?
+      if connection = try_http1_connection(host, port)
+        @protocol_cache.cache_protocol(host, port, ProtocolVersion::Http11)
+        connection
+      else
+        nil
+      end
     end
 
     private def build_request_path(uri : URI) : String
@@ -101,7 +131,38 @@ module H2O
     private def find_existing_connection(connection_key : String) : BaseConnection?
       existing_connection : BaseConnection? = @connections[connection_key]?
       return nil if !existing_connection || existing_connection.closed?
+      return nil unless connection_healthy?(existing_connection)
       existing_connection
+    end
+
+    private def connection_healthy?(connection : BaseConnection) : Bool
+      case connection
+      when H2::Client
+        connection_healthy_http2?(connection)
+      when H1::Client
+        connection_healthy_http1?(connection)
+      else
+        false
+      end
+    end
+
+    private def connection_healthy_http2?(connection : H2::Client) : Bool
+      return false if connection.closed?
+      return false if connection.closing
+      return false unless connection_has_stream_capacity?(connection)
+      true
+    end
+
+    private def connection_healthy_http1?(connection : H1::Client) : Bool
+      !connection.closed?
+    end
+
+    private def connection_has_stream_capacity?(connection : H2::Client) : Bool
+      max_streams = connection.remote_settings.max_concurrent_streams
+      return true unless max_streams
+
+      active_stream_count = connection.stream_pool.stream_count
+      active_stream_count < max_streams
     end
 
     private def create_new_connection(connection_key : String, host : String, port : Int32) : BaseConnection

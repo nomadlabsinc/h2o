@@ -76,6 +76,18 @@ module H2O::HPACK
       StaticEntry.new("www-authenticate"),
     ]
 
+    # Build indices for O(1) lookups
+    NAME_INDEX = STATIC_ENTRIES.each_with_index.reduce(Hash(String, Int32).new) do |hash, (entry, index)|
+      hash[entry.name] = index + 1 unless hash.has_key?(entry.name)
+      hash
+    end
+
+    NAME_VALUE_INDEX = STATIC_ENTRIES.each_with_index.reduce(Hash(String, Int32).new) do |hash, (entry, index)|
+      key = "#{entry.name}:#{entry.value}"
+      hash[key] = index + 1
+      hash
+    end
+
     def self.size : Int32
       STATIC_ENTRIES.size
     end
@@ -86,17 +98,12 @@ module H2O::HPACK
     end
 
     def self.find_name(name : String) : Int32?
-      STATIC_ENTRIES.each_with_index do |entry, index|
-        return index + 1 if entry.name == name
-      end
-      nil
+      NAME_INDEX[name]?
     end
 
     def self.find_name_value(name : String, value : String) : Int32?
-      STATIC_ENTRIES.each_with_index do |entry, index|
-        return index + 1 if entry.name == name && entry.value == value
-      end
-      nil
+      name_value_key = "#{name}:#{value}"
+      NAME_VALUE_INDEX[name_value_key]?
     end
   end
 end
