@@ -23,7 +23,7 @@ Since the GitHub API for branch protection requires specific formatting, please 
    - ✅ Require branches to be up to date before merging
    - Status checks to require:
      - `test` (from CI workflow)
-     - `lint` (from CI workflow) 
+     - `lint` (from CI workflow)
      - `build` (from CI workflow)
 
    ✅ **Require conversation resolution before merging**

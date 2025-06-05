@@ -56,7 +56,7 @@ echo -e "${GREEN}✅ Successfully pushed to GitHub!${NC}"
 echo -e "${BLUE}Step 3: Setting up branch protection${NC}"
 if command -v gh &> /dev/null; then
     echo "Using GitHub CLI to set up branch protection..."
-    
+
     # Enable branch protection for main
     gh api repos/nomadlabsinc/h2o/branches/main/protection \
         --method PUT \
@@ -66,7 +66,7 @@ if command -v gh &> /dev/null; then
         --field restrictions=null \
         --field allow_force_pushes=false \
         --field allow_deletions=false
-    
+
     echo -e "${GREEN}✅ Branch protection configured!${NC}"
 else
     echo -e "${YELLOW}GitHub CLI not found. Please manually set up branch protection:${NC}"

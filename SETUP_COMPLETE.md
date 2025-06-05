@@ -94,9 +94,9 @@ client.close
 
 ---
 
-**Repository:** https://github.com/nomadlabsinc/h2o  
-**Status:** ✅ Ready for development  
-**CI/CD:** ✅ Working  
-**License:** MIT  
+**Repository:** https://github.com/nomadlabsinc/h2o
+**Status:** ✅ Ready for development
+**CI/CD:** ✅ Working
+**License:** MIT
 
 The H2O HTTP/2 client is now ready for production use and further development! 🚀
