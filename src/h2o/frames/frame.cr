@@ -53,10 +53,7 @@ module H2O
           result = frame_buffer[0, total_size]
           result.copy_from(header)
           result[FRAME_HEADER_SIZE, payload_bytes.size].copy_from(payload_bytes)
-          # Create a copy since we're returning the buffer to pool
-          final_result = Bytes.new(total_size)
-          final_result.copy_from(result)
-          final_result
+          result.dup
         end
       end
     end

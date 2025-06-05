@@ -38,79 +38,97 @@ module H2O::HPACK
 
     EOS_SYMBOL = 256
 
+    # Pre-computed decode lookup table for O(1) symbol lookup
+    private DECODE_LOOKUP = build_decode_lookup
+
+    private def self.build_decode_lookup : Hash(UInt32, {Int32, Int32})
+      lookup = Hash(UInt32, {Int32, Int32}).new
+      HUFFMAN_CODES.each_with_index do |(code, length), symbol|
+        lookup[code] = {symbol, length}
+      end
+      lookup
+    end
+
     def self.encode(data : String) : Bytes
-      bits = 0_u64
-      bit_count = 0
-      result = IO::Memory.new
+      BufferPool.with_frame_buffer(data.bytesize * 2) do |buffer|
+        bits = 0_u64
+        bit_count = 0
+        output_pos = 0
 
-      data.each_byte do |byte|
-        code, length = HUFFMAN_CODES[byte]
-        bits = (bits << length) | code.to_u64
-        bit_count += length
+        data.each_byte do |byte|
+          code, length = HUFFMAN_CODES[byte]
+          bits = (bits << length) | code.to_u64
+          bit_count += length
 
-        while bit_count >= 8
-          bit_count -= 8
-          result.write_byte((bits >> bit_count).to_u8)
-          bits &= (1_u64 << bit_count) - 1
+          while bit_count >= 8
+            bit_count -= 8
+            buffer[output_pos] = (bits >> bit_count).to_u8
+            output_pos += 1
+            bits &= (1_u64 << bit_count) - 1
+          end
         end
-      end
 
-      if bit_count > 0
-        padding = 8 - bit_count
-        bits = (bits << padding) | ((1_u64 << padding) - 1)
-        result.write_byte(bits.to_u8)
-      end
+        if bit_count > 0
+          padding = 8 - bit_count
+          bits = (bits << padding) | ((1_u64 << padding) - 1)
+          buffer[output_pos] = bits.to_u8
+          output_pos += 1
+        end
 
-      result.to_slice
+        result = Bytes.new(output_pos)
+        result.copy_from(buffer[0, output_pos])
+        result
+      end
     end
 
     def self.decode(data : Bytes) : String
-      result = IO::Memory.new
-      bits = 0_u32
-      bit_count = 0
+      String.build do |result|
+        bits = 0_u32
+        bit_count = 0
 
-      data.each do |byte|
-        bits = (bits << 8) | byte.to_u32
-        bit_count += 8
+        data.each do |byte|
+          bits = (bits << 8) | byte.to_u32
+          bit_count += 8
 
-        while bit_count >= 5
-          symbol = decode_symbol(bits, bit_count)
-          break if symbol.nil?
+          while bit_count >= 5
+            symbol, consumed_bits = decode_symbol(bits, bit_count)
+            break if symbol.nil?
 
-          if symbol == EOS_SYMBOL
-            raise CompressionError.new("Unexpected EOS symbol in Huffman data")
+            if symbol == EOS_SYMBOL
+              raise CompressionError.new("Unexpected EOS symbol in Huffman data")
+            end
+
+            result << symbol.chr
+            bits &= (1_u32 << (bit_count - consumed_bits)) - 1
+            bit_count -= consumed_bits
           end
+        end
 
-          result.write_byte(symbol.to_u8)
-          consumed_bits = symbol_length(symbol)
-          bits &= (1_u32 << (bit_count - consumed_bits)) - 1
-          bit_count -= consumed_bits
+        if bit_count > 0
+          padding = (1_u32 << bit_count) - 1
+          if bits != padding
+            raise CompressionError.new("Invalid Huffman padding")
+          end
         end
       end
-
-      if bit_count > 0
-        padding = (1_u32 << bit_count) - 1
-        if bits != padding
-          raise CompressionError.new("Invalid Huffman padding")
-        end
-      end
-
-      result.to_s
     end
 
-    private def self.decode_symbol(bits : UInt32, bit_count : Int32) : Int32?
-      return nil if bit_count < 5
+    private def self.decode_symbol(bits : UInt32, bit_count : Int32) : {Int32?, Int32}
+      return {nil, 0} if bit_count < 5
 
-      HUFFMAN_CODES.each_with_index do |(code, length), symbol|
-        if bit_count >= length
-          mask = (1_u32 << length) - 1
-          if (bits >> (bit_count - length)) & mask == code
-            return symbol
-          end
+      (30.downto(5)).each do |length|
+        next if bit_count < length
+
+        mask = (1_u32 << length) - 1
+        code = (bits >> (bit_count - length)) & mask
+
+        if symbol_length = DECODE_LOOKUP[code]?
+          symbol, actual_length = symbol_length
+          return {symbol, actual_length} if actual_length == length
         end
       end
 
-      nil
+      {nil, 0}
     end
 
     private def self.symbol_length(symbol : Int32) : Int32

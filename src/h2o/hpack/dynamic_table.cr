@@ -1,4 +1,23 @@
 module H2O::HPACK
+  # Composite key for name-value lookups without string allocations
+  private struct NameValueKey
+    property name : String
+    property value : String
+
+    def initialize(@name : String, @value : String)
+    end
+
+    def hash(hasher)
+      hasher.string(@name)
+      hasher.string(":")
+      hasher.string(@value)
+    end
+
+    def ==(other : NameValueKey)
+      @name == other.name && @value == other.value
+    end
+  end
+
   class DynamicTable
     DEFAULT_SIZE = 4096
 
@@ -10,7 +29,7 @@ module H2O::HPACK
       @current_size = 0
       @entries = Array(StaticEntry).new
       @name_index = Hash(String, Int32).new
-      @name_value_index = Hash(String, Int32).new
+      @name_value_index = Hash(NameValueKey, Int32).new
     end
 
     def resize(new_size : Int32) : Nil
@@ -23,12 +42,15 @@ module H2O::HPACK
       @entries.unshift(entry)
       @current_size += entry.size
 
+      # Dynamic table indices start after static table and use 1-based indexing
+      # New entries go to index 1 in the dynamic table (StaticTable.size + 1)
       index = StaticTable.size + 1
       @name_index[name] = index unless @name_index.has_key?(name)
-      name_value_key = "#{name}:#{value}"
+      name_value_key = NameValueKey.new(name, value)
       @name_value_index[name_value_key] = index
 
       evict_entries
+      rebuild_indices # Rebuild after eviction to ensure correct indices
     end
 
     def [](index : Int32) : StaticEntry?
@@ -54,7 +76,7 @@ module H2O::HPACK
       static_index = StaticTable.find_name_value(name, value)
       return static_index if static_index
 
-      name_value_key = "#{name}:#{value}"
+      name_value_key = NameValueKey.new(name, value)
       @name_value_index[name_value_key]?
     end
 
@@ -81,7 +103,7 @@ module H2O::HPACK
       @entries.each_with_index do |entry, index|
         table_index = StaticTable.size + index + 1
         @name_index[entry.name] = table_index unless @name_index.has_key?(entry.name)
-        name_value_key = "#{entry.name}:#{entry.value}"
+        name_value_key = NameValueKey.new(entry.name, entry.value)
         @name_value_index[name_value_key] = table_index
       end
     end

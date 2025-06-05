@@ -120,7 +120,10 @@ private def add_response_header(response : H2O::Response, name : String, value :
 end
 
 private def append_response_body(response : H2O::Response, content : String) : Nil
-  response.body += content
+  response.body = String.build do |str|
+    str << response.body
+    str << content
+  end
 end
 
 private def process_response(response : H2O::Response) : H2O::Response

@@ -98,8 +98,8 @@ def test_focused_http_validation(channel)
 
   success = retry_operation(5) do # Try 5 times instead of 3
     begin
-      # Use longer timeout for more reliable network tests
-      client = H2O::Client.new(timeout: 5.seconds)
+      # Use shorter timeout as required by CLAUDE.md (5s or shorter)
+      client = H2O::Client.new(timeout: 1.seconds)
       response = client.get("https://httpbin.org/get")
       result = !!(response && response.status == 200 && response.body.includes?("httpbin.org"))
       client.close
