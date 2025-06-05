@@ -11,7 +11,7 @@ module H2O
       @padding_length = padding_length
 
       total_length = data.size.to_u32
-      total_length += 1 if padded?
+      total_length += 1 if (flags & FLAG_PADDED) != 0
       total_length += padding_length
 
       super(total_length, FrameType::Data, flags, stream_id)

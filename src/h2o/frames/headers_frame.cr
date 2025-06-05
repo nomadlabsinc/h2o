@@ -21,8 +21,8 @@ module H2O
       @priority_weight = priority_weight
 
       total_length = header_block.size.to_u32
-      total_length += 1 if padded?
-      total_length += 5 if priority?
+      total_length += 1 if (flags & FLAG_PADDED) != 0
+      total_length += 5 if (flags & FLAG_PRIORITY) != 0
       total_length += padding_length
 
       super(total_length, FrameType::Headers, flags, stream_id)

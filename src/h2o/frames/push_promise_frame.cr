@@ -20,7 +20,7 @@ module H2O
       flags |= FLAG_PADDED if padding_length > 0
 
       total_length = 4_u32 + header_block.size.to_u32
-      total_length += 1 if padded?
+      total_length += 1 if (flags & FLAG_PADDED) != 0
       total_length += padding_length
 
       super(total_length, FrameType::PushPromise, flags, stream_id)
