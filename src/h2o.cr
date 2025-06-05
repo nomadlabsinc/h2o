@@ -26,40 +26,30 @@ require "./h2o/hpack/huffman"
 require "./h2o/hpack/encoder"
 require "./h2o/hpack/decoder"
 require "./h2o/stream"
-require "./h2o/connection"
+require "./h2o/http1_connection"
+require "./h2o/h1/client"
+require "./h2o/h2/client"
 require "./h2o/client"
 
 module H2O
   Log = ::Log.for("h2o")
 
-  # Core HTTP/2 type aliases
-  alias Headers = Hash(String, String)
-  alias StreamId = UInt32
-
-  # Frame and protocol types
+  # Additional type aliases (core ones are in types.cr)
   alias FrameBytes = Bytes
   alias FramePayload = Bytes
   alias SettingsHash = Hash(SettingIdentifier, UInt32)
 
-  # Collection types
-  alias StreamsHash = Hash(StreamId, Stream)
-  alias ConnectionsHash = Hash(String, Connection)
-  # HPACK type aliases
+  # Additional collection types
+  alias H1ConnectionsHash = Hash(String, H1::Client)
+  alias H2ConnectionsHash = Hash(String, H2::Client)
   alias HeaderTable = Array(HPACK::StaticEntry)
   alias HeaderEntry = Tuple(String, String)
   alias IntegerValue = Int32
   alias StreamArray = Array(Stream)
 
-  # Channel types
+  # Additional channel types
   alias ResponseChannel = Channel(Response?)
   alias FrameChannel = Channel(Frame)
-  alias OutgoingFrameChannel = Channel(Frame)
-  alias IncomingFrameChannel = Channel(Frame)
-
-  # Fiber and callback types
-  alias FiberRef = Fiber?
-  alias TimeoutCallback = Proc(Bool)
-  alias TimeoutResult = Bool
 
   # IO and buffer types
   alias IOBuffer = IO::Memory

@@ -1,4 +1,15 @@
 module H2O
+  # Type aliases for improved readability
+  alias ConnectionsHash = Hash(String, BaseConnection)
+  alias FiberRef = Fiber?
+  alias Headers = Hash(String, String)
+  alias IncomingFrameChannel = Channel(Frame)
+  alias OutgoingFrameChannel = Channel(Frame)
+  alias StreamId = UInt32
+  alias StreamsHash = Hash(StreamId, Stream)
+  alias TimeoutCallback = Proc(Bool)
+  alias TimeoutResult = Bool
+
   enum FrameType : UInt8
     Data         = 0x0
     Headers      = 0x1
@@ -78,8 +89,14 @@ module H2O
     property status : Int32
     property headers : Headers
     property body : String
+    property protocol : String
 
-    def initialize(@status : Int32, @headers : Headers = Headers.new, @body : String = "")
+    def initialize(@status : Int32, @headers : Headers = Headers.new, @body : String = "", @protocol : String = "HTTP/2")
     end
+  end
+
+  enum ProtocolVersion
+    Http11
+    Http2
   end
 end
