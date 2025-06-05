@@ -99,4 +99,43 @@ module H2O
     Http11
     Http2
   end
+
+  class ProtocolCache
+    CACHE_TTL = 1.hour
+
+    def initialize
+      @cache = Hash(String, ProtocolCacheEntry).new
+    end
+
+    def get_preferred_protocol(host : String, port : Int32) : ProtocolVersion?
+      key = "#{host}:#{port}"
+      entry = @cache[key]?
+
+      return nil unless entry
+      return nil if entry.expired?
+
+      entry.protocol
+    end
+
+    def cache_protocol(host : String, port : Int32, protocol : ProtocolVersion) : Nil
+      key = "#{host}:#{port}"
+      @cache[key] = ProtocolCacheEntry.new(protocol, Time.utc + CACHE_TTL)
+    end
+
+    def cleanup_expired : Nil
+      @cache.reject! { |_, entry| entry.expired? }
+    end
+  end
+
+  private struct ProtocolCacheEntry
+    property protocol : ProtocolVersion
+    property expires_at : Time
+
+    def initialize(@protocol : ProtocolVersion, @expires_at : Time)
+    end
+
+    def expired? : Bool
+      Time.utc > @expires_at
+    end
+  end
 end

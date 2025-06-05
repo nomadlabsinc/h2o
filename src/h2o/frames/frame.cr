@@ -14,38 +14,51 @@ module H2O
     end
 
     def self.from_io(io : IO) : Frame
-      header = Bytes.new(FRAME_HEADER_SIZE)
-      io.read_fully(header)
+      BufferPool.with_header_buffer do |header_buffer|
+        header = header_buffer[0, FRAME_HEADER_SIZE]
+        io.read_fully(header)
 
-      length = (header[0].to_u32 << 16) | (header[1].to_u32 << 8) | header[2].to_u32
-      frame_type = FrameType.new(header[3])
-      flags = header[4]
-      stream_id = ((header[5].to_u32 << 24) | (header[6].to_u32 << 16) | (header[7].to_u32 << 8) | header[8].to_u32) & 0x7fffffff_u32
+        length = (header[0].to_u32 << 16) | (header[1].to_u32 << 8) | header[2].to_u32
+        frame_type = FrameType.new(header[3])
+        flags = header[4]
+        stream_id = ((header[5].to_u32 << 24) | (header[6].to_u32 << 16) | (header[7].to_u32 << 8) | header[8].to_u32) & 0x7fffffff_u32
 
-      payload = Bytes.new(length)
-      io.read_fully(payload) if length > 0
+        payload = BufferPool.get_frame_buffer(length.to_i32)[0, length]
+        io.read_fully(payload) if length > 0
 
-      create_frame(frame_type, length, flags, stream_id, payload)
+        frame = create_frame(frame_type, length, flags, stream_id, payload)
+        # Note: payload buffer will be returned by frame when it's finalized
+        frame
+      end
     end
 
     def to_bytes : Bytes
-      header = Bytes.new(FRAME_HEADER_SIZE)
+      BufferPool.with_header_buffer do |header_buffer|
+        header = header_buffer[0, FRAME_HEADER_SIZE]
 
-      header[0] = ((@length >> 16) & 0xff).to_u8
-      header[1] = ((@length >> 8) & 0xff).to_u8
-      header[2] = (@length & 0xff).to_u8
-      header[3] = @frame_type.value
-      header[4] = @flags
-      header[5] = ((@stream_id >> 24) & 0xff).to_u8
-      header[6] = ((@stream_id >> 16) & 0xff).to_u8
-      header[7] = ((@stream_id >> 8) & 0xff).to_u8
-      header[8] = (@stream_id & 0xff).to_u8
+        header[0] = ((@length >> 16) & 0xff).to_u8
+        header[1] = ((@length >> 8) & 0xff).to_u8
+        header[2] = (@length & 0xff).to_u8
+        header[3] = @frame_type.value
+        header[4] = @flags
+        header[5] = ((@stream_id >> 24) & 0xff).to_u8
+        header[6] = ((@stream_id >> 16) & 0xff).to_u8
+        header[7] = ((@stream_id >> 8) & 0xff).to_u8
+        header[8] = (@stream_id & 0xff).to_u8
 
-      payload_bytes = payload_to_bytes
-      result = Bytes.new(FRAME_HEADER_SIZE + payload_bytes.size)
-      result.copy_from(header)
-      result[FRAME_HEADER_SIZE, payload_bytes.size].copy_from(payload_bytes)
-      result
+        payload_bytes = payload_to_bytes
+        total_size = FRAME_HEADER_SIZE + payload_bytes.size
+
+        BufferPool.with_frame_buffer(total_size) do |frame_buffer|
+          result = frame_buffer[0, total_size]
+          result.copy_from(header)
+          result[FRAME_HEADER_SIZE, payload_bytes.size].copy_from(payload_bytes)
+          # Create a copy since we're returning the buffer to pool
+          final_result = Bytes.new(total_size)
+          final_result.copy_from(result)
+          final_result
+        end
+      end
     end
 
     abstract def payload_to_bytes : Bytes

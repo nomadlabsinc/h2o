@@ -9,6 +9,8 @@ module H2O::HPACK
     def initialize(@max_size : Int32 = DEFAULT_SIZE)
       @current_size = 0
       @entries = Array(StaticEntry).new
+      @name_index = Hash(String, Int32).new
+      @name_value_index = Hash(String, Int32).new
     end
 
     def resize(new_size : Int32) : Nil
@@ -20,6 +22,12 @@ module H2O::HPACK
       entry = StaticEntry.new(name, value)
       @entries.unshift(entry)
       @current_size += entry.size
+
+      index = StaticTable.size + 1
+      @name_index[name] = index unless @name_index.has_key?(name)
+      name_value_key = "#{name}:#{value}"
+      @name_value_index[name_value_key] = index
+
       evict_entries
     end
 
@@ -39,22 +47,15 @@ module H2O::HPACK
       static_index = StaticTable.find_name(name)
       return static_index if static_index
 
-      @entries.each_with_index do |entry, index|
-        return StaticTable.size + index + 1 if entry.name == name
-      end
-
-      nil
+      @name_index[name]?
     end
 
     def find_name_value(name : String, value : String) : Int32?
       static_index = StaticTable.find_name_value(name, value)
       return static_index if static_index
 
-      @entries.each_with_index do |entry, index|
-        return StaticTable.size + index + 1 if entry.name == name && entry.value == value
-      end
-
-      nil
+      name_value_key = "#{name}:#{value}"
+      @name_value_index[name_value_key]?
     end
 
     def size : Int32
@@ -69,6 +70,19 @@ module H2O::HPACK
       while @current_size > @max_size && !@entries.empty?
         entry = @entries.pop
         @current_size -= entry.size
+        rebuild_indices
+      end
+    end
+
+    private def rebuild_indices : Nil
+      @name_index.clear
+      @name_value_index.clear
+
+      @entries.each_with_index do |entry, index|
+        table_index = StaticTable.size + index + 1
+        @name_index[entry.name] = table_index unless @name_index.has_key?(entry.name)
+        name_value_key = "#{entry.name}:#{entry.value}"
+        @name_value_index[name_value_key] = table_index
       end
     end
   end
