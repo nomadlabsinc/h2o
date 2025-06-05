@@ -1,0 +1,15 @@
+:443 {
+    tls internal
+    
+    respond /health `{"status": "healthy", "protocol": "HTTP/2"}` 200 {
+        header Content-Type application/json
+    }
+    
+    respond /echo `{"method": "{method}", "path": "{path}", "headers": "{header.*}"}` 200 {
+        header Content-Type application/json
+    }
+    
+    respond /* `{"message": "Caddy HTTP/2 server", "path": "{path}"}` 200 {
+        header Content-Type application/json
+    }
+}

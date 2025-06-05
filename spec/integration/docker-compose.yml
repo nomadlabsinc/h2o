@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  nginx-h2:
+    image: nginx:alpine
+    ports:
+      - "8443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    command: ['nginx', '-g', 'daemon off;']
+
+  httpbin-h2:
+    image: kennethreitz/httpbin
+    ports:
+      - "8080:80"
+
+  caddy-h2:
+    image: caddy:alpine
+    ports:
+      - "8444:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile']
