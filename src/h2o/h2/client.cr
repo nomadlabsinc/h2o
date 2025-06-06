@@ -357,6 +357,7 @@ module H2O
           end
         when RstStreamFrame
           stream.receive_rst_stream(frame)
+          @stream_pool.track_stream_reset(frame.stream_id)
           @stream_pool.remove_stream(frame.stream_id)
         end
       end

@@ -47,10 +47,8 @@ module H2O
   alias HeaderTable = Array(HPACK::StaticEntry)
   alias HeaderEntry = Tuple(String, String)
   alias IntegerValue = Int32
-  alias StreamArray = Array(Stream)
 
   # Additional channel types
-  alias ResponseChannel = Channel(Response?)
   alias FrameChannel = Channel(Frame)
 
   # IO and buffer types

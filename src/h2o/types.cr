@@ -7,8 +7,11 @@ module H2O
   alias OutgoingFrameChannel = Channel(Frame)
   alias StreamId = UInt32
   alias StreamsHash = Hash(StreamId, Stream)
+  alias StreamArray = Array(Stream)
   alias TimeoutCallback = Proc(Bool)
   alias TimeoutResult = Bool
+  alias StreamResetTracker = Hash(Time, UInt32)
+  alias ResponseChannel = Channel(Response?)
 
   # Circuit breaker related aliases for performance and readability
   alias CircuitBreakerResult = Response?
@@ -63,6 +66,13 @@ module H2O
     EnhanceYourCalm    = 0xb
     InadequateSecurity = 0xc
     Http11Required     = 0xd
+  end
+
+  # Custom exception for rapid reset attack detection
+  class RapidResetAttackError < Exception
+    def initialize(message : String = "Rapid reset attack detected")
+      super(message)
+    end
   end
 
   enum SettingIdentifier : UInt16
@@ -153,6 +163,36 @@ module H2O
 
     def expired? : Bool
       Time.utc > @expires_at
+    end
+  end
+
+  # Stream lifecycle tracking for CVE-2023-44487 mitigation
+  struct StreamLifecycleEvent
+    property stream_id : StreamId
+    property event_type : StreamEventType
+    property timestamp : Time
+
+    def initialize(@stream_id : StreamId, @event_type : StreamEventType, @timestamp : Time = Time.utc)
+    end
+  end
+
+  enum StreamEventType
+    Created
+    Reset
+    Closed
+  end
+
+  # Rate limiting configuration for stream creation
+  struct StreamRateLimitConfig
+    property max_streams_per_second : UInt32
+    property max_resets_per_minute : UInt32
+    property reset_detection_window : Time::Span
+    property rate_limit_window : Time::Span
+
+    def initialize(@max_streams_per_second : UInt32 = 100_u32,
+                   @max_resets_per_minute : UInt32 = 1000_u32,
+                   @reset_detection_window : Time::Span = 1.minute,
+                   @rate_limit_window : Time::Span = 1.second)
     end
   end
 end
