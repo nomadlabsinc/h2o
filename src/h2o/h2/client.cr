@@ -32,7 +32,7 @@ module H2O
         @local_settings = Settings.new
         @remote_settings = Settings.new
         @hpack_encoder = HPACK::Encoder.new
-        @hpack_decoder = HPACK::Decoder.new
+        @hpack_decoder = HPACK::Decoder.new(4096, HpackSecurityLimits.new)
         @connection_window_size = 65535
         @last_stream_id = 0_u32
         @closed = false
