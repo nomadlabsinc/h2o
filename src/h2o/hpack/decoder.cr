@@ -105,14 +105,29 @@ module H2O::HPACK
       end
       length = length_raw.to_i32
 
-      data = Bytes.new(length)
-      bytes_read = io.read(data)
-      raise CompressionError.new("Unexpected end of data") if bytes_read != length
+      if length <= BufferPool::MAX_HEADER_BUFFER_SIZE
+        BufferPool.with_header_buffer do |buffer|
+          data = buffer[0, length]
+          bytes_read = io.read(data)
+          raise CompressionError.new("Unexpected end of data") if bytes_read != length
 
-      if huffman_encoded
-        Huffman.decode(data)
+          if huffman_encoded
+            Huffman.decode(data)
+          else
+            String.new(data)
+          end
+        end
       else
-        String.new(data)
+        # For very large strings, fallback to direct allocation
+        data = Bytes.new(length)
+        bytes_read = io.read(data)
+        raise CompressionError.new("Unexpected end of data") if bytes_read != length
+
+        if huffman_encoded
+          Huffman.decode(data)
+        else
+          String.new(data)
+        end
       end
     end
 

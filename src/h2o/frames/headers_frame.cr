@@ -70,27 +70,29 @@ module H2O
       size += 5 if priority?
       size += @padding_length
 
-      result = Bytes.new(size)
-      offset = 0
+      BufferPool.with_frame_buffer(size) do |buffer|
+        result = buffer[0, size]
+        offset = 0
 
-      if padded?
-        result[0] = @padding_length
-        offset += 1
+        if padded?
+          result[0] = @padding_length
+          offset += 1
+        end
+
+        if priority?
+          priority_data = @priority_dependency
+          priority_data |= 0x80000000_u32 if @priority_exclusive
+          result[offset] = ((priority_data >> 24) & 0xff).to_u8
+          result[offset + 1] = ((priority_data >> 16) & 0xff).to_u8
+          result[offset + 2] = ((priority_data >> 8) & 0xff).to_u8
+          result[offset + 3] = (priority_data & 0xff).to_u8
+          result[offset + 4] = @priority_weight
+          offset += 5
+        end
+
+        result[offset, @header_block.size].copy_from(@header_block)
+        result.dup
       end
-
-      if priority?
-        priority_data = @priority_dependency
-        priority_data |= 0x80000000_u32 if @priority_exclusive
-        result[offset] = ((priority_data >> 24) & 0xff).to_u8
-        result[offset + 1] = ((priority_data >> 16) & 0xff).to_u8
-        result[offset + 2] = ((priority_data >> 8) & 0xff).to_u8
-        result[offset + 3] = (priority_data & 0xff).to_u8
-        result[offset + 4] = @priority_weight
-        offset += 5
-      end
-
-      result[offset, @header_block.size].copy_from(@header_block)
-      result
     end
 
     def end_stream? : Bool

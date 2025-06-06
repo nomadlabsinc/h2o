@@ -17,6 +17,7 @@ module H2O
       property reader_fiber : FiberRef
       property writer_fiber : FiberRef
       property dispatcher_fiber : FiberRef
+      property fibers_started : Bool
       property outgoing_frames : OutgoingFrameChannel
       property incoming_frames : IncomingFrameChannel
 
@@ -41,13 +42,16 @@ module H2O
         @reader_fiber = nil
         @writer_fiber = nil
         @dispatcher_fiber = nil
+        @fibers_started = false
 
         setup_connection
-        start_fibers
       end
 
       def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response?
         raise ConnectionError.new("Connection is closed") if @closed
+
+        ensure_fibers_started
+
         stream : Stream = @stream_pool.create_stream
         send_request_headers(stream, method, path, headers, body)
         send_request_body(stream, body) if body
@@ -55,6 +59,8 @@ module H2O
       end
 
       def ping(data : Bytes = Bytes.new(8)) : Bool
+        ensure_fibers_started
+
         ping_frame : PingFrame = PingFrame.new(data)
         send_frame(ping_frame)
 
@@ -160,7 +166,16 @@ module H2O
         end
       end
 
+      private def ensure_fibers_started : Nil
+        return if @fibers_started
+
+        @fibers_started = true
+        start_fibers
+      end
+
       private def fiber_still_running? : Bool
+        return false unless @fibers_started
+
         # Check if any fiber is still alive and not finished
         reader_alive : Bool = @reader_fiber.try(&.dead?) == false
         writer_alive : Bool = @writer_fiber.try(&.dead?) == false

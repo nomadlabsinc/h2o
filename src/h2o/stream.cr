@@ -18,7 +18,7 @@ module H2O
       @headers_complete = false
       @data_complete = false
       @incoming_data = IO::Memory.new
-      @response_channel = ResponseChannel.new(1)
+      @response_channel = ResponseChannel.new(0)
     end
 
     def send_headers(headers_frame : HeadersFrame) : Nil
@@ -207,8 +207,12 @@ module H2O
 
     private def finalize_response : Nil
       if response = @response
+        # Use to_slice for binary data or to_s for text data - let Response handle it
         response.body = @incoming_data.to_s
         @response_channel.send(response)
+
+        # Clear the memory buffer to free up resources
+        @incoming_data = IO::Memory.new
       end
     end
   end
