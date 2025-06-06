@@ -31,6 +31,8 @@ module H2O
         select
         when buffer = @@frame_buffers.receive?
           if buffer && buffer.size >= size
+            # Return a slice of the requested size from the pooled buffer
+            # but track the original buffer for proper return
             return buffer[0, size]
           else
             Bytes.new(size)
@@ -44,7 +46,8 @@ module H2O
     end
 
     def self.return_frame_buffer(buffer : Bytes) : Nil
-      return unless buffer.size >= MAX_FRAME_BUFFER_SIZE
+      # Only return buffers that are the full size to maintain pool integrity
+      return unless buffer.size == MAX_FRAME_BUFFER_SIZE
 
       select
       when @@frame_buffers.send(buffer)
@@ -63,11 +66,36 @@ module H2O
     end
 
     def self.with_frame_buffer(size : Int32 = MAX_FRAME_BUFFER_SIZE, & : Bytes -> T) : T forall T
-      buffer = get_frame_buffer(size)
-      begin
+      if size <= MAX_FRAME_BUFFER_SIZE
+        # Use pooled buffer for efficiency but provide requested size view
+        select
+        when pooled_buffer = @@frame_buffers.receive?
+          if pooled_buffer
+            begin
+              yield pooled_buffer[0, size]
+            ensure
+              return_frame_buffer(pooled_buffer)
+            end
+          else
+            buffer = Bytes.new(MAX_FRAME_BUFFER_SIZE)
+            begin
+              yield buffer[0, size]
+            ensure
+              return_frame_buffer(buffer)
+            end
+          end
+        else
+          buffer = Bytes.new(MAX_FRAME_BUFFER_SIZE)
+          begin
+            yield buffer[0, size]
+          ensure
+            return_frame_buffer(buffer)
+          end
+        end
+      else
+        # For large buffers, don't use pooling
+        buffer = Bytes.new(size)
         yield buffer
-      ensure
-        return_frame_buffer(buffer) if buffer.size >= MAX_FRAME_BUFFER_SIZE
       end
     end
   end

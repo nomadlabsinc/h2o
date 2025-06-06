@@ -38,14 +38,17 @@ module H2O::HPACK
 
     EOS_SYMBOL = 256
 
-    # Pre-computed decode lookup table for O(1) symbol lookup
-    private DECODE_LOOKUP = build_decode_lookup
+    # Pre-computed decode lookup tables organized by bit length for O(1) symbol lookup
+    private DECODE_LOOKUP_BY_LENGTH = build_decode_lookup_by_length
 
-    private def self.build_decode_lookup : Hash(UInt32, {Int32, Int32})
-      lookup = Hash(UInt32, {Int32, Int32}).new
+    private def self.build_decode_lookup_by_length : Hash(Int32, Hash(UInt32, Int32))
+      lookup = Hash(Int32, Hash(UInt32, Int32)).new
+
       HUFFMAN_CODES.each_with_index do |(code, length), symbol|
-        lookup[code] = {symbol, length}
+        lookup[length] ||= Hash(UInt32, Int32).new
+        lookup[length][code] = symbol
       end
+
       lookup
     end
 
@@ -129,15 +132,17 @@ module H2O::HPACK
     private def self.decode_symbol(bits : UInt32, bit_count : Int32) : {Int32?, Int32}
       return {nil, 0} if bit_count < 5
 
+      # Try each possible bit length from longest to shortest for greedy matching
       (30.downto(5)).each do |length|
         next if bit_count < length
 
-        mask = (1_u32 << length) - 1
-        code = (bits >> (bit_count - length)) & mask
+        if length_table = DECODE_LOOKUP_BY_LENGTH[length]?
+          mask = (1_u32 << length) - 1
+          code = (bits >> (bit_count - length)) & mask
 
-        if symbol_length = DECODE_LOOKUP[code]?
-          symbol, actual_length = symbol_length
-          return {symbol, actual_length} if actual_length == length
+          if symbol = length_table[code]?
+            return {symbol, length}
+          end
         end
       end
 

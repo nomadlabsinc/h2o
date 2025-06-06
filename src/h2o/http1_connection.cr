@@ -64,14 +64,30 @@ module H2O
     end
 
     private def send_request(request_line : String, headers : String, body : String?) : Nil
-      @socket.write(request_line.to_slice)
-      @socket.write(headers.to_slice)
+      BufferPool.with_frame_buffer do |buffer|
+        pos = 0
 
-      if body
-        @socket.write(body.to_slice)
+        # Copy request line
+        request_bytes = request_line.to_slice
+        buffer[pos, request_bytes.size].copy_from(request_bytes)
+        pos += request_bytes.size
+
+        # Copy headers
+        header_bytes = headers.to_slice
+        buffer[pos, header_bytes.size].copy_from(header_bytes)
+        pos += header_bytes.size
+
+        # Copy body if present
+        if body
+          body_bytes = body.to_slice
+          buffer[pos, body_bytes.size].copy_from(body_bytes)
+          pos += body_bytes.size
+        end
+
+        # Single write operation
+        @socket.write(buffer[0, pos])
+        @socket.flush
       end
-
-      @socket.flush
     end
 
     private def parse_response : Response?
@@ -86,30 +102,58 @@ module H2O
     end
 
     private def read_line : String?
-      line = String::Builder.new
+      BufferPool.with_header_buffer do |buffer|
+        line_pos = 0
+        buffer_pos = 0
+        buffer_size = 0
 
-      loop do
-        char_bytes = Bytes.new(1)
-        bytes_read = @socket.read(char_bytes)
-        return nil if bytes_read == 0
-
-        char = char_bytes[0].chr
-
-        if char == '\r'
-          peek_bytes = Bytes.new(1)
-          next_bytes = @socket.read(peek_bytes)
-          if next_bytes > 0 && peek_bytes[0].chr == '\n'
-            break
-          else
-            line << char
-            line << peek_bytes[0].chr if next_bytes > 0
+        loop do
+          # Read chunk if buffer is empty
+          if buffer_pos >= buffer_size
+            buffer_size = @socket.read(buffer)
+            return nil if buffer_size == 0
+            buffer_pos = 0
           end
-        else
-          line << char
-        end
-      end
 
-      line.to_s
+          char = buffer[buffer_pos]
+          buffer_pos += 1
+
+          if char == '\r'.ord
+            # Check for \n
+            if buffer_pos >= buffer_size
+              # Need to read more data
+              temp_buffer = Bytes.new(1)
+              next_bytes = @socket.read(temp_buffer)
+              if next_bytes > 0 && temp_buffer[0] == '\n'.ord
+                break
+              elsif next_bytes > 0
+                # Add both chars to line and continue
+                buffer[line_pos] = '\r'.ord.to_u8
+                line_pos += 1
+                buffer[line_pos] = temp_buffer[0]
+                line_pos += 1
+              else
+                buffer[line_pos] = '\r'.ord.to_u8
+                line_pos += 1
+              end
+            elsif buffer[buffer_pos] == '\n'.ord
+              buffer_pos += 1 # Skip \n
+              break
+            else
+              buffer[line_pos] = char
+              line_pos += 1
+            end
+          else
+            buffer[line_pos] = char
+            line_pos += 1
+          end
+
+          # Prevent buffer overflow
+          return nil if line_pos >= buffer.size - 1
+        end
+
+        String.new(buffer[0, line_pos])
+      end
     end
 
     private def parse_status_line(status_line : String) : Int32
