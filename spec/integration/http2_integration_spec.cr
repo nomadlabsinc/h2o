@@ -44,9 +44,8 @@ describe "H2O HTTP/2 Integration Tests" do
 
     # Verify we can create connections (basic connectivity test)
     # Real HTTP/2 requests require the Docker test infrastructure
-    expect_raises(Exception) do
-      # This will fail without Docker servers, but validates frame initialization
-      client.get("https://localhost:8443/")
-    end
+    # This will fail without Docker servers, returning nil instead of raising
+    response = client.get("https://localhost:8443/")
+    response.should be_nil
   end
 end

@@ -10,6 +10,23 @@ module H2O
   alias TimeoutCallback = Proc(Bool)
   alias TimeoutResult = Bool
 
+  # Circuit breaker related aliases for performance and readability
+  alias CircuitBreakerResult = Response?
+  alias ConnectionResult = BaseConnection?
+  alias ProtocolResult = ProtocolVersion?
+  alias RequestBlock = Proc(Response?)
+  alias RequestUrl = String
+  alias UrlParseResult = {URI, String}
+
+  # Client method parameter aliases
+  alias CircuitBreakerOptions = NamedTuple(
+    bypass_circuit_breaker: Bool,
+    circuit_breaker: Bool?)
+
+  # Connection management aliases
+  alias ConnectionKey = String
+  alias HostPort = {String, Int32}
+
   enum FrameType : UInt8
     Data         = 0x0
     Headers      = 0x1
