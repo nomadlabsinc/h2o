@@ -12,6 +12,12 @@ module H2O
   alias TimeoutResult = Bool
   alias StreamResetTracker = Hash(Time, UInt32)
   alias ResponseChannel = Channel(Response?)
+  alias ContinuationFrameBuffer = IO::Memory
+  alias HeaderFragmentState = NamedTuple(
+    stream_id: StreamId,
+    accumulated_size: Int32,
+    continuation_count: Int32,
+    buffer: IO::Memory)
 
   # Circuit breaker related aliases for performance and readability
   alias CircuitBreakerResult = Response?
@@ -71,6 +77,13 @@ module H2O
   # Custom exception for rapid reset attack detection
   class RapidResetAttackError < Exception
     def initialize(message : String = "Rapid reset attack detected")
+      super(message)
+    end
+  end
+
+  # Custom exceptions for CONTINUATION flood attack detection
+  class ContinuationFloodError < Exception
+    def initialize(message : String = "CONTINUATION flood attack detected")
       super(message)
     end
   end
@@ -193,6 +206,18 @@ module H2O
                    @max_resets_per_minute : UInt32 = 1000_u32,
                    @reset_detection_window : Time::Span = 1.minute,
                    @rate_limit_window : Time::Span = 1.second)
+    end
+  end
+
+  # Configuration for CONTINUATION frame flood protection
+  struct ContinuationLimits
+    property max_continuation_frames : Int32
+    property max_header_size : Int32
+    property max_accumulated_size : Int32
+
+    def initialize(@max_continuation_frames : Int32 = 10,
+                   @max_header_size : Int32 = 8192,
+                   @max_accumulated_size : Int32 = 16384)
     end
   end
 end
