@@ -8,6 +8,7 @@ require "./h2o/exceptions"
 require "./h2o/timeout"
 require "./h2o/types"
 require "./h2o/buffer_pool"
+require "./h2o/circuit_breaker"
 require "./h2o/tls"
 require "./h2o/preface"
 require "./h2o/frames/frame"
@@ -56,4 +57,26 @@ module H2O
   alias IOBuffer = IO::Memory
   alias ByteBuffer = Bytes
   alias SliceData = Slice(UInt8)
+
+  # Global configuration for H2O
+  class Configuration
+    property circuit_breaker_enabled : Bool = false
+    property default_circuit_breaker : Breaker?
+    property default_failure_threshold : Int32 = 5
+    property default_recovery_timeout : Time::Span = 60.seconds
+    property default_timeout : Time::Span = 30.seconds
+
+    def initialize
+    end
+  end
+
+  @@config = Configuration.new
+
+  def self.configure(&block : Configuration -> Nil) : Nil
+    block.call(@@config)
+  end
+
+  def self.config : Configuration
+    @@config
+  end
 end

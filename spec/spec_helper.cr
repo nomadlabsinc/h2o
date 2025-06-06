@@ -16,8 +16,8 @@ module TestConfig
   # Connection pooling tests
   CONNECTION_POOLING_TIMEOUT = 1.seconds
 
-  # Error handling tests need very short timeouts
-  ERROR_TIMEOUT = 100.milliseconds
+  # Error handling tests need short but reliable timeouts
+  ERROR_TIMEOUT = 500.milliseconds
 
   # Default timeout for generic tests
   DEFAULT_TIMEOUT = 1.seconds

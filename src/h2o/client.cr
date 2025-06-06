@@ -1,48 +1,58 @@
 module H2O
   class Client
-    property connections : ConnectionsHash
+    property circuit_breaker_adapter : CircuitBreakerAdapter?
+    property circuit_breaker_enabled : Bool
     property connection_pool_size : Int32
+    property connections : ConnectionsHash
+    property default_circuit_breaker : Breaker?
     property timeout : Time::Span
 
-    def initialize(@connection_pool_size : Int32 = 10, @timeout : Time::Span = 30.seconds)
+    def initialize(@connection_pool_size : Int32 = 10,
+                   @timeout : Time::Span = H2O.config.default_timeout,
+                   @circuit_breaker_enabled : Bool = H2O.config.circuit_breaker_enabled,
+                   @circuit_breaker_adapter : CircuitBreakerAdapter? = nil,
+                   @default_circuit_breaker : Breaker? = H2O.config.default_circuit_breaker)
       @connections = ConnectionsHash.new
       @protocol_cache = ProtocolCache.new
     end
 
-    def get(url : String, headers : Headers = Headers.new) : Response?
-      request("GET", url, headers)
+    def get(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+      request("GET", url, headers, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def post(url : String, body : String? = nil, headers : Headers = Headers.new) : Response?
-      request("POST", url, headers, body)
+    def post(url : String, body : String? = nil, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+      request("POST", url, headers, body, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def put(url : String, body : String? = nil, headers : Headers = Headers.new) : Response?
-      request("PUT", url, headers, body)
+    def put(url : String, body : String? = nil, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+      request("PUT", url, headers, body, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def delete(url : String, headers : Headers = Headers.new) : Response?
-      request("DELETE", url, headers)
+    def delete(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+      request("DELETE", url, headers, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def head(url : String, headers : Headers = Headers.new) : Response?
-      request("HEAD", url, headers)
+    def head(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+      request("HEAD", url, headers, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def options(url : String, headers : Headers = Headers.new) : Response?
-      request("OPTIONS", url, headers)
+    def options(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+      request("OPTIONS", url, headers, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def patch(url : String, body : String? = nil, headers : Headers = Headers.new) : Response?
-      request("PATCH", url, headers, body)
+    def patch(url : String, body : String? = nil, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+      request("PATCH", url, headers, body, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil) : Response?
-      uri, host = parse_url_with_host(url)
-      connection : BaseConnection = get_connection(host, uri.port || 443)
-      request_path : String = build_request_path(uri)
-      request_headers : Headers = prepare_headers(headers, uri)
-      execute_request(connection, method, request_path, request_headers, body)
+    def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+      # Determine if circuit breaker should be used
+      use_circuit_breaker = should_use_circuit_breaker?(bypass_circuit_breaker, circuit_breaker)
+
+      if use_circuit_breaker
+        execute_with_circuit_breaker(method, url, headers, body)
+      else
+        execute_without_circuit_breaker(method, url, headers, body)
+      end
     end
 
     def close : Nil
@@ -50,14 +60,14 @@ module H2O
       @connections.clear
     end
 
-    private def parse_url_with_host(url : String) : {URI, String}
-      uri = URI.parse(url)
+    private def parse_url_with_host(url : String) : UrlParseResult
+      uri : URI = URI.parse(url)
 
       unless uri.scheme == "https"
         raise ArgumentError.new("Only HTTPS URLs are supported")
       end
 
-      host = uri.host
+      host : String? = uri.host
       if !host || host.empty?
         raise ArgumentError.new("Invalid URL: missing host")
       end
@@ -66,7 +76,7 @@ module H2O
     end
 
     private def get_connection(host : String, port : Int32) : BaseConnection
-      connection_key : String = "#{host}:#{port}"
+      connection_key : ConnectionKey = "#{host}:#{port}"
       existing_connection : BaseConnection? = find_existing_connection(connection_key)
       return existing_connection if existing_connection
       create_new_connection(connection_key, host, port)
@@ -76,10 +86,10 @@ module H2O
       @connections.reject! { |_, connection| connection.closed? }
     end
 
-    private def create_connection_with_fallback(host : String, port : Int32) : BaseConnection?
+    private def create_connection_with_fallback(host : String, port : Int32) : ConnectionResult
       @protocol_cache.cleanup_expired
 
-      if preferred = @protocol_cache.get_preferred_protocol(host, port)
+      if preferred : ProtocolResult = @protocol_cache.get_preferred_protocol(host, port)
         case preferred
         when .http2?
           return try_http2_connection(host, port) || try_http1_connection_with_cache(host, port)
@@ -103,7 +113,7 @@ module H2O
       nil
     end
 
-    private def try_http1_connection_with_cache(host : String, port : Int32) : BaseConnection?
+    private def try_http1_connection_with_cache(host : String, port : Int32) : ConnectionResult
       if connection = try_http1_connection(host, port)
         @protocol_cache.cache_protocol(host, port, ProtocolVersion::Http11)
         connection
@@ -128,7 +138,60 @@ module H2O
       nil
     end
 
-    private def find_existing_connection(connection_key : String) : BaseConnection?
+    private def execute_with_circuit_breaker(method : String, url : String, headers : Headers, body : String?) : CircuitBreakerResult
+      breaker : Breaker? = get_circuit_breaker_for_request(url)
+      return nil unless breaker
+
+      if adapter = @circuit_breaker_adapter
+        return nil unless adapter.should_allow_request?
+        return nil unless adapter.before_request(url, headers)
+      end
+
+      breaker.execute(url, headers) do
+        execute_without_circuit_breaker(method, url, headers, body)
+      end
+    end
+
+    private def execute_without_circuit_breaker(method : String, url : String, headers : Headers, body : String?) : CircuitBreakerResult
+      uri, host = parse_url_with_host(url)
+      connection : BaseConnection = get_connection(host, uri.port || 443)
+      request_path : String = build_request_path(uri)
+      request_headers : Headers = prepare_headers(headers, uri)
+      execute_request(connection, method, request_path, request_headers, body)
+    rescue ex : Exception
+      Log.error { "Request failed without circuit breaker: #{ex.message}" }
+      nil
+    end
+
+    private def get_circuit_breaker_for_request(url : String) : Breaker?
+      if breaker = @default_circuit_breaker
+        breaker
+      else
+        uri = URI.parse(url)
+        host = uri.host
+        return nil unless host
+        create_default_circuit_breaker_for_host(host)
+      end
+    end
+
+    private def create_default_circuit_breaker_for_host(host : String) : Breaker
+      Breaker.new(
+        name: "h2o_client_#{host}",
+        failure_threshold: H2O.config.default_failure_threshold,
+        recovery_timeout: H2O.config.default_recovery_timeout,
+        timeout: @timeout
+      )
+    end
+
+    private def should_use_circuit_breaker?(bypass : Bool, circuit_breaker_override : Bool?) : Bool
+      return false if bypass
+      if override = circuit_breaker_override
+        return override
+      end
+      @circuit_breaker_enabled
+    end
+
+    private def find_existing_connection(connection_key : ConnectionKey) : BaseConnection?
       existing_connection : BaseConnection? = @connections[connection_key]?
       return nil if !existing_connection || existing_connection.closed?
       return nil unless connection_healthy?(existing_connection)

@@ -12,6 +12,7 @@ A high-performance HTTP/2 client for Crystal with full protocol compliance, conn
 - 📊 **Flow Control**: Both connection and stream-level flow control
 - ⚡ **High Performance**: Optimized for speed and low memory usage
 - 🧪 **Comprehensive Tests**: Full test coverage with integration tests
+- 🔄 **Circuit Breaker**: Built-in circuit breaker pattern for resilience
 
 ## Installation
 
@@ -117,6 +118,162 @@ response = client.options("https://api.example.com/users")
 
 # PATCH request
 response = client.patch("https://api.example.com/users/1", body)
+```
+
+## Circuit Breaker
+
+h2o includes built-in circuit breaker support for handling service failures gracefully. The circuit breaker prevents cascading failures and provides automatic recovery.
+
+### Basic Circuit Breaker Usage
+
+```crystal
+# Enable circuit breaker globally
+H2O.configure do |config|
+  config.circuit_breaker_enabled = true
+  config.default_failure_threshold = 5
+  config.default_recovery_timeout = 60.seconds
+end
+
+client = H2O::Client.new
+
+# Requests will now be protected by circuit breaker
+response = client.get("https://api.example.com/data")
+```
+
+### Per-Client Circuit Breaker Configuration
+
+```crystal
+# Configure circuit breaker per client
+client = H2O::Client.new(
+  circuit_breaker_enabled: true,
+  timeout: 10.seconds
+)
+
+# Circuit breaker will protect all requests from this client
+response = client.get("https://unreliable-api.example.com/data")
+```
+
+### Per-Request Circuit Breaker Control
+
+```crystal
+client = H2O::Client.new
+
+# Enable circuit breaker for specific request
+response = client.get("https://api.example.com/data", circuit_breaker: true)
+
+# Bypass circuit breaker for specific request
+response = client.get("https://api.example.com/health", bypass_circuit_breaker: true)
+```
+
+### Custom Circuit Breaker
+
+```crystal
+# Create a custom circuit breaker with specific settings
+custom_breaker = H2O::CircuitBreaker.new(
+  name: "my_api_breaker",
+  failure_threshold: 3,
+  recovery_timeout: 30.seconds,
+  timeout: 5.seconds
+)
+
+client = H2O::Client.new(
+  default_circuit_breaker: custom_breaker
+)
+```
+
+### External Circuit Breaker Integration
+
+You can integrate h2o with your existing circuit breaker logic:
+
+```crystal
+class MyCustomCircuitBreakerAdapter
+  include H2O::CircuitBreakerAdapter
+
+  def initialize(@external_breaker : MyCircuitBreaker)
+  end
+
+  def should_allow_request? : Bool
+    @external_breaker.state.closed?
+  end
+
+  def before_request(url : String, headers : H2O::Headers) : Bool
+    @external_breaker.before_request(url)
+  end
+
+  def after_success(response : H2O::Response, duration : Time::Span) : Nil
+    @external_breaker.record_success(duration)
+  end
+
+  def after_failure(exception : Exception, duration : Time::Span) : Nil
+    @external_breaker.record_failure(exception, duration)
+  end
+end
+
+# Use your custom adapter
+client = H2O::Client.new(
+  circuit_breaker_adapter: MyCustomCircuitBreakerAdapter.new(my_breaker)
+)
+```
+
+### Persistence Options
+
+Circuit breaker state can be persisted across application restarts:
+
+```crystal
+# Local file persistence
+persistence = H2O::CircuitBreaker::LocalFileAdapter.new("./.circuit_breaker_data")
+
+breaker = H2O::CircuitBreaker.new(
+  "persistent_breaker",
+  persistence: persistence
+)
+
+# In-memory persistence for testing
+test_persistence = H2O::CircuitBreaker::InMemoryAdapter.new
+
+test_breaker = H2O::CircuitBreaker.new(
+  "test_breaker",
+  persistence: test_persistence
+)
+```
+
+### Monitoring Circuit Breaker State
+
+```crystal
+breaker = H2O::CircuitBreaker.new("monitored_breaker")
+
+# Monitor state changes
+breaker.on_state_change do |old_state, new_state|
+  puts "Circuit breaker state changed: #{old_state} -> #{new_state}"
+end
+
+# Monitor failures
+breaker.on_failure do |exception, statistics|
+  puts "Circuit breaker failure: #{exception.message}"
+  puts "Total failures: #{statistics.failure_count}"
+end
+
+# Access current state and statistics
+puts "Current state: #{breaker.state}"
+puts "Success count: #{breaker.statistics.success_count}"
+puts "Failure count: #{breaker.statistics.failure_count}"
+```
+
+### Fiber Compatibility
+
+The circuit breaker is designed to work correctly with Crystal's fiber system, solving the common issue where HTTP/2 operations fail in spawned fibers:
+
+```crystal
+# This now works correctly with circuit breaker enabled
+channel = Channel(H2O::Response?).new
+
+spawn do
+  client = H2O::Client.new(circuit_breaker_enabled: true)
+  response = client.get("https://api.example.com/data")
+  channel.send(response)
+end
+
+result = channel.receive
 ```
 
 ## Low-Level API
