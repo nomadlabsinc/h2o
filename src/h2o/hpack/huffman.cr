@@ -81,10 +81,17 @@ module H2O::HPACK
       end
     end
 
-    def self.decode(data : Bytes) : String
+    def self.decode(data : Bytes, max_decoded_length : Int32 = 8192) : String
+      # Pre-check: Huffman can expand by at most 8/5 ratio
+      max_possible_expansion = (data.size * 8) // 5 + 1
+      if max_possible_expansion > max_decoded_length
+        raise CompressionError.new("Huffman decoded length would exceed limit: #{max_possible_expansion} > #{max_decoded_length}")
+      end
+
       String.build do |result|
         bits = 0_u32
         bit_count = 0
+        decoded_length = 0
 
         data.each do |byte|
           bits = (bits << 8) | byte.to_u32
@@ -96,6 +103,12 @@ module H2O::HPACK
 
             if symbol == EOS_SYMBOL
               raise CompressionError.new("Unexpected EOS symbol in Huffman data")
+            end
+
+            # Check decoded length limit
+            decoded_length += 1
+            if decoded_length > max_decoded_length
+              raise CompressionError.new("Huffman decoded length exceeds limit: #{decoded_length} > #{max_decoded_length}")
             end
 
             result << symbol.chr

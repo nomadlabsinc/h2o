@@ -1,19 +1,33 @@
 module H2O::HPACK
   class Decoder
     property dynamic_table : DynamicTable
+    property security_limits : HpackSecurityLimits
+    property total_decompressed_size : Int32
 
-    def initialize(table_size : Int32 = DynamicTable::DEFAULT_SIZE)
+    def initialize(table_size : Int32 = DynamicTable::DEFAULT_SIZE, @security_limits : HpackSecurityLimits = HpackSecurityLimits.new)
       @dynamic_table = DynamicTable.new(table_size)
+      @total_decompressed_size = 0
     end
 
     def decode(data : Bytes) : Headers
+      # Pre-validation: Check compression ratio
+      if data.size > 0
+        compression_ratio = data.size.to_f64 / @security_limits.max_decompressed_size.to_f64
+        if compression_ratio > @security_limits.compression_ratio_limit
+          raise HpackBombError.new("Suspicious compression ratio: #{compression_ratio}")
+        end
+      end
+
       headers = Headers.new
       io = IO::Memory.new(data)
+      @total_decompressed_size = 0
 
       while io.pos < io.size
         decode_header(io, headers)
       end
 
+      # Final validation
+      validate_final_headers(headers)
       headers
     end
 
@@ -45,18 +59,18 @@ module H2O::HPACK
 
       raise CompressionError.new("Invalid header index: #{index}") unless entry
 
-      headers[entry.name] = entry.value
+      add_header_safely(headers, entry.name, entry.value)
     end
 
     private def decode_literal_with_incremental_indexing(io : IO, headers : Headers, first_byte : UInt8) : Nil
       name, value = decode_literal_header(io, first_byte & 0x3f, 6)
-      headers[name] = value
+      add_header_safely(headers, name, value)
       @dynamic_table.add(name, value)
     end
 
     private def decode_literal_without_indexing(io : IO, headers : Headers, first_byte : UInt8) : Nil
       name, value = decode_literal_header(io, first_byte & 0x0f, 4)
-      headers[name] = value
+      add_header_safely(headers, name, value)
     end
 
     private def decode_dynamic_table_size_update(io : IO, first_byte : UInt8) : Nil
@@ -67,6 +81,11 @@ module H2O::HPACK
         raise CompressionError.new("Dynamic table size too large: #{size_raw}")
       end
       size = size_raw.to_i32
+
+      # Validate against security limits
+      if size > @security_limits.max_dynamic_table_size
+        raise HpackBombError.new("Dynamic table size exceeds security limit: #{size} > #{@security_limits.max_dynamic_table_size}")
+      end
 
       @dynamic_table.resize(size)
     end
@@ -105,6 +124,11 @@ module H2O::HPACK
       end
       length = length_raw.to_i32
 
+      # Validate against security limits
+      if length > @security_limits.max_string_length
+        raise HpackBombError.new("String length exceeds security limit: #{length} > #{@security_limits.max_string_length}")
+      end
+
       if length <= BufferPool::MAX_HEADER_BUFFER_SIZE
         BufferPool.with_header_buffer do |buffer|
           data = buffer[0, length]
@@ -112,7 +136,7 @@ module H2O::HPACK
           raise CompressionError.new("Unexpected end of data") if bytes_read != length
 
           if huffman_encoded
-            Huffman.decode(data)
+            Huffman.decode(data, @security_limits.max_string_length)
           else
             String.new(data)
           end
@@ -124,7 +148,7 @@ module H2O::HPACK
         raise CompressionError.new("Unexpected end of data") if bytes_read != length
 
         if huffman_encoded
-          Huffman.decode(data)
+          Huffman.decode(data, @security_limits.max_string_length)
         else
           String.new(data)
         end
@@ -164,6 +188,36 @@ module H2O::HPACK
       end
 
       result
+    end
+
+    private def add_header_safely(headers : Headers, name : String, value : String) : Nil
+      # Check header count limit
+      if headers.size >= @security_limits.max_header_count
+        raise HpackBombError.new("Header count exceeds limit: #{headers.size} >= #{@security_limits.max_header_count}")
+      end
+
+      # Calculate header size (name + value + 32 bytes overhead per RFC 7541)
+      header_size = name.bytesize + value.bytesize + 32
+      @total_decompressed_size += header_size
+
+      # Check total decompressed size
+      if @total_decompressed_size > @security_limits.max_decompressed_size
+        raise HpackBombError.new("Total decompressed size exceeds limit: #{@total_decompressed_size} > #{@security_limits.max_decompressed_size}")
+      end
+
+      headers[name] = value
+    end
+
+    private def validate_final_headers(headers : Headers) : Nil
+      # Final validation of total header count
+      if headers.size > @security_limits.max_header_count
+        raise HpackBombError.new("Final header count exceeds limit: #{headers.size}")
+      end
+
+      # Final validation of total decompressed size
+      if @total_decompressed_size > @security_limits.max_decompressed_size
+        raise HpackBombError.new("Final decompressed size exceeds limit: #{@total_decompressed_size}")
+      end
     end
   end
 end

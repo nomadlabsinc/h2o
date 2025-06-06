@@ -179,6 +179,28 @@ module H2O
     end
   end
 
+  # HPACK security configuration and errors
+  class HpackBombError < Exception
+    def initialize(message : String = "HPACK bomb attack detected")
+      super(message)
+    end
+  end
+
+  struct HpackSecurityLimits
+    property max_decompressed_size : Int32
+    property max_header_count : Int32
+    property max_string_length : Int32
+    property max_dynamic_table_size : Int32
+    property compression_ratio_limit : Float64
+
+    def initialize(@max_decompressed_size : Int32 = 65536,
+                   @max_header_count : Int32 = 100,
+                   @max_string_length : Int32 = 8192,
+                   @max_dynamic_table_size : Int32 = 65536,
+                   @compression_ratio_limit : Float64 = 10.0)
+    end
+  end
+
   # Stream lifecycle tracking for CVE-2023-44487 mitigation
   struct StreamLifecycleEvent
     property stream_id : StreamId
