@@ -20,6 +20,8 @@ module H2O
       property fibers_started : Bool
       property outgoing_frames : OutgoingFrameChannel
       property incoming_frames : IncomingFrameChannel
+      property continuation_limits : ContinuationLimits
+      property header_fragments : Hash(StreamId, HeaderFragmentState)
 
       def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds)
         verify_mode : OpenSSL::SSL::VerifyMode = determine_verify_mode(hostname)
@@ -38,6 +40,9 @@ module H2O
 
         @outgoing_frames = OutgoingFrameChannel.new(100)
         @incoming_frames = IncomingFrameChannel.new(100)
+
+        @continuation_limits = ContinuationLimits.new
+        @header_fragments = Hash(StreamId, HeaderFragmentState).new
 
         @reader_fiber = nil
         @writer_fiber = nil
@@ -284,6 +289,8 @@ module H2O
           handle_window_update_frame(frame)
         when HeadersFrame, DataFrame, RstStreamFrame
           handle_stream_frame(frame)
+        when ContinuationFrame
+          handle_continuation_frame(frame)
         else
           Log.warn { "Unhandled frame type: #{frame.frame_type}" }
         end
@@ -346,8 +353,14 @@ module H2O
 
         case frame
         when HeadersFrame
-          decoded_headers = @hpack_decoder.decode(frame.header_block)
-          stream.receive_headers(frame, decoded_headers)
+          if frame.end_headers?
+            # Complete headers in single frame
+            decoded_headers = @hpack_decoder.decode(frame.header_block)
+            stream.receive_headers(frame, decoded_headers)
+          else
+            # Fragmented headers - start accumulation for CONTINUATION frames
+            start_header_fragment(frame.stream_id, frame.header_block)
+          end
         when DataFrame
           stream.receive_data(frame)
 
@@ -393,6 +406,105 @@ module H2O
           request_headers[lowercase_name] = value
         end
         request_headers
+      end
+
+      private def handle_continuation_frame(frame : ContinuationFrame) : Nil
+        stream_id = frame.stream_id
+
+        # Check if we have an ongoing header fragment for this stream
+        unless @header_fragments.has_key?(stream_id)
+          send_goaway(ErrorCode::ProtocolError)
+          raise ContinuationFloodError.new("CONTINUATION frame without preceding HEADERS frame")
+        end
+
+        fragment_state = @header_fragments[stream_id]
+
+        # Validate CONTINUATION frame limits
+        new_continuation_count = fragment_state[:continuation_count] + 1
+        if new_continuation_count > @continuation_limits.max_continuation_frames
+          @header_fragments.delete(stream_id)
+          send_goaway(ErrorCode::EnhanceYourCalm)
+          raise ContinuationFloodError.new("Too many CONTINUATION frames: #{new_continuation_count}")
+        end
+
+        # Check accumulated size limits
+        new_size = fragment_state[:accumulated_size] + frame.header_block.size
+        if new_size > @continuation_limits.max_accumulated_size
+          @header_fragments.delete(stream_id)
+          send_goaway(ErrorCode::CompressionError)
+          raise ContinuationFloodError.new("CONTINUATION frames exceed size limit: #{new_size} bytes")
+        end
+
+        # Accumulate the header block
+        fragment_state[:buffer].write(frame.header_block)
+
+        # Create updated fragment state (NamedTuple is immutable)
+        updated_fragment_state = {
+          stream_id:          stream_id,
+          accumulated_size:   new_size,
+          continuation_count: new_continuation_count,
+          buffer:             fragment_state[:buffer],
+        }
+        @header_fragments[stream_id] = updated_fragment_state
+
+        # If this is the final CONTINUATION frame, process the complete headers
+        if frame.end_headers?
+          process_accumulated_headers(stream_id)
+        end
+      end
+
+      private def process_accumulated_headers(stream_id : StreamId) : Nil
+        return unless fragment_state = @header_fragments.delete(stream_id)
+
+        # Validate final header size
+        total_size = fragment_state[:accumulated_size]
+        if total_size > @continuation_limits.max_header_size
+          send_goaway(ErrorCode::CompressionError)
+          raise ContinuationFloodError.new("Final header size exceeds limit: #{total_size} bytes")
+        end
+
+        # Decode the complete header block
+        accumulated_data = fragment_state[:buffer].to_slice
+        begin
+          decoded_headers = @hpack_decoder.decode(accumulated_data)
+
+          # Find the stream and deliver the headers
+          stream = @stream_pool.get_stream(stream_id)
+          if stream
+            # Create a synthetic HEADERS frame to maintain compatibility
+            synthetic_headers = HeadersFrame.new(
+              stream_id,
+              accumulated_data,
+              HeadersFrame::FLAG_END_HEADERS
+            )
+            stream.receive_headers(synthetic_headers, decoded_headers)
+          end
+        rescue ex : Exception
+          send_goaway(ErrorCode::CompressionError)
+          raise ContinuationFloodError.new("Header decompression failed: #{ex.message}")
+        end
+      end
+
+      private def start_header_fragment(stream_id : StreamId, initial_data : Bytes) : Nil
+        # Clean up any existing fragment for this stream (should not happen in well-formed HTTP/2)
+        @header_fragments.delete(stream_id)
+
+        # Validate initial size
+        if initial_data.size > @continuation_limits.max_header_size
+          send_goaway(ErrorCode::CompressionError)
+          raise ContinuationFloodError.new("Initial header block too large: #{initial_data.size} bytes")
+        end
+
+        # Create new fragment state
+        buffer = IO::Memory.new
+        buffer.write(initial_data)
+
+        @header_fragments[stream_id] = {
+          stream_id:          stream_id,
+          accumulated_size:   initial_data.size,
+          continuation_count: 0,
+          buffer:             buffer,
+        }
       end
     end
   end
