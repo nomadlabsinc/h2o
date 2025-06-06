@@ -82,7 +82,7 @@ module H2O::HPACK
     end
 
     private def encode_string(io : IO, string : String) : Nil
-      if @huffman_encoding
+      if @huffman_encoding && should_compress_string?(string)
         encoded = Huffman.encode(string)
         encode_integer(io, encoded.size, 7, 0x80_u8)
         io.write(encoded)
@@ -122,6 +122,21 @@ module H2O::HPACK
       return false if name == "cookie"
       return false if name == "set-cookie"
       return false if value.bytesize > 1024
+      true
+    end
+
+    private def should_compress_string?(string : String) : Bool
+      # Skip compression for very small strings where overhead exceeds benefit
+      return false if string.bytesize < 8
+
+      # Skip compression for strings that are unlikely to compress well
+      # (e.g., already encoded data, UUIDs, base64)
+      return false if string.matches?(/^[A-Za-z0-9+\/=\-_]{8,}$/)
+
+      # Skip compression for very short common values
+      return false if string.in?(["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS",
+                                  "200", "204", "206", "404", "500", "https", "http"])
+
       true
     end
   end

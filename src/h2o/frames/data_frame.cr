@@ -41,10 +41,12 @@ module H2O
 
     def payload_to_bytes : Bytes
       if padded?
-        result = Bytes.new(1 + @data.size + @padding_length)
-        result[0] = @padding_length
-        result[1, @data.size].copy_from(@data)
-        result
+        BufferPool.with_frame_buffer(1 + @data.size + @padding_length) do |buffer|
+          result = buffer[0, 1 + @data.size + @padding_length]
+          result[0] = @padding_length
+          result[1, @data.size].copy_from(@data)
+          result.dup
+        end
       else
         @data
       end
