@@ -42,15 +42,8 @@ module H2O::HPACK
       @entries.unshift(entry)
       @current_size += entry.size
 
-      # Dynamic table indices start after static table and use 1-based indexing
-      # New entries go to index 1 in the dynamic table (StaticTable.size + 1)
-      index = StaticTable.size + 1
-      @name_index[name] = index unless @name_index.has_key?(name)
-      name_value_key = NameValueKey.new(name, value)
-      @name_value_index[name_value_key] = index
-
       evict_entries
-      rebuild_indices # Rebuild after eviction to ensure correct indices
+      rebuild_indices
     end
 
     def [](index : Int32) : StaticEntry?
@@ -89,11 +82,13 @@ module H2O::HPACK
     end
 
     private def evict_entries : Nil
+      entries_removed = false
       while @current_size > @max_size && !@entries.empty?
         entry = @entries.pop
         @current_size -= entry.size
-        rebuild_indices
+        entries_removed = true
       end
+      rebuild_indices if entries_removed
     end
 
     private def rebuild_indices : Nil

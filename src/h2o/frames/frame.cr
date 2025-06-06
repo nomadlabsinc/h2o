@@ -50,10 +50,11 @@ module H2O
         total_size = FRAME_HEADER_SIZE + payload_bytes.size
 
         BufferPool.with_frame_buffer(total_size) do |frame_buffer|
-          result = frame_buffer[0, total_size]
-          result.copy_from(header)
-          result[FRAME_HEADER_SIZE, payload_bytes.size].copy_from(payload_bytes)
-          result.dup
+          frame_buffer.copy_from(header)
+          frame_buffer[FRAME_HEADER_SIZE, payload_bytes.size].copy_from(payload_bytes)
+          result = Bytes.new(total_size)
+          result.copy_from(frame_buffer[0, total_size])
+          result
         end
       end
     end

@@ -83,7 +83,9 @@ module H2O::HPACK
     end
 
     NAME_VALUE_INDEX = STATIC_ENTRIES.each_with_index.reduce(Hash(String, Int32).new) do |hash, (entry, index)|
-      key = "#{entry.name}:#{entry.value}"
+      key = String.build do |k|
+        k << entry.name << ':' << entry.value
+      end
       hash[key] = index + 1
       hash
     end
@@ -102,7 +104,9 @@ module H2O::HPACK
     end
 
     def self.find_name_value(name : String, value : String) : Int32?
-      name_value_key = "#{name}:#{value}"
+      name_value_key = String.build do |key|
+        key << name << ':' << value
+      end
       NAME_VALUE_INDEX[name_value_key]?
     end
   end

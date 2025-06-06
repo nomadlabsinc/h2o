@@ -402,8 +402,8 @@ module H2O
         request_headers[":authority"] = headers.delete("host") || ""
 
         headers.each do |name, value|
-          lowercase_name : String = name.downcase
-          request_headers[lowercase_name] = value
+          # Pre-size hash if not already done to avoid resizing during iteration
+          request_headers[name.downcase] = value
         end
         request_headers
       end

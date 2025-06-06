@@ -76,7 +76,9 @@ module H2O
     end
 
     private def get_connection(host : String, port : Int32) : BaseConnection
-      connection_key : ConnectionKey = "#{host}:#{port}"
+      connection_key : ConnectionKey = String.build do |key|
+        key << host << ':' << port
+      end
       existing_connection : BaseConnection? = find_existing_connection(connection_key)
       return existing_connection if existing_connection
       create_new_connection(connection_key, host, port)
