@@ -111,6 +111,30 @@ module H2O
       (@flags & FLAG_PRIORITY) != 0
     end
 
+    def reset_for_reuse : Nil
+      @flags = 0_u8
+      @header_block = Bytes.empty
+      @length = 0_u32
+      @padding_length = 0_u8
+      @priority_dependency = 0_u32
+      @priority_exclusive = false
+      @priority_weight = 0_u8
+      @stream_id = 0_u32
+    end
+
+    def set_header_block(header_block : Bytes) : Nil
+      @header_block = header_block
+      recalculate_length
+    end
+
+    private def recalculate_length : Nil
+      total_length = @header_block.size.to_u32
+      total_length += 1 if (@flags & FLAG_PADDED) != 0
+      total_length += 5 if (@flags & FLAG_PRIORITY) != 0
+      total_length += @padding_length
+      @length = total_length
+    end
+
     private def validate_stream_id_non_zero : Nil
       raise FrameError.new("HEADERS frame must have non-zero stream ID") if @stream_id == 0
     end

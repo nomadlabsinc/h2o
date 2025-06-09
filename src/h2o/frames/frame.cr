@@ -87,6 +87,13 @@ module H2O
 
     abstract def payload_to_bytes : Bytes
 
+    # Default reset for object pool reuse - subclasses should override
+    def reset_for_reuse : Nil
+      @flags = 0_u8
+      @length = 0_u32
+      @stream_id = 0_u32
+    end
+
     protected def set_length(length : UInt32) : Nil
       @length = length
     end

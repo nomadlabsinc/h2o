@@ -33,5 +33,12 @@ module H2O
       result[3] = (@window_size_increment & 0xff).to_u8
       result
     end
+
+    def reset_for_reuse : Nil
+      @flags = 0_u8
+      @length = 0_u32
+      @stream_id = 0_u32
+      @window_size_increment = 0_u32
+    end
   end
 end
