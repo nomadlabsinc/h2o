@@ -113,7 +113,7 @@ module PerformanceBenchmarks
 
       # Measure memory after
       memory_after = GC.stats.heap_size
-      memory_allocated = (memory_after - memory_before).to_i64
+      memory_allocated = Math.max(0_i64, (memory_after - memory_before).to_i64)
 
       total_time = end_time - start_time
 
@@ -183,13 +183,26 @@ describe "Performance Benchmarks" do
   end
 
   it "should correctly compare baseline vs optimized" do
+    # Baseline: Inefficient string concatenation
+    baseline_op = -> {
+      s = ""
+      100.times { s += "a" }
+    }
+
+    # Optimized: Efficient string building
+    optimized_op = -> {
+      String.build do |str|
+        100.times { str << "a" }
+      end
+    }
+
     comparison = PerformanceBenchmarks::BenchmarkRunner.compare(
-      "slow", "fast", "time", 100, 50.0,
-      -> { sleep(0.0001.seconds) }, # Baseline: 0.1ms
-      -> { sleep(0.00005.seconds) } # Optimized: 0.05ms
+      "String Concat", "String Build", "time", 1000, 50.0,
+      baseline_op,
+      optimized_op
     )
 
-    comparison.time_improvement.should be > 30.0
+    comparison.time_improvement.should be > 30.0 # Expect a significant improvement
     comparison.meets_prediction?.should be_true
   end
 end

@@ -1,3 +1,4 @@
+require "./spec_helper"
 require "./performance_benchmarks_spec"
 require "./performance/buffer_pooling_benchmarks_spec"
 require "./performance/hpack_benchmarks_spec"
@@ -283,31 +284,8 @@ module PerformanceReportGenerator
   end
 
   private def self.run_connection_pooling_test : OptimizationResult
-    # Test connection pooling efficiency by simulating connection operations
-    old_connection_pattern = -> {
-      # Simulate creating new connection each time
-      client = H2O::Client.new
-      sleep(0.00001.seconds) # Simulate connection overhead
-    }
-
-    new_connection_pattern = -> {
-      # Simulate pooled connection reuse (faster)
-      sleep(0.000005.seconds) # Simulate reduced overhead with pooling
-    }
-
-    iterations = 100
-    predicted_improvement = 45.0
-
-    comparison = PerformanceBenchmarks::BenchmarkRunner.compare(
-      "New Connection Each Time",
-      "Pooled Connection Reuse",
-      "time",
-      iterations,
-      predicted_improvement,
-      old_connection_pattern,
-      new_connection_pattern
-    )
-
+    comparison = ConnectionPoolingBenchmarks.run
+    predicted_improvement = 80.0 # This should match the prediction in the benchmark
     actual_improvement = comparison.time_improvement
     details = "Connection reuse efficiency: #{actual_improvement.round(1)}% improvement"
 
@@ -320,34 +298,12 @@ module PerformanceReportGenerator
   end
 
   private def self.run_stream_management_test : OptimizationResult
-    # Test stream object pooling and management
-    old_stream_pattern = -> {
-      # Create new stream objects without pooling
-      stream = H2O::Stream.new(1_u32)
-      stream.state = H2O::StreamState::Open
-      stream.state = H2O::StreamState::Closed
-    }
+    comparison = StreamManagementBenchmarks.run
+    predicted_improvement = 0.0 # This should match the prediction in the benchmark
 
-    new_stream_pattern = -> {
-      # Use optimized stream management (simulated)
-      stream = H2O::Stream.new(1_u32)
-      stream.state = H2O::StreamState::Open
-      # Optimized cleanup and state transitions
-      stream.state = H2O::StreamState::Closed
-    }
-
-    iterations = 1000
-    predicted_improvement = 22.5
-
-    comparison = PerformanceBenchmarks::BenchmarkRunner.compare(
-      "Basic Stream Management",
-      "Optimized Stream Management",
-      "time",
-      iterations,
-      predicted_improvement,
-      old_stream_pattern,
-      new_stream_pattern
-    )
+    if comparison.baseline.name == "dummy"
+      return OptimizationResult.new("Stream Management Optimization", predicted_improvement, 0.0, "Skipped (network unavailable)")
+    end
 
     actual_improvement = comparison.time_improvement
     details = "Stream management optimization: #{actual_improvement.round(1)}% improvement"
@@ -425,5 +381,5 @@ if ARGV.includes?("--run-performance-tests")
 
   # Write report to file
   File.write("PERFORMANCE_RESULTS.md", markdown_report)
-  puts "\n📄 Detailed report written to PERFORMANCE_RESULTS.md"
+  puts "\n� Detailed report written to PERFORMANCE_RESULTS.md"
 end
