@@ -22,3 +22,15 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
     command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile']
+
+  h2-only-server:
+    image: node:18-alpine
+    ports:
+      - "8447:8447"
+    volumes:
+      - ./h2-only-server.js:/app/server.js
+      - ./ssl:/app/ssl
+    working_dir: /app
+    environment:
+      - PORT=8447
+    command: ['node', 'server.js']
