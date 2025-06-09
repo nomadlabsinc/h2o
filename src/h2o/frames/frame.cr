@@ -46,8 +46,34 @@ module H2O
         header[7] = ((@stream_id >> 8) & 0xff).to_u8
         header[8] = (@stream_id & 0xff).to_u8
 
-        payload_bytes = payload_to_bytes
-        total_size = FRAME_HEADER_SIZE + payload_bytes.size
+        begin
+          payload_bytes = payload_to_bytes
+          payload_size = payload_bytes.size
+
+          # Prevent arithmetic overflow and enforce HTTP/2 frame size limits
+          # HTTP/2 spec: frame size must not exceed 2^24-1 (16,777,215) bytes
+          max_frame_payload = 16_777_215
+          max_safe_payload = Int32::MAX - FRAME_HEADER_SIZE
+          max_allowed_payload = Math.min(max_frame_payload, max_safe_payload)
+
+          if payload_size < 0
+            raise ArgumentError.new("Frame payload size cannot be negative: #{payload_size}")
+          end
+
+          if payload_size > max_allowed_payload
+            raise ArgumentError.new("Frame payload too large: #{payload_size} bytes (max: #{max_allowed_payload})")
+          end
+
+          # Use explicit type checking to prevent any overflow during addition
+          total_size_i64 = FRAME_HEADER_SIZE.to_i64 + payload_size.to_i64
+          if total_size_i64 > Int32::MAX
+            raise ArgumentError.new("Total frame size would overflow: #{total_size_i64}")
+          end
+
+          total_size = total_size_i64.to_i32
+        rescue ex : OverflowError
+          raise ArgumentError.new("Arithmetic overflow in frame size calculation: #{self.class} with payload size #{payload_size rescue "unknown"}")
+        end
 
         BufferPool.with_frame_buffer(total_size) do |frame_buffer|
           frame_buffer.copy_from(header)

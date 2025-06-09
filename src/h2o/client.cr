@@ -1,4 +1,69 @@
 module H2O
+  # Type aliases for cleaner code
+  alias ConnectionMetadataHash = Hash(String, ConnectionMetadata)
+  alias HostSet = Set(String)
+  alias ConnectionHash = Hash(String, BaseConnection)
+
+  # Enhanced connection metadata for scoring and lifecycle management
+  private struct ConnectionMetadata
+    property connection : BaseConnection
+    property created_at : Time
+    property last_used : Time
+    property request_count : Int32
+    property error_count : Int32
+    property avg_response_time : Float64
+    property score : Float64
+
+    def initialize(@connection : BaseConnection)
+      @created_at = Time.utc
+      @last_used = Time.utc
+      @request_count = 0
+      @error_count = 0
+      @avg_response_time = 0.0
+      @score = 100.0
+    end
+
+    def update_usage(success : Bool, response_time : Time::Span) : Nil
+      @last_used = Time.utc
+      @request_count += 1
+
+      if success
+        # Update rolling average response time
+        new_time = response_time.total_milliseconds
+        @avg_response_time = (@avg_response_time * (@request_count - 1) + new_time) / @request_count
+      else
+        @error_count += 1
+      end
+
+      calculate_score
+    end
+
+    def calculate_score : Nil
+      # Base score starts at 100
+      base_score = 100.0
+
+      # Penalty for errors (up to -50 points)
+      error_rate = @request_count > 0 ? @error_count.to_f64 / @request_count.to_f64 : 0.0
+      error_penalty = error_rate * 50.0
+
+      # Penalty for slow responses (up to -30 points)
+      speed_penalty = Math.min(@avg_response_time / 1000.0 * 10.0, 30.0)
+
+      # Bonus for recent usage (up to +20 points)
+      age_bonus = Math.max(0.0, 20.0 - (Time.utc - @last_used).total_minutes)
+
+      @score = base_score - error_penalty - speed_penalty + age_bonus
+    end
+
+    def age : Time::Span
+      Time.utc - @created_at
+    end
+
+    def idle_time : Time::Span
+      Time.utc - @last_used
+    end
+  end
+
   class Client
     property circuit_breaker_adapter : CircuitBreakerAdapter?
     property circuit_breaker_enabled : Bool
@@ -7,6 +72,10 @@ module H2O
     property default_circuit_breaker : Breaker?
     property timeout : Time::Span
 
+    # Enhanced connection management
+    @connection_metadata : ConnectionMetadataHash
+    @warmup_hosts : HostSet
+
     def initialize(@connection_pool_size : Int32 = 10,
                    @timeout : Time::Span = H2O.config.default_timeout,
                    @circuit_breaker_enabled : Bool = H2O.config.circuit_breaker_enabled,
@@ -14,6 +83,8 @@ module H2O
                    @default_circuit_breaker : Breaker? = H2O.config.default_circuit_breaker)
       @connections = ConnectionsHash.new
       @protocol_cache = ProtocolCache.new
+      @connection_metadata = ConnectionMetadataHash.new
+      @warmup_hosts = HostSet.new
     end
 
     def get(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
@@ -58,6 +129,31 @@ module H2O
     def close : Nil
       @connections.each_value(&.close)
       @connections.clear
+      @connection_metadata.clear
+      @warmup_hosts.clear
+    end
+
+    # Pre-warm connection to frequently used hosts
+    def warmup_connection(host : String, port : Int32 = 443) : Nil
+      return if @warmup_hosts.includes?(host)
+
+      spawn do
+        begin
+          connection_key = String.build do |key|
+            key << host << ':' << port
+          end
+
+          connection = create_connection_with_fallback(host, port)
+          if connection
+            @connections[connection_key] = connection
+            @connection_metadata[connection_key] = ConnectionMetadata.new(connection)
+            @warmup_hosts.add(host)
+            Log.debug { "Warmed up connection to #{host}:#{port}" }
+          end
+        rescue ex
+          Log.warn { "Connection warmup failed for #{host}:#{port}: #{ex.message}" }
+        end
+      end
     end
 
     private def parse_url_with_host(url : String) : UrlParseResult
@@ -79,13 +175,60 @@ module H2O
       connection_key : ConnectionKey = String.build do |key|
         key << host << ':' << port
       end
-      existing_connection : BaseConnection? = find_existing_connection(connection_key)
-      return existing_connection if existing_connection
+
+      # Try to find the best existing connection using scoring
+      best_connection = find_best_connection(connection_key)
+      return best_connection if best_connection
+
       create_new_connection(connection_key, host, port)
     end
 
     private def cleanup_closed_connections : Nil
-      @connections.reject! { |_, connection| connection.closed? }
+      @connections.reject! do |key, connection|
+        if connection.closed?
+          @connection_metadata.delete(key)
+          true
+        else
+          false
+        end
+      end
+    end
+
+    # Find the best connection based on scoring algorithm
+    private def find_best_connection(connection_key : String) : BaseConnection?
+      connection = @connections[connection_key]?
+      return nil unless connection
+
+      metadata = @connection_metadata[connection_key]?
+      return nil unless metadata
+
+      return nil unless connection_healthy_enhanced?(connection, metadata)
+
+      connection
+    end
+
+    # Enhanced connection health validation with scoring
+    private def connection_healthy_enhanced?(connection : BaseConnection, metadata : ConnectionMetadata) : Bool
+      return false if connection.closed?
+
+      # Check basic health
+      healthy = case connection
+                when H2::Client
+                  connection_healthy_http2?(connection)
+                when H1::Client
+                  connection_healthy_http1?(connection)
+                else
+                  false
+                end
+
+      return false unless healthy
+
+      # Check if connection is too old or has too many errors
+      return false if metadata.age > 1.hour
+      return false if metadata.score < 30.0
+      return false if metadata.idle_time > 5.minutes
+
+      true
     end
 
     private def create_connection_with_fallback(host : String, port : Int32) : ConnectionResult
@@ -132,12 +275,40 @@ module H2O
     end
 
     private def execute_request(connection : BaseConnection, method : String, path : String, headers : Headers, body : String?) : Response?
-      Timeout(Response?).execute(@timeout) do
-        connection.request(method, path, headers, body)
+      start_time = Time.monotonic
+
+      begin
+        result = Timeout(Response?).execute(@timeout) do
+          connection.request(method, path, headers, body)
+        end
+
+        # Track performance metrics
+        end_time = Time.monotonic
+        response_time = end_time - start_time
+        success = result.nil? ? false : true
+        update_connection_metrics(connection, response_time, success)
+
+        result
+      rescue ex : Exception
+        # Track failed request
+        end_time = Time.monotonic
+        response_time = end_time - start_time
+        update_connection_metrics(connection, response_time, false)
+
+        Log.error { "Request failed: #{ex.message}" }
+        nil
       end
-    rescue ex : Exception
-      Log.error { "Request failed: #{ex.message}" }
-      nil
+    end
+
+    private def update_connection_metrics(connection : BaseConnection, response_time : Time::Span, success : Bool) : Nil
+      # Find the connection key and metadata
+      @connections.each do |key, conn|
+        if conn == connection
+          metadata = @connection_metadata[key]?
+          metadata.try(&.update_usage(success, response_time))
+          break
+        end
+      end
     end
 
     private def execute_with_circuit_breaker(method : String, url : String, headers : Headers, body : String?) : CircuitBreakerResult
@@ -232,11 +403,47 @@ module H2O
 
     private def create_new_connection(connection_key : String, host : String, port : Int32) : BaseConnection
       cleanup_closed_connections
-      enforce_pool_size_limit
+      enforce_pool_size_limit_enhanced
       connection : BaseConnection? = create_connection_with_fallback(host, port)
       raise ConnectionError.new("Connection failed") unless connection
+
       @connections[connection_key] = connection
+      @connection_metadata[connection_key] = ConnectionMetadata.new(connection)
+
       connection
+    end
+
+    # Enhanced pool size enforcement with connection scoring
+    private def enforce_pool_size_limit_enhanced : Nil
+      return unless @connections.size >= @connection_pool_size
+
+      # Find the worst connection to evict based on score
+      worst_key = find_worst_connection_key
+      if worst_key
+        worst_connection = @connections[worst_key]?
+        if worst_connection
+          worst_connection.close
+          @connections.delete(worst_key)
+          @connection_metadata.delete(worst_key)
+        end
+      else
+        # Fallback to removing the oldest connection
+        enforce_pool_size_limit
+      end
+    end
+
+    private def find_worst_connection_key : String?
+      worst_key = nil
+      worst_score = Float64::MAX
+
+      @connection_metadata.each do |key, metadata|
+        if metadata.score < worst_score
+          worst_score = metadata.score
+          worst_key = key
+        end
+      end
+
+      worst_key
     end
 
     private def enforce_pool_size_limit : Nil

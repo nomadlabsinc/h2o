@@ -13,6 +13,17 @@ module H2O
     property created_at : Time
     property last_activity : Time
     property closed_at : Time?
+    property priority : UInt8
+    property dependency : StreamId?
+
+    # State transition optimization lookup table
+    VALID_TRANSITIONS = {
+      StreamState::Idle             => [StreamState::Open, StreamState::HalfClosedLocal, StreamState::HalfClosedRemote, StreamState::Closed],
+      StreamState::Open             => [StreamState::HalfClosedLocal, StreamState::HalfClosedRemote, StreamState::Closed],
+      StreamState::HalfClosedLocal  => [StreamState::Closed],
+      StreamState::HalfClosedRemote => [StreamState::Closed],
+      StreamState::Closed           => [] of StreamState,
+    }
 
     def initialize(@id : StreamId, @local_window_size : Int32 = 65535, @remote_window_size : Int32 = 65535)
       @state = StreamState::Idle
@@ -25,6 +36,32 @@ module H2O
       @created_at = Time.utc
       @last_activity = Time.utc
       @closed_at = nil
+      @priority = 16_u8 # Default priority
+      @dependency = nil
+    end
+
+    # Reset stream for object pool reuse
+    def reset_for_reuse(new_id : StreamId) : Nil
+      @id = new_id
+      @state = StreamState::Idle
+      @request = nil
+      @response = nil
+      @headers_complete = false
+      @data_complete = false
+      @incoming_data = IO::Memory.new
+      @response_channel = ResponseChannel.new(0)
+      @created_at = Time.utc
+      @last_activity = Time.utc
+      @closed_at = nil
+      @local_window_size = 65535
+      @remote_window_size = 65535
+      @priority = 16_u8
+      @dependency = nil
+    end
+
+    # Check if stream can be returned to object pool
+    def can_be_pooled? : Bool
+      closed? && @incoming_data.size < 1024 # Only pool small streams
     end
 
     def send_headers(headers_frame : HeadersFrame) : Nil
@@ -181,56 +218,68 @@ module H2O
       end
     end
 
+    # Optimized state transition with validation
+    private def transition_state(new_state : StreamState) : Nil
+      valid_transitions = VALID_TRANSITIONS[@state]?
+      unless valid_transitions && valid_transitions.includes?(new_state)
+        raise StreamError.new("Invalid state transition from #{@state} to #{new_state}", @id)
+      end
+
+      @state = new_state
+      @closed_at = Time.utc if new_state == StreamState::Closed
+    end
+
     private def transition_on_send_headers(end_stream : Bool) : Nil
       case @state
       when .idle?
-        @state = end_stream ? StreamState::HalfClosedLocal : StreamState::Open
+        transition_state(end_stream ? StreamState::HalfClosedLocal : StreamState::Open)
       when .open?
-        @state = StreamState::HalfClosedLocal if end_stream
+        transition_state(StreamState::HalfClosedLocal) if end_stream
       end
     end
 
     private def transition_on_send_data(end_stream : Bool) : Nil
-      if end_stream
-        case @state
-        when .open?
-          @state = StreamState::HalfClosedLocal
-        when .half_closed_remote?
-          @state = StreamState::Closed
-          @closed_at = Time.utc
-        end
+      return unless end_stream
+
+      case @state
+      when .open?
+        transition_state(StreamState::HalfClosedLocal)
+      when .half_closed_remote?
+        transition_state(StreamState::Closed)
       end
     end
 
     private def transition_on_receive_headers(end_stream : Bool) : Nil
       case @state
       when .idle?
-        @state = end_stream ? StreamState::HalfClosedRemote : StreamState::Open
-        @closed_at = Time.utc if end_stream
+        transition_state(end_stream ? StreamState::HalfClosedRemote : StreamState::Open)
       when .open?
-        if end_stream
-          @state = StreamState::HalfClosedRemote
-        end
+        transition_state(StreamState::HalfClosedRemote) if end_stream
       when .half_closed_local?
-        if end_stream
-          @state = StreamState::Closed
-          @closed_at = Time.utc
-        end
+        transition_state(StreamState::Closed) if end_stream
       end
     end
 
     private def transition_on_receive_data(end_stream : Bool) : Nil
       @data_complete = true if end_stream
+      return unless end_stream
 
-      if end_stream
-        case @state
-        when .open?
-          @state = StreamState::HalfClosedRemote
-        when .half_closed_local?
-          @state = StreamState::Closed
-          @closed_at = Time.utc
-        end
+      case @state
+      when .open?
+        transition_state(StreamState::HalfClosedRemote)
+      when .half_closed_local?
+        transition_state(StreamState::Closed)
       end
+    end
+
+    # Stream priority management for HTTP/2 prioritization
+    def set_priority(priority : UInt8, dependency : StreamId? = nil) : Nil
+      @priority = priority
+      @dependency = dependency
+    end
+
+    def priority_weight : UInt8
+      @priority
     end
 
     private def finalize_response : Nil
@@ -245,6 +294,43 @@ module H2O
     end
   end
 
+  # Stream object pool for efficient stream creation and reuse
+  class StreamObjectPool
+    DEFAULT_POOL_SIZE = 50
+
+    @@available_streams = Channel(Stream).new(DEFAULT_POOL_SIZE)
+    @@pool_size = Atomic(Int32).new(0)
+
+    def self.get_stream(id : StreamId) : Stream
+      select
+      when stream = @@available_streams.receive?
+        if stream
+          stream.reset_for_reuse(id)
+          stream
+        else
+          Stream.new(id)
+        end
+      else
+        Stream.new(id)
+      end
+    end
+
+    def self.return_stream(stream : Stream) : Nil
+      return unless stream.can_be_pooled?
+
+      select
+      when @@available_streams.send(stream)
+        # Successfully returned to pool
+      else
+        # Pool is full, let stream be garbage collected
+      end
+    end
+
+    def self.pool_stats : {size: Int32, capacity: Int32}
+      {size: @@pool_size.get, capacity: DEFAULT_POOL_SIZE}
+    end
+  end
+
   class StreamPool
     property streams : StreamsHash
     property next_stream_id : StreamId
@@ -256,6 +342,7 @@ module H2O
     @stream_creation_times : Array(Time)
     @stream_reset_times : Array(Time)
     @stream_lifecycle_events : Array(StreamLifecycleEvent)
+    @stream_state_metrics : Hash(StreamState, Int32)
 
     def initialize(@max_concurrent_streams : UInt32? = nil, @rate_limit_config : StreamRateLimitConfig = StreamRateLimitConfig.new)
       @streams = StreamsHash.new
@@ -266,6 +353,7 @@ module H2O
       @stream_creation_times = Array(Time).new
       @stream_reset_times = Array(Time).new
       @stream_lifecycle_events = Array(StreamLifecycleEvent).new
+      @stream_state_metrics = Hash(StreamState, Int32).new
     end
 
     def create_stream : Stream
@@ -273,14 +361,16 @@ module H2O
       validate_stream_rate_limit
 
       stream_id = allocate_stream_id
-      stream = Stream.new(stream_id)
+      # Use object pool for efficient stream creation
+      stream = StreamObjectPool.get_stream(stream_id)
       @streams[stream_id] = stream
       invalidate_cache
 
-      # Track stream creation for rate limiting
+      # Track stream creation for rate limiting and metrics
       current_time = Time.utc
       @stream_creation_times << current_time
       @stream_lifecycle_events << StreamLifecycleEvent.new(stream_id, StreamEventType::Created, current_time)
+      @stream_state_metrics[StreamState::Idle] = (@stream_state_metrics[StreamState::Idle]? || 0) + 1
       cleanup_old_tracking_data
 
       stream
@@ -295,6 +385,12 @@ module H2O
       if stream
         current_time = Time.utc
         @stream_lifecycle_events << StreamLifecycleEvent.new(id, StreamEventType::Closed, current_time)
+
+        # Update state metrics
+        @stream_state_metrics[stream.state] = (@stream_state_metrics[stream.state]? || 1) - 1
+
+        # Return stream to object pool if possible
+        StreamObjectPool.return_stream(stream)
       end
       @streams.delete(id)
       invalidate_cache
@@ -331,6 +427,35 @@ module H2O
 
     def stream_count : Int32
       active_streams.size
+    end
+
+    # Stream priority queue for HTTP/2 prioritization
+    def prioritized_streams : Array(Stream)
+      streams = active_streams
+      streams.sort! do |stream_a, stream_b|
+        # Lower priority value = higher priority (inverse sort)
+        if stream_a.priority_weight != stream_b.priority_weight
+          stream_a.priority_weight <=> stream_b.priority_weight
+        else
+          # If same priority, use stream ID as tiebreaker
+          stream_a.id <=> stream_b.id
+        end
+      end
+    end
+
+    # Stream state metrics for monitoring
+    def state_metrics : Hash(StreamState, Int32)
+      @stream_state_metrics.dup
+    end
+
+    # Efficient flow control management
+    def streams_needing_window_update : Array(Stream)
+      active_streams.select(&.needs_window_update?)
+    end
+
+    # Get streams ready for data transmission
+    def streams_ready_for_data : Array(Stream)
+      active_streams.select(&.flow_control_available?)
     end
 
     private def invalidate_cache : Nil

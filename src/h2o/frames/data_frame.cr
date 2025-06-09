@@ -40,9 +40,21 @@ module H2O
     end
 
     def payload_to_bytes : Bytes
+      # Validate data size to prevent overflow
+      max_data_size = 16_777_215 - 1 - @padding_length # HTTP/2 max frame size minus padding overhead
+      if @data.size > max_data_size
+        raise ArgumentError.new("Data frame payload too large: #{@data.size} bytes (max: #{max_data_size})")
+      end
+
       if padded?
-        BufferPool.with_frame_buffer(1 + @data.size + @padding_length) do |buffer|
-          result = buffer[0, 1 + @data.size + @padding_length]
+        # Check for overflow before allocation
+        total_size = 1 + @data.size + @padding_length
+        if total_size < 0 || total_size > 16_777_215
+          raise ArgumentError.new("Padded frame total size overflow: #{total_size}")
+        end
+
+        BufferPool.with_frame_buffer(total_size) do |buffer|
+          result = buffer[0, total_size]
           result[0] = @padding_length
           result[1, @data.size].copy_from(@data)
           result.dup

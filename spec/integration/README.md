@@ -28,6 +28,7 @@ docker-compose down
 - **Nginx HTTP/2** (port 8443): Full-featured HTTP/2 server with SSL
 - **HTTPBin** (port 8080): HTTP testing service (HTTP/1.1 for comparison)
 - **Caddy HTTP/2** (port 8444): Modern HTTP/2 server with automatic HTTPS
+- **HTTP/2-Only Server** (port 8447): Node.js server that rejects HTTP/1.1 connections
 
 ### Test Endpoints
 
@@ -41,6 +42,13 @@ docker-compose down
 - `/health` - Health check endpoint
 - `/echo` - Echo request details
 - `/*` - Catch-all response
+
+#### HTTP/2-Only Server (https://localhost:8447)
+- `/health` - Health check with HTTP/2 protocol validation
+- `/headers` - Returns headers and protocol information
+- `/status/200` - Simple 200 response
+- `/reject-h1` - Confirms HTTP/2-only operation
+- **Note**: This server will reject HTTP/1.1 connections with 426 responses
 
 ## Running Tests
 

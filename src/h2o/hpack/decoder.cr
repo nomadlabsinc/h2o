@@ -129,7 +129,7 @@ module H2O::HPACK
         raise HpackBombError.new("String length exceeds security limit: #{length} > #{@security_limits.max_string_length}")
       end
 
-      if length <= BufferPool::MAX_HEADER_BUFFER_SIZE
+      if length <= BufferPool::LARGE_BUFFER_SIZE
         BufferPool.with_header_buffer do |buffer|
           data = buffer[0, length]
           bytes_read = io.read(data)
