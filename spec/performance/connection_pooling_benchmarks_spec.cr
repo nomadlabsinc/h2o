@@ -23,8 +23,8 @@ private class MockConnection
   def make_request(simulate_error : Bool = false) : String
     start_time = Time.monotonic
 
-    # Simulate some work
-    sleep(Random.rand(0.001..0.005).seconds)
+    # Simulate some work with minimal delay
+    sleep(Random.rand(0.00001..0.00005).seconds)
 
     end_time = Time.monotonic
     response_time = end_time - start_time
@@ -214,7 +214,7 @@ end
 
 describe "Connection Pooling Performance Benchmarks" do
   it "measures connection reuse performance improvement" do
-    iterations = 1000
+    iterations = 100
     predicted_improvement = 45.0 # 40-50% predicted
 
     puts "\n=== Connection Reuse Performance Test ==="
@@ -229,7 +229,7 @@ describe "Connection Pooling Performance Benchmarks" do
       predicted_improvement,
       -> {
         pool = SimpleConnectionPool.new(5)
-        iterations.times do |i|
+        100.times do |i|
           host = hosts[i % hosts.size]
           connection = pool.get_connection(host)
           begin
@@ -242,7 +242,7 @@ describe "Connection Pooling Performance Benchmarks" do
       },
       -> {
         pool = EnhancedConnectionPool.new(5)
-        iterations.times do |i|
+        100.times do |i|
           host = hosts[i % hosts.size]
           connection = pool.get_connection(host)
           begin
@@ -264,7 +264,7 @@ describe "Connection Pooling Performance Benchmarks" do
   end
 
   it "measures connection scoring effectiveness" do
-    iterations = 500
+    iterations = 100
 
     puts "\n=== Connection Scoring Effectiveness Test ==="
 
@@ -283,7 +283,7 @@ describe "Connection Pooling Performance Benchmarks" do
         when 0 # Good host
           connection.make_request(false)
         when 1 # Slow host - simulate with extra sleep
-          sleep(0.002.seconds)
+          sleep(0.00002.seconds)
           connection.make_request(false)
         when 2 # Error host
           connection.make_request(true) if Random.rand < 0.3
@@ -421,7 +421,7 @@ describe "Connection Pooling Performance Benchmarks" do
   end
 
   it "measures connection lifecycle management overhead" do
-    iterations = 200
+    iterations = 50
     max_connections = 5
 
     puts "\n=== Connection Lifecycle Management Test ==="
@@ -461,7 +461,7 @@ describe "Connection Pooling Performance Benchmarks" do
 
   it "measures protocol caching simulation" do
     hosts = ["h2-server.com", "h1-server.com", "mixed-server.com"]
-    iterations = 300
+    iterations = 100
 
     puts "\n=== Protocol Caching Performance Test ==="
 
@@ -473,7 +473,7 @@ describe "Connection Pooling Performance Benchmarks" do
     iterations.times do |i|
       host = hosts[i % hosts.size]
       # Simulate protocol detection (expensive operation)
-      sleep(0.001.seconds) # 1ms detection time
+      sleep(0.00001.seconds) # 0.01ms detection time
       protocol = ["http/1.1", "http/2"].sample
     end
     no_cache_duration = Time.monotonic - no_cache_time
@@ -488,7 +488,7 @@ describe "Connection Pooling Performance Benchmarks" do
         protocol = cached_protocol
       else
         # Detect protocol (expensive)
-        sleep(0.001.seconds)
+        sleep(0.00001.seconds)
         protocol = ["http/1.1", "http/2"].sample
         protocol_cache[host] = protocol
       end

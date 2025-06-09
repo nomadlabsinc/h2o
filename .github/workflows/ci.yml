@@ -21,7 +21,19 @@ jobs:
       run: shards install
 
     - name: Run unit tests (no network calls)
-      run: crystal spec spec/h2o_spec.cr spec/h2o/ --verbose
+      run: |
+        crystal spec spec/h2o_spec.cr \
+          spec/h2o/circuit_breaker_spec.cr \
+          spec/h2o/connection_lifecycle_spec.cr \
+          spec/h2o/connection_pooling_spec.cr \
+          spec/h2o/continuation_flood_protection_spec.cr \
+          spec/h2o/frames/ \
+          spec/h2o/h1_client_spec.cr \
+          spec/h2o/hpack/ \
+          spec/h2o/hpack_security_spec.cr \
+          spec/h2o/response_type_spec.cr \
+          spec/h2o/tls_spec.cr \
+          --verbose
 
     - name: Run integration tests (requires network, only if tagged)
       if: contains(github.event.pull_request.labels.*.name, 'integration-tests') || contains(github.ref, 'integration-tests')

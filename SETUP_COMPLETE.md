@@ -43,7 +43,7 @@ Please complete branch protection setup manually:
 ### **Next Development Steps**
 ```bash
 # For future development work:
-git checkout develop
+git checkout main
 git checkout -b feature/your-feature-name
 
 # Make changes, commit, and create PR

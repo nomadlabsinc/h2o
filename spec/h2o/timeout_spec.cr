@@ -11,8 +11,8 @@ describe H2O::Timeout do
     end
 
     it "returns nil when operation times out" do
-      result = H2O::Timeout(String).execute(100.milliseconds) do
-        sleep 200.milliseconds
+      result = H2O::Timeout(String).execute(10.milliseconds) do
+        sleep 20.milliseconds
         "should not reach here"
       end
 
@@ -45,7 +45,7 @@ describe H2O::Timeout do
       channel = Channel(String).new(1)
 
       spawn do
-        sleep 50.milliseconds
+        sleep 5.milliseconds
         channel.send("delayed message")
       end
 
@@ -60,7 +60,7 @@ describe H2O::Timeout do
       channel = Channel(String).new(1)
 
       # Don't send anything to the channel
-      result = H2O::Timeout(String).execute(100.milliseconds) do
+      result = H2O::Timeout(String).execute(10.milliseconds) do
         channel.receive
       end
 
@@ -79,8 +79,8 @@ describe H2O::Timeout do
 
     it "raises TimeoutError when operation times out" do
       expect_raises(H2O::TimeoutError, /Operation timed out after/) do
-        H2O::Timeout(String).execute!(100.milliseconds) do
-          sleep 200.milliseconds
+        H2O::Timeout(String).execute!(10.milliseconds) do
+          sleep 20.milliseconds
           "should not reach here"
         end
       end
@@ -106,8 +106,8 @@ describe H2O::Timeout do
     end
 
     it "calls timeout handler when operation times out" do
-      result = H2O::Timeout(String).execute_with_handler(100.milliseconds, -> { "timeout" }) do
-        sleep 200.milliseconds
+      result = H2O::Timeout(String).execute_with_handler(10.milliseconds, -> { "timeout" }) do
+        sleep 20.milliseconds
         "should not reach here"
       end
 
@@ -124,8 +124,8 @@ describe H2O::Timeout do
     end
 
     it "works with different return types from handler" do
-      result = H2O::Timeout(String).execute_with_handler(100.milliseconds, -> { 404 }) do
-        sleep 200.milliseconds
+      result = H2O::Timeout(String).execute_with_handler(10.milliseconds, -> { 404 }) do
+        sleep 20.milliseconds
         "should not reach here"
       end
 
@@ -139,7 +139,7 @@ describe H2O::Timeout do
       response_channel = Channel(String?).new(1)
 
       spawn do
-        sleep 50.milliseconds
+        sleep 5.milliseconds
         response_channel.send("HTTP/2 200 OK")
       end
 
@@ -152,8 +152,8 @@ describe H2O::Timeout do
 
     it "handles connection establishment timeouts" do
       # Simulate slow connection
-      result = H2O::Timeout(Bool).execute_with_handler(100.milliseconds, -> { false }) do
-        sleep 200.milliseconds # Simulate slow connection
+      result = H2O::Timeout(Bool).execute_with_handler(10.milliseconds, -> { false }) do
+        sleep 20.milliseconds # Simulate slow connection
         true
       end
 
@@ -166,7 +166,7 @@ describe H2O::Timeout do
 
       3.times do |i|
         spawn do
-          sleep ((i + 1) * 20).milliseconds
+          sleep ((i + 1) * 2).milliseconds
           fiber_done.send(true)
         end
       end
@@ -182,11 +182,11 @@ describe H2O::Timeout do
     it "properly handles cleanup in timeout scenarios" do
       cleanup_called = false
 
-      result = H2O::Timeout(String).execute_with_handler(100.milliseconds, -> {
+      result = H2O::Timeout(String).execute_with_handler(10.milliseconds, -> {
         cleanup_called = true
         "cleaned up"
       }) do
-        sleep 200.milliseconds
+        sleep 20.milliseconds
         "should not reach"
       end
 

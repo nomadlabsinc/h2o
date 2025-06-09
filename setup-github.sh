@@ -110,7 +110,7 @@ echo "4. Get approval before merging PRs"
 
 echo ""
 echo "Example workflow for future changes:"
-echo "  git checkout develop"
+echo "  git checkout main"
 echo "  git checkout -b feature/new-feature"
 echo "  # Make changes"
 echo "  git add ."
