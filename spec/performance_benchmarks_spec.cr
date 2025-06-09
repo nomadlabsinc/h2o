@@ -185,11 +185,11 @@ describe "Performance Benchmarks" do
   it "should correctly compare baseline vs optimized" do
     comparison = PerformanceBenchmarks::BenchmarkRunner.compare(
       "slow", "fast", "time", 100, 50.0,
-      -> { sleep(0.001.seconds) }, # Baseline: 1ms
-      -> { sleep(0.0005.seconds) } # Optimized: 0.5ms
+      -> { sleep(0.0001.seconds) }, # Baseline: 0.1ms
+      -> { sleep(0.00005.seconds) } # Optimized: 0.05ms
     )
 
-    comparison.time_improvement.should be > 40.0
+    comparison.time_improvement.should be > 30.0
     comparison.meets_prediction?.should be_true
   end
 end

@@ -287,12 +287,12 @@ module PerformanceReportGenerator
     old_connection_pattern = -> {
       # Simulate creating new connection each time
       client = H2O::Client.new
-      sleep(0.001) # Simulate connection overhead
+      sleep(0.00001.seconds) # Simulate connection overhead
     }
 
     new_connection_pattern = -> {
       # Simulate pooled connection reuse (faster)
-      sleep(0.0005) # Simulate reduced overhead with pooling
+      sleep(0.000005.seconds) # Simulate reduced overhead with pooling
     }
 
     iterations = 100
