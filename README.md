@@ -22,7 +22,7 @@ Add this to your application's `shard.yml`:
 dependencies:
   h2o:
     github: nomadlabsinc/h2o
-    version: ~> 0.1.0
+    branch: main
 ```
 
 Then run:
@@ -393,10 +393,10 @@ Use the official Crystal image for development:
 
 ```bash
 # Pull the official Crystal image
-docker pull crystallang/crystal:1.16.0
+docker pull crystallang/crystal:latest
 
 # Run development container
-docker run -it --rm -v $(pwd):/workspace crystallang/crystal:1.16.0 bash
+docker run -it --rm -v $(pwd):/workspace crystallang/crystal:latest bash
 
 # Inside container
 cd /workspace
