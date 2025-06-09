@@ -72,6 +72,26 @@ module H2O
       (@flags & FLAG_PADDED) != 0
     end
 
+    def reset_for_reuse : Nil
+      @data = Bytes.empty
+      @flags = 0_u8
+      @length = 0_u32
+      @padding_length = 0_u8
+      @stream_id = 0_u32
+    end
+
+    def set_data(data : Bytes) : Nil
+      @data = data
+      recalculate_length
+    end
+
+    private def recalculate_length : Nil
+      total_length = @data.size.to_u32
+      total_length += 1 if (@flags & FLAG_PADDED) != 0
+      total_length += @padding_length
+      @length = total_length
+    end
+
     private def validate_stream_id_non_zero : Nil
       raise FrameError.new("DATA frame must have non-zero stream ID") if @stream_id == 0
     end

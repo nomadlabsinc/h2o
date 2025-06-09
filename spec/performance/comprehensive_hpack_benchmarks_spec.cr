@@ -267,7 +267,7 @@ describe "Comprehensive HPACK Performance Benchmarks" do
       final_memory = GC.stats.heap_size
 
       total_time = end_time - start_time
-      memory_allocated = final_memory - initial_memory
+      memory_allocated = final_memory > initial_memory ? final_memory - initial_memory : 0_i64
 
       puts "\n#{name}:"
       puts "  Total time: #{total_time.total_milliseconds.round(1)}ms"
