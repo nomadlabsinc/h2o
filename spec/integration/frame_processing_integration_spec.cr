@@ -31,8 +31,10 @@ describe "Frame Processing Pipeline Integration" do
     response1 = client.get("http://localhost:#{port}/batch-test")
     response1.should_not be_nil
     response1.try(&.status).should eq(200)
-    response1.try(&.body).should contain("Response 0")
-    response1.try(&.body).should contain("Response 9")
+    if body = response1.try(&.body)
+      body.should contain("Response 0")
+      body.should contain("Response 9")
+    end
 
     # Verify large data handling
     response2 = client.get("http://localhost:#{port}/large-data")

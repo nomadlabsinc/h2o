@@ -26,7 +26,9 @@ describe "TLS Optimization Integration" do
     requests.times do |i|
       response = client.get("http://localhost:#{port}/test#{i}")
       response.should_not be_nil
-      response.try(&.body).should contain("Response for /test#{i}")
+      if body = response.try(&.body)
+        body.should contain("Response for /test#{i}")
+      end
     end
 
     total_time = Time.monotonic - start_time
