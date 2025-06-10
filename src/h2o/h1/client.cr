@@ -17,8 +17,8 @@ module H2O
         @closed = false
       end
 
-      def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response?
-        raise ConnectionError.new("Connection is closed") if @closed
+      def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response
+        return Response.error(0, "Connection is closed", "HTTP/1.1") if @closed
 
         http_headers = HTTP::Headers.new
         headers.each do |name, value|
@@ -41,7 +41,7 @@ module H2O
           )
         rescue ex : Exception
           Log.error { "HTTP/1.1 request failed: #{ex.message}" }
-          nil
+          Response.error(0, ex.message.to_s, "HTTP/1.1")
         end
       end
 

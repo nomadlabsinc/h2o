@@ -25,8 +25,9 @@ module H2O
       property header_fragments : Hash(StreamId, HeaderFragmentState)
       property batch_processor : FrameBatchProcessor
       property enable_batch_processing : Bool
+      property request_timeout : Time::Span
 
-      def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds)
+      def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds)
         verify_mode : OpenSSL::SSL::VerifyMode = determine_verify_mode(hostname)
         @socket = TlsSocket.new(hostname, port, verify_mode: verify_mode, connect_timeout: connect_timeout)
         validate_http2_negotiation
@@ -41,14 +42,15 @@ module H2O
         @closed = false
         @closing = false
 
-        @outgoing_frames = OutgoingFrameChannel.new(100)
-        @incoming_frames = IncomingFrameChannel.new(100)
+        @outgoing_frames = OutgoingFrameChannel.new(1000)
+        @incoming_frames = IncomingFrameChannel.new(1000)
 
         @continuation_limits = ContinuationLimits.new
         @header_fragments = Hash(StreamId, HeaderFragmentState).new
 
         @batch_processor = FrameBatchProcessor.new
-        @enable_batch_processing = true
+        @enable_batch_processing = false # Disable batch processing for debugging
+        @request_timeout = request_timeout
 
         @reader_fiber = nil
         @writer_fiber = nil
@@ -58,15 +60,36 @@ module H2O
         setup_connection
       end
 
-      def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response?
-        raise ConnectionError.new("Connection is closed") if @closed
+      def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response
+        return Response.error(0, "Connection is closed", "HTTP/2") if @closed
 
         ensure_fibers_started
 
-        stream : Stream = @stream_pool.create_stream
-        send_request_headers(stream, method, path, headers, body)
-        send_request_body(stream, body) if body
-        stream.await_response
+        stream : Stream? = nil
+        begin
+          stream = @stream_pool.create_stream
+          send_request_headers(stream, method, path, headers, body)
+          send_request_body(stream, body) if body
+
+          # Wait for response with proper error handling
+          response : Response = stream.await_response(@request_timeout)
+          response
+        rescue ex : TimeoutError | ConnectionError
+          Log.error { "H2 request failed: #{ex.message}" }
+
+          # Clean up the stream if request failed
+          @stream_pool.remove_stream(stream.id) if stream
+
+          # Return error response instead of nil
+          Response.error(0, ex.message.to_s, "HTTP/2")
+        rescue ex : Exception
+          Log.error { "H2 request unexpected error: #{ex.message}" }
+
+          # Clean up the stream if request failed
+          @stream_pool.remove_stream(stream.id) if stream
+
+          Response.error(0, ex.message.to_s, "HTTP/2")
+        end
       end
 
       def ping(data : Bytes = Bytes.new(8)) : Bool
@@ -184,8 +207,8 @@ module H2O
       private def ensure_fibers_started : Nil
         return if @fibers_started
 
-        @fibers_started = true
         start_fibers
+        @fibers_started = true
       end
 
       private def fiber_still_running? : Bool
@@ -200,6 +223,9 @@ module H2O
       end
 
       private def setup_connection : Nil
+        # Start fibers BEFORE sending preface so we can process server responses
+        ensure_fibers_started
+
         Preface.send_preface(@socket.to_io)
 
         initial_settings = Preface.create_initial_settings
@@ -450,7 +476,13 @@ module H2O
         request_headers[":method"] = method
         request_headers[":path"] = path
         request_headers[":scheme"] = "https"
-        request_headers[":authority"] = headers.delete("host") || ""
+
+        # Extract host for :authority header
+        authority = headers.delete("host")
+        if authority.nil? || authority.empty?
+          raise ConnectionError.new("Missing host header for :authority")
+        end
+        request_headers[":authority"] = authority
 
         headers.each do |name, value|
           # Pre-size hash if not already done to avoid resizing during iteration

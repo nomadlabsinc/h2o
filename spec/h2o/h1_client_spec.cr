@@ -40,7 +40,7 @@ describe H2O::H1::Client do
   end
 
   describe "#request" do
-    it "should raise error when connection is closed" do
+    it "should return error response when connection is closed" do
       connection = H2O::H1::Client.new("example.com", 443, connect_timeout: 100.milliseconds)
       connection.close
 
@@ -49,9 +49,12 @@ describe H2O::H1::Client do
         "user-agent" => "h2o-test",
       }
 
-      expect_raises(H2O::ConnectionError, "Connection is closed") do
-        connection.request("GET", "/", headers)
-      end
+      response = connection.request("GET", "/", headers)
+      response.should be_a(H2O::Response)
+      response.error?.should be_true
+      response.status.should eq(0)
+      response.error.try(&.includes?("Connection is closed")).should be_true
+      response.protocol.should eq("HTTP/1.1")
     end
   end
 end

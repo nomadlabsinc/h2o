@@ -87,42 +87,53 @@ module H2O
       @warmup_hosts = HostSet.new
     end
 
-    def get(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+    def get(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
       request("GET", url, headers, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def post(url : String, body : String? = nil, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+    def post(url : String, body : String? = nil, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
       request("POST", url, headers, body, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def put(url : String, body : String? = nil, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+    def put(url : String, body : String? = nil, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
       request("PUT", url, headers, body, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def delete(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+    def delete(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
       request("DELETE", url, headers, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def head(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+    def head(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
       request("HEAD", url, headers, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def options(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+    def options(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
       request("OPTIONS", url, headers, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def patch(url : String, body : String? = nil, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+    def patch(url : String, body : String? = nil, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
       request("PATCH", url, headers, body, bypass_circuit_breaker: bypass_circuit_breaker, circuit_breaker: circuit_breaker)
     end
 
-    def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response?
+    def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
       # Determine if circuit breaker should be used
       use_circuit_breaker = should_use_circuit_breaker?(bypass_circuit_breaker, circuit_breaker)
 
-      if use_circuit_breaker
-        execute_with_circuit_breaker(method, url, headers, body)
-      else
-        execute_without_circuit_breaker(method, url, headers, body)
+      begin
+        if use_circuit_breaker
+          execute_with_circuit_breaker(method, url, headers, body)
+        else
+          execute_without_circuit_breaker(method, url, headers, body)
+        end
+      rescue ex : ArgumentError
+        # Let argument errors propagate - these are programmer errors, not runtime errors
+        raise ex
+      rescue ex : TimeoutError | ConnectionError
+        Log.error { "Request failed for #{method} #{url}: #{ex.message}" }
+        Response.error(0, ex.message.to_s, "HTTP/2")
+      rescue ex : Exception
+        Log.error { "Unexpected error for #{method} #{url}: #{ex.message}" }
+        Response.error(0, ex.message.to_s, "HTTP/2")
       end
     end
 
@@ -282,29 +293,36 @@ module H2O
       query ? "#{path}?#{query}" : path
     end
 
-    private def execute_request(connection : BaseConnection, method : String, path : String, headers : Headers, body : String?) : Response?
+    private def execute_request(connection : BaseConnection, method : String, path : String, headers : Headers, body : String?) : Response
       start_time = Time.monotonic
 
       begin
-        result = Timeout(Response?).execute(@timeout) do
+        result = Timeout(Response).execute_with_handler(@timeout, -> { Response.error(0, "Request timed out", "HTTP/2") }) do
           connection.request(method, path, headers, body)
         end
 
-        # Track performance metrics
+        # Track performance metrics for successful requests
         end_time = Time.monotonic
         response_time = end_time - start_time
-        success = result.nil? ? false : true
-        update_connection_metrics(connection, response_time, success)
+        update_connection_metrics(connection, response_time, true)
 
         result
-      rescue ex : Exception
+      rescue ex : TimeoutError | ConnectionError
         # Track failed request
         end_time = Time.monotonic
         response_time = end_time - start_time
         update_connection_metrics(connection, response_time, false)
 
         Log.error { "Request failed: #{ex.message}" }
-        nil
+        raise ex
+      rescue ex : Exception
+        # Track failed request for unexpected errors
+        end_time = Time.monotonic
+        response_time = end_time - start_time
+        update_connection_metrics(connection, response_time, false)
+
+        Log.error { "Unexpected error: #{ex.message}" }
+        raise ConnectionError.new("Request failed: #{ex.message}")
       end
     end
 
@@ -319,29 +337,28 @@ module H2O
       end
     end
 
-    private def execute_with_circuit_breaker(method : String, url : String, headers : Headers, body : String?) : CircuitBreakerResult
+    private def execute_with_circuit_breaker(method : String, url : String, headers : Headers, body : String?) : Response
       breaker : Breaker? = get_circuit_breaker_for_request(url)
-      return nil unless breaker
+      raise ConnectionError.new("No circuit breaker available") unless breaker
 
       if adapter = @circuit_breaker_adapter
-        return nil unless adapter.should_allow_request?
-        return nil unless adapter.before_request(url, headers)
+        raise ConnectionError.new("Circuit breaker adapter rejected request") unless adapter.should_allow_request?
+        raise ConnectionError.new("Circuit breaker adapter before_request failed") unless adapter.before_request(url, headers)
       end
 
-      breaker.execute(url, headers) do
+      result = breaker.execute(url, headers) do
         execute_without_circuit_breaker(method, url, headers, body)
       end
+
+      result
     end
 
-    private def execute_without_circuit_breaker(method : String, url : String, headers : Headers, body : String?) : CircuitBreakerResult
+    private def execute_without_circuit_breaker(method : String, url : String, headers : Headers, body : String?) : Response
       uri, host = parse_url_with_host(url)
       connection : BaseConnection = get_connection(host, uri.port || 443)
       request_path : String = build_request_path(uri)
       request_headers : Headers = prepare_headers(headers, uri)
       execute_request(connection, method, request_path, request_headers, body)
-    rescue ex : Exception
-      Log.error { "Request failed without circuit breaker: #{ex.message}" }
-      nil
     end
 
     private def get_circuit_breaker_for_request(url : String) : Breaker?
@@ -463,12 +480,25 @@ module H2O
     end
 
     private def try_http2_connection(host : String, port : Int32) : BaseConnection?
-      connection : H2::Client = H2::Client.new(host, port, connect_timeout: @timeout)
+      connection : H2::Client = H2::Client.new(host, port, connect_timeout: @timeout, request_timeout: @timeout)
       Log.debug { "Using HTTP/2 for #{host}:#{port}" }
       connection
-    rescue ConnectionError
-      Log.debug { "HTTP/2 not available for #{host}:#{port}, falling back to HTTP/1.1" }
-      nil
+    rescue ex : ConnectionError
+      # Only fallback to HTTP/1.1 if the issue is specifically ALPN negotiation
+      if message = ex.message
+        if message.includes?("HTTP/2 not negotiated via ALPN")
+          Log.debug { "HTTP/2 not supported by #{host}:#{port} (ALPN), falling back to HTTP/1.1" }
+          nil
+        else
+          # Re-raise other connection errors (network issues, TLS problems, etc.)
+          Log.error { "HTTP/2 connection failed for #{host}:#{port}: #{message}" }
+          raise ex
+        end
+      else
+        # No message available, assume it's a connection issue and re-raise
+        Log.error { "HTTP/2 connection failed for #{host}:#{port}: unknown error" }
+        raise ex
+      end
     end
 
     private def try_http1_connection(host : String, port : Int32) : BaseConnection?
@@ -505,7 +535,9 @@ module H2O
     end
 
     private def add_accept_header(headers : Headers) : Nil
-      return if headers.has_key?("accept")
+      # Check for accept header (case insensitive)
+      has_accept = headers.any? { |name, _| name.downcase == "accept" }
+      return if has_accept
       headers["accept"] = "*/*"
     end
   end

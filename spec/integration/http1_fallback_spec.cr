@@ -120,9 +120,10 @@ describe "HTTP/1.1 Fallback Integration" do
     client = H2O::Client.new(timeout: 1.seconds)
 
     begin
-      # Test with invalid host - should either return nil or raise ConnectionError
+      # Test with invalid host - should return error response with status 0
       response = client.get("https://invalid-host-that-does-not-exist.example")
-      response.should be_nil
+      response.status.should eq(0)
+      response.error?.should be_true
     rescue H2O::ConnectionError
       # Connection errors are also acceptable for invalid hosts
     ensure

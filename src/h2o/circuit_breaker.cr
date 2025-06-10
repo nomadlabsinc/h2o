@@ -232,7 +232,9 @@ module H2O
 
     # Execute a request with circuit breaker protection
     def execute(url : RequestUrl, headers : Headers, &block : RequestBlock) : CircuitBreakerResult
-      return nil unless should_allow_request?
+      unless should_allow_request?
+        return Response.error(503, "Circuit breaker open - request blocked", "HTTP/2")
+      end
 
       start_time = Time.monotonic
       begin
@@ -248,7 +250,7 @@ module H2O
         duration = Time.monotonic - start_time
         record_failure(ex, duration)
         handle_failure(ex)
-        nil
+        Response.error(500, "Circuit breaker caught exception: #{ex.message}", "HTTP/2")
       end
     end
 
