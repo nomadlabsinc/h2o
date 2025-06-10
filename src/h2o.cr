@@ -14,6 +14,7 @@ require "./h2o/circuit_breaker"
 require "./h2o/tls_cache"
 require "./h2o/cert_validator"
 require "./h2o/io_optimizer"
+require "./h2o/simd_optimizer"
 require "./h2o/protocol_optimizer"
 require "./h2o/tls"
 require "./h2o/preface"
@@ -28,16 +29,18 @@ require "./h2o/frames/rst_stream_frame"
 require "./h2o/frames/priority_frame"
 require "./h2o/frames/continuation_frame"
 require "./h2o/frames/push_promise_frame"
+require "./h2o/frames/frame_batch_processor"
 require "./h2o/hpack/static_table"
 require "./h2o/hpack/dynamic_table"
 require "./h2o/hpack/huffman"
 require "./h2o/hpack/encoder"
 require "./h2o/hpack/decoder"
+require "./h2o/hpack/presets"
 require "./h2o/stream"
 require "./h2o/http1_connection"
 require "./h2o/h1/client"
 require "./h2o/h2/client"
-require "./h2o/h2/optimized_client"
+# require "./h2o/h2/optimized_client"  # Temporarily disabled due to compilation issues
 require "./h2o/client"
 
 module H2O
@@ -69,7 +72,7 @@ module H2O
     property default_circuit_breaker : Breaker?
     property default_failure_threshold : Int32 = 5
     property default_recovery_timeout : Time::Span = 60.seconds
-    property default_timeout : Time::Span = 30.seconds
+    property default_timeout : Time::Span = 5.seconds
 
     def initialize
     end
