@@ -1,11 +1,18 @@
 require "openssl"
+require "./tls_cache"
 
 module H2O
   class TlsSocket
     @socket : OpenSSL::SSL::Socket::Client?
     @closed : Bool
+    @hostname : String
+    @port : Int32
+    @cache_key : String
 
     def initialize(hostname : String, port : Int32, verify_mode : OpenSSL::SSL::VerifyMode = OpenSSL::SSL::VerifyMode::PEER, connect_timeout : Time::Span = 5.seconds)
+      @hostname = hostname
+      @port = port
+      @cache_key = "#{hostname}:#{port}"
       # Use timeout for initial TCP connection
       tcp_socket = begin
         channel = Channel(TCPSocket?).new(1)
@@ -31,8 +38,18 @@ module H2O
       context.verify_mode = verify_mode
       context.alpn_protocol = "h2"
 
-      @socket = OpenSSL::SSL::Socket::Client.new(tcp_socket, context, hostname: hostname)
+      # Check for cached SNI
+      sni_name = H2O.tls_cache.get_sni(hostname) || hostname
+
+      # Enable session caching if supported
+      # Note: Crystal's OpenSSL bindings may have limited session support
+      # This is a placeholder for future enhancement
+
+      @socket = OpenSSL::SSL::Socket::Client.new(tcp_socket, context, hostname: sni_name)
       @closed = false
+
+      # Cache the SNI resolution
+      H2O.tls_cache.set_sni(hostname, sni_name) if sni_name == hostname
     end
 
     def alpn_protocol : String?
