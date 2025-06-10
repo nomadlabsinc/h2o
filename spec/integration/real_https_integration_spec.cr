@@ -540,8 +540,8 @@ def test_invalid_url_reliable : Bool
   client = H2O::Client.new
   response = client.get("http://httpbin.org/get") # HTTP instead of HTTPS
   client.close
-  # Should return nil for invalid scheme (graceful error handling)
-  response.nil?
+  # Should return error response for invalid scheme (graceful error handling)
+  response.error?
 rescue ArgumentError
   # This is also acceptable behavior (strict error handling)
   client.try(&.close)
@@ -560,8 +560,8 @@ def test_timeout_handling_reliable : Bool
       # Use a guaranteed non-routable IP (RFC 5737 test address)
       response = client.get("https://192.0.2.1/")
       client.close
-      # Should return nil due to timeout/connection failure
-      response.nil?
+      # Should return error response due to timeout/connection failure
+      response.error?
     rescue H2O::ConnectionError | H2O::TimeoutError
       # These exceptions are acceptable for timeout tests
       true
@@ -580,8 +580,8 @@ def test_nonexistent_domain_reliable : Bool
       # Use a guaranteed nonexistent domain (RFC 6761)
       response = client.get("https://test.invalid/")
       client.close
-      # Should return nil due to DNS failure
-      response.nil?
+      # Should return error response due to DNS failure
+      response.error?
     rescue H2O::ConnectionError
       # Connection error is expected for nonexistent domains
       true

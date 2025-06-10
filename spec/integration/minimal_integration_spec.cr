@@ -80,10 +80,10 @@ def test_minimal_requests_after_close(channel)
       client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
       client.close
 
-      # Should not segfault (may return nil or valid response)
+      # Should not segfault (may return error response or valid response)
       response = client.get("https://www.google.com/")
-      # Either nil or exception is acceptable - key is no segfault
-      true
+      # Either error response or valid response is acceptable - key is no segfault
+      !response.nil?
     rescue
       # Exception after close is acceptable - test passes if no segfault
       true
@@ -103,7 +103,7 @@ def test_minimal_http_request(channel)
     begin
       client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
       response = client.get("https://httpbin.org/get")
-      result = !!(response && response.status == 200 && response.body.includes?("httpbin.org"))
+      result = response.status == 200 && response.body.includes?("httpbin.org")
       client.close
       result
     rescue
@@ -119,8 +119,8 @@ def test_minimal_invalid_hostname(channel)
       client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
       response = client.get("https://invalid-hostname-test.invalid")
       client.close
-      # Should return nil
-      response.nil?
+      # Should return error response with status 0
+      response.status == 0 && response.error?
     rescue H2O::ConnectionError
       # Connection error is expected
       true

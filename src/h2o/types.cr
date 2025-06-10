@@ -20,10 +20,10 @@ module H2O
     buffer: IO::Memory)
 
   # Circuit breaker related aliases for performance and readability
-  alias CircuitBreakerResult = Response?
+  alias CircuitBreakerResult = Response
   alias ConnectionResult = BaseConnection?
   alias ProtocolResult = ProtocolVersion?
-  alias RequestBlock = Proc(Response?)
+  alias RequestBlock = Proc(Response)
   alias RequestUrl = String
   alias UrlParseResult = {URI, String}
 
@@ -130,8 +130,30 @@ module H2O
     property headers : Headers
     property body : String
     property protocol : String
+    property error : String?
 
-    def initialize(@status : Int32, @headers : Headers = Headers.new, @body : String = "", @protocol : String = "HTTP/2")
+    def initialize(@status : Int32, @headers : Headers = Headers.new, @body : String = "", @protocol : String = "HTTP/2", @error : String? = nil)
+    end
+
+    # Create an error response for failed requests
+    def self.error(status : Int32, message : String, protocol : String = "HTTP/2") : Response
+      Response.new(
+        status: status,
+        headers: Headers.new,
+        body: "",
+        protocol: protocol,
+        error: message
+      )
+    end
+
+    # Check if this response represents an error
+    def error? : Bool
+      !@error.nil?
+    end
+
+    # Check if this response represents a successful request
+    def success? : Bool
+      @error.nil? && @status >= 200 && @status < 400
     end
   end
 

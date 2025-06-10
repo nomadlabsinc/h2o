@@ -61,9 +61,10 @@ describe "Circuit Breaker Integration" do
 
       client = H2O::Client.new(timeout: 1.seconds)
 
-      # This will fail since we don't have a real server
+      # This will fail since we don't have a real server - should return error response
       response = client.get("https://nonexistent.example.com/test")
-      response.should be_nil
+      response.status.should eq(500) # Circuit breaker error
+      response.error?.should be_true
     end
 
     it "respects bypass_circuit_breaker flag" do
@@ -73,9 +74,10 @@ describe "Circuit Breaker Integration" do
 
       client = H2O::Client.new(timeout: 1.seconds)
 
-      # Should bypass circuit breaker
+      # Should bypass circuit breaker - returns connection error response
       response = client.get("https://nonexistent.example.com/test", bypass_circuit_breaker: true)
-      response.should be_nil
+      response.status.should eq(0) # Connection error
+      response.error?.should be_true
     end
 
     it "respects circuit_breaker parameter override" do
@@ -87,7 +89,8 @@ describe "Circuit Breaker Integration" do
 
       # Should enable circuit breaker for this request
       response = client.get("https://nonexistent.example.com/test", circuit_breaker: true)
-      response.should be_nil
+      response.status.should eq(500) # Circuit breaker error
+      response.error?.should be_true
     end
   end
 
@@ -107,7 +110,8 @@ describe "Circuit Breaker Integration" do
       response = client.get("https://nonexistent.example.com/test")
 
       adapter.before_request_called.should be_true
-      response.should be_nil
+      response.status.should eq(500) # Circuit breaker error
+      response.error?.should be_true
     end
 
     it "blocks requests when adapter disallows them" do
@@ -124,7 +128,8 @@ describe "Circuit Breaker Integration" do
       )
 
       response = client.get("https://httpbin.org/get")
-      response.should be_nil
+      response.status.should eq(0) # Adapter rejection causes connection error
+      response.error?.should be_true
     end
   end
 
@@ -136,7 +141,7 @@ describe "Circuit Breaker Integration" do
       end
 
       client = H2O::Client.new(timeout: 1.seconds)
-      channel = Channel(H2O::Response?).new
+      channel = Channel(H2O::Response).new
 
       # This demonstrates the fix for the original issue where
       # h2o operations failed in spawned fibers
@@ -146,7 +151,8 @@ describe "Circuit Breaker Integration" do
       end
 
       result = channel.receive
-      result.should be_nil
+      result.status.should eq(500) # Circuit breaker error
+      result.error?.should be_true
     end
 
     it "handles timeout correctly in fibers" do
@@ -177,7 +183,8 @@ describe "Circuit Breaker Integration" do
         raise Exception.new("Test error")
       end
 
-      result.should be_nil
+      result.status.should eq(500) # Circuit breaker caught exception
+      result.error?.should be_true
       breaker.statistics.failure_count.should eq(1)
     end
   end
@@ -281,7 +288,7 @@ describe "Circuit Breaker Integration" do
       end
 
       client = H2O::Client.new(timeout: 1.seconds)
-      channel = Channel(H2O::Response?).new
+      channel = Channel(H2O::Response).new
       request_count = 5
 
       # Spawn multiple concurrent requests
@@ -293,13 +300,13 @@ describe "Circuit Breaker Integration" do
       end
 
       # Collect all responses
-      responses = [] of H2O::Response?
+      responses = [] of H2O::Response
       request_count.times do
         responses << channel.receive
       end
 
-      # All should be nil due to connection failures
-      responses.all?(Nil).should be_true
+      # All should be error responses due to connection failures
+      responses.all? { |response| response.status == 500 && response.error? }.should be_true
     end
 
     it "demonstrates circuit breaker state transitions" do

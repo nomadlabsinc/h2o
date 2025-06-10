@@ -63,7 +63,10 @@ describe H2O::Breaker do
         raise Exception.new("Test error")
       end
 
-      result.should be_nil
+      result.should be_a(H2O::Response)
+      result.error?.should be_true
+      result.status.should eq(500)
+      result.error.try(&.includes?("Test error")).should be_true
       breaker.statistics.failure_count.should eq(1)
       breaker.statistics.consecutive_failures.should eq(1)
     end
@@ -84,7 +87,7 @@ describe H2O::Breaker do
       breaker.state.should eq(H2O::CircuitBreaker::State::Open)
     end
 
-    it "returns nil when circuit is open" do
+    it "returns error response when circuit is open" do
       breaker = H2O::Breaker.new("test")
       breaker.force_open
 
@@ -92,7 +95,10 @@ describe H2O::Breaker do
         H2O::Response.new(200)
       end
 
-      result.should be_nil
+      result.should be_a(H2O::Response)
+      result.error?.should be_true
+      result.status.should eq(503)
+      result.error.try(&.includes?("Circuit breaker open")).should be_true
     end
   end
 
