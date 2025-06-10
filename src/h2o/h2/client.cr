@@ -1,5 +1,6 @@
 require "../tls"
 require "../preface"
+require "../frames/frame_batch_processor"
 
 module H2O
   module H2
@@ -22,6 +23,8 @@ module H2O
       property incoming_frames : IncomingFrameChannel
       property continuation_limits : ContinuationLimits
       property header_fragments : Hash(StreamId, HeaderFragmentState)
+      property batch_processor : FrameBatchProcessor
+      property enable_batch_processing : Bool
 
       def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds)
         verify_mode : OpenSSL::SSL::VerifyMode = determine_verify_mode(hostname)
@@ -43,6 +46,9 @@ module H2O
 
         @continuation_limits = ContinuationLimits.new
         @header_fragments = Hash(StreamId, HeaderFragmentState).new
+
+        @batch_processor = FrameBatchProcessor.new
+        @enable_batch_processing = true
 
         @reader_fiber = nil
         @writer_fiber = nil
@@ -82,6 +88,10 @@ module H2O
 
       def closed? : Bool
         @closed
+      end
+
+      def set_batch_processing(enabled : Bool) : Nil
+        @enable_batch_processing = enabled
       end
 
       def close : Nil
@@ -212,11 +222,24 @@ module H2O
               @socket.to_io.read_timeout = 100.milliseconds
             end
 
-            frame = Frame.from_io(@socket.to_io)
+            if @enable_batch_processing
+              # Batch processing mode
+              frames = @batch_processor.read_batch(@socket.to_io)
 
-            # Check if we should still send the frame
-            unless @closed
-              @incoming_frames.send(frame)
+              # Send all frames unless closed
+              unless @closed
+                frames.each do |frame|
+                  @incoming_frames.send(frame) unless @closed
+                end
+              end
+            else
+              # Single frame processing mode (fallback)
+              frame = Frame.from_io(@socket.to_io)
+
+              # Check if we should still send the frame
+              unless @closed
+                @incoming_frames.send(frame)
+              end
             end
           rescue IO::TimeoutError
             # Timeout is expected, just continue loop to check @closed
@@ -236,14 +259,42 @@ module H2O
       end
 
       private def writer_loop : Nil
+        write_buffer = IO::Memory.new(65536) # 64KB write buffer
+
         loop do
           break if @closed
 
           begin
+            frames_to_write = Array(Frame).new
+
+            # Try to collect multiple frames for batched writing
             select
             when frame = @outgoing_frames.receive
+              frames_to_write << frame
+
+              # Try to receive more frames without blocking
+              while frames_to_write.size < 10
+                select
+                when next_frame = @outgoing_frames.receive
+                  frames_to_write << next_frame
+                else
+                  break
+                end
+              end
+
               begin
-                @socket.to_io.write(frame.to_bytes)
+                if frames_to_write.size == 1
+                  # Single frame - write directly
+                  @socket.to_io.write(frames_to_write.first.to_bytes)
+                else
+                  # Multiple frames - batch write
+                  write_buffer.clear
+                  frames_to_write.each do |queued_frame|
+                    write_buffer.write(queued_frame.to_bytes)
+                  end
+
+                  @socket.to_io.write(write_buffer.to_slice)
+                end
                 @socket.to_io.flush
               rescue ex : IO::Error
                 Log.error { "Writer error: #{ex.message}" }

@@ -133,6 +133,14 @@ module H2O
       @warmup_hosts.clear
     end
 
+    def set_batch_processing(enabled : Bool) : Nil
+      @connections.each_value do |connection|
+        if connection.is_a?(H2::Client)
+          connection.set_batch_processing(enabled)
+        end
+      end
+    end
+
     # Pre-warm connection to frequently used hosts
     def warmup_connection(host : String, port : Int32 = 443) : Nil
       return if @warmup_hosts.includes?(host)
