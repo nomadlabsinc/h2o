@@ -51,5 +51,16 @@ for file in $STAGED_FILES; do
     fi
 done
 
-echo "✅ Formatting complete"
+# 4. Run Ameba linting on Crystal files
+if [ -n "$CRYSTAL_FILES" ]; then
+    echo "🔍 Running Ameba linting..."
+    if ! crystal run lib/ameba/bin/ameba.cr; then
+        echo "❌ Ameba linting failed!"
+        echo "Please fix the linting issues before committing."
+        exit 1
+    fi
+    echo "✅ Ameba linting passed"
+fi
+
+echo "✅ All pre-commit checks complete"
 
