@@ -22,7 +22,7 @@ describe "Frame Processing Pipeline Integration" do
     port = address.port
     spawn { server.listen }
 
-    sleep 0.1
+    sleep(0.1.seconds)
 
     # Test with batch processing enabled
     client = H2O::Client.new
@@ -57,7 +57,7 @@ describe "Frame Processing Pipeline Integration" do
     port = address.port
     spawn { server.listen }
 
-    sleep 0.1
+    sleep(0.1.seconds)
 
     requests_per_test = 100
 
