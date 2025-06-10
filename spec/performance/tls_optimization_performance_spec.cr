@@ -11,7 +11,7 @@ describe "TLS/Certificate Optimization Performance" do
     port = address.port
     spawn { server.listen }
 
-    sleep 0.1
+    sleep(0.1.seconds)
 
     connections_count = 10
 
