@@ -38,6 +38,7 @@ require "./h2o/hpack/decoder"
 require "./h2o/hpack/presets"
 require "./h2o/stream"
 require "./h2o/http1_connection"
+require "./jwt"
 require "./h2o/h1/client"
 require "./h2o/h2/client"
 # require "./h2o/h2/optimized_client"  # Temporarily disabled due to compilation issues

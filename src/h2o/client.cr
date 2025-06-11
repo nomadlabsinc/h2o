@@ -1,3 +1,5 @@
+require "../jwt/client_integration"
+
 module H2O
   # Type aliases for cleaner code
   alias ConnectionMetadataHash = Hash(String, ConnectionMetadata)
@@ -65,12 +67,15 @@ module H2O
   end
 
   class Client
+    include JWT::AuthenticatedClient
+
     property circuit_breaker_adapter : CircuitBreakerAdapter?
     property circuit_breaker_enabled : Bool
     property connection_pool_size : Int32
     property connections : ConnectionsHash
     property default_circuit_breaker : Breaker?
     property timeout : Time::Span
+    property default_headers : HTTP::Headers?
 
     # Enhanced connection management
     @connection_metadata : ConnectionMetadataHash
@@ -116,14 +121,17 @@ module H2O
     end
 
     def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
+      # Merge default headers (including JWT auth) with request headers
+      merged_headers = merge_headers(headers)
+
       # Determine if circuit breaker should be used
       use_circuit_breaker = should_use_circuit_breaker?(bypass_circuit_breaker, circuit_breaker)
 
       begin
         if use_circuit_breaker
-          execute_with_circuit_breaker(method, url, headers, body)
+          execute_with_circuit_breaker(method, url, merged_headers, body)
         else
-          execute_without_circuit_breaker(method, url, headers, body)
+          execute_without_circuit_breaker(method, url, merged_headers, body)
         end
       rescue ex : ArgumentError
         # Let argument errors propagate - these are programmer errors, not runtime errors
@@ -142,6 +150,17 @@ module H2O
       @connections.clear
       @connection_metadata.clear
       @warmup_hosts.clear
+    end
+
+    private def merge_headers(request_headers : Headers) : Headers
+      if default_headers = @default_headers
+        merged = Headers.new
+        default_headers.each { |key, values| merged[key] = values }
+        request_headers.each { |key, values| merged[key] = values }
+        merged
+      else
+        request_headers
+      end
     end
 
     def set_batch_processing(enabled : Bool) : Nil
