@@ -53,6 +53,7 @@ Adhere to these principles to ensure a high-quality, performant, and maintainabl
 
 8.  **Docker Practices:**
     *   Don't use version fields in docker-compose -- that's outdated.
+    *   When running tests, run them inside Docker to allow dependencies like HTTP and HTTP2 servers to run correctly.
 
 ## 🚨 CRITICAL: Code Quality and Formatting Standards
 

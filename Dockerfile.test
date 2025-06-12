@@ -1,0 +1,22 @@
+FROM robnomad/crystal:dev-hoard
+
+# Install additional dependencies for testing
+RUN apk update && apk add --no-cache \
+    bash \
+    curl \
+    git \
+    nginx \
+    ca-certificates \
+    openssl
+
+# Set up workspace
+WORKDIR /workspace
+
+# Copy project files
+COPY . .
+
+# Install Crystal dependencies
+RUN shards install
+
+# Default command
+CMD ["crystal", "spec"]

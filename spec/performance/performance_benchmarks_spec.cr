@@ -113,7 +113,11 @@ module PerformanceBenchmarks
 
       # Measure memory after
       memory_after = GC.stats.heap_size
-      memory_allocated = Math.max(0_i64, (memory_after - memory_before).to_i64)
+      memory_allocated = if memory_after >= memory_before
+                           (memory_after - memory_before).to_i64
+                         else
+                           0_i64
+                         end
 
       total_time = end_time - start_time
 
