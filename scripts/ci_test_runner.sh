@@ -139,9 +139,9 @@ main() {
             )
 
             if command -v parallel &> /dev/null; then
-                log_info "Using GNU parallel to distribute unit tests across 2 cores"
+                log_info "Using GNU parallel to distribute unit tests across 4 cores"
                 # Create unique temp directories for each parallel job to avoid Crystal compilation conflicts
-                printf '%s\n' "${unit_tests[@]}" | parallel -j2 --halt now,fail=1 \
+                printf '%s\n' "${unit_tests[@]}" | parallel -j4 --halt now,fail=1 \
                     'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
             else
                 log_info "GNU parallel not available, running sequentially"
@@ -215,32 +215,20 @@ main() {
             # Start embedded test servers
             start_test_servers
 
-            # First half of integration test files (17 tests)
+            # Fast integration tests (5-6 tests optimized for speed)
             integration_group1_tests=(
-                "spec/integration/channel_fix_test_spec.cr"
-                "spec/integration/circuit_breaker_integration_spec.cr"
-                "spec/integration/comprehensive_http2_validation_spec.cr"
-                "spec/integration/connection_pooling_integration_spec.cr"
+                "spec/integration/minimal_integration_spec.cr"
+                "spec/integration/ultra_fast_integration_spec.cr"
                 "spec/integration/fast_test_helpers_spec.cr"
                 "spec/integration/focused_integration_spec.cr"
-                "spec/integration/focused_parallel_spec.cr"
-                "spec/integration/frame_processing_integration_spec.cr"
-                "spec/integration/h1_client_integration_spec.cr"
-                "spec/integration/h2_client_timeout_integration_spec.cr"
-                "spec/integration/http1_fallback_spec.cr"
-                "spec/integration/http11_local_server_spec.cr"
-                "spec/integration/http2_frame_processing_spec.cr"
-                "spec/integration/http2_integration_spec.cr"
-                # New modular HTTP/2 tests - group 1
                 "spec/integration/http2/basic_requests_spec.cr"
-                "spec/integration/http2/content_types_spec.cr"
                 "spec/integration/http2/status_codes_spec.cr"
             )
 
             if command -v parallel &> /dev/null; then
-                log_info "Using GNU parallel to distribute integration group 1 tests across 2 cores"
+                log_info "Using GNU parallel to distribute integration group 1 tests across 4 cores"
                 # Create unique temp directories for each parallel job to avoid Crystal compilation conflicts
-                printf '%s\n' "${integration_group1_tests[@]}" | parallel -j2 --halt now,fail=1 \
+                printf '%s\n' "${integration_group1_tests[@]}" | parallel -j4 --halt now,fail=1 \
                     'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
             else
                 log_info "GNU parallel not available, running sequentially"
@@ -256,36 +244,138 @@ main() {
             # Start embedded test servers
             start_test_servers
 
-            # Second half of integration test files (16 tests)
+            # Medium-speed integration tests (5-6 tests)
             integration_group2_tests=(
-                "spec/integration/http2_protocol_compliance_spec.cr"
-                "spec/integration/improved_integration_spec.cr"
-                "spec/integration/io_optimization_integration_spec.cr"
-                "spec/integration/lazy_fiber_creation_spec.cr"
-                "spec/integration/massively_parallel_spec.cr"
-                "spec/integration/memory_management_integration_spec.cr"
-                "spec/integration/minimal_integration_spec.cr"
-                "spec/integration/real_https_integration_spec.cr"
-                "spec/integration/regression_prevention_spec.cr"
-                "spec/integration/ssl_verification_integration_spec.cr"
-                "spec/integration/tls_integration_spec.cr"
-                "spec/integration/tls_optimization_integration_spec.cr"
-                "spec/integration/tls_socket_integration_spec.cr"
-                "spec/integration/ultra_fast_integration_spec.cr"
-                # New modular HTTP/2 tests - group 2
-                "spec/integration/http2/performance_spec.cr"
-                "spec/integration/http2/error_handling_spec.cr"
-                "spec/integration/http2/protocol_compliance_spec.cr"
+                "spec/integration/channel_fix_test_spec.cr"
+                "spec/integration/circuit_breaker_integration_spec.cr"
+                "spec/integration/connection_pooling_integration_spec.cr"
+                "spec/integration/http1_fallback_spec.cr"
+                "spec/integration/http11_local_server_spec.cr"
+                "spec/integration/http2/content_types_spec.cr"
             )
 
             if command -v parallel &> /dev/null; then
-                log_info "Using GNU parallel to distribute integration group 2 tests across 2 cores"
+                log_info "Using GNU parallel to distribute integration group 2 tests across 4 cores"
                 # Create unique temp directories for each parallel job to avoid Crystal compilation conflicts
-                printf '%s\n' "${integration_group2_tests[@]}" | parallel -j2 --halt now,fail=1 \
+                printf '%s\n' "${integration_group2_tests[@]}" | parallel -j4 --halt now,fail=1 \
                     'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
             else
                 log_info "GNU parallel not available, running sequentially"
                 for test in "${integration_group2_tests[@]}"; do
+                    run_with_retry "crystal spec $test --verbose --error-trace" "Integration test: $test" || overall_success=false
+                done
+            fi
+            ;;
+
+        integration-group3)
+            log_info "Running integration tests group 3 with GNU parallel distribution"
+
+            # Start embedded test servers
+            start_test_servers
+
+            # TLS and security focused tests (5-6 tests)
+            integration_group3_tests=(
+                "spec/integration/tls_integration_spec.cr"
+                "spec/integration/tls_optimization_integration_spec.cr"
+                "spec/integration/tls_socket_integration_spec.cr"
+                "spec/integration/ssl_verification_integration_spec.cr"
+                "spec/integration/h1_client_integration_spec.cr"
+                "spec/integration/http2/error_handling_spec.cr"
+            )
+
+            if command -v parallel &> /dev/null; then
+                log_info "Using GNU parallel to distribute integration group 3 tests across 4 cores"
+                # Create unique temp directories for each parallel job to avoid Crystal compilation conflicts
+                printf '%s\n' "${integration_group3_tests[@]}" | parallel -j4 --halt now,fail=1 \
+                    'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
+            else
+                log_info "GNU parallel not available, running sequentially"
+                for test in "${integration_group3_tests[@]}"; do
+                    run_with_retry "crystal spec $test --verbose --error-trace" "Integration test: $test" || overall_success=false
+                done
+            fi
+            ;;
+
+        integration-group4)
+            log_info "Running integration tests group 4 with GNU parallel distribution"
+
+            # Start embedded test servers
+            start_test_servers
+
+            # HTTP/2 protocol compliance tests (5 tests)
+            integration_group4_tests=(
+                "spec/integration/http2_integration_spec.cr"
+                "spec/integration/http2_frame_processing_spec.cr"
+                "spec/integration/http2_protocol_compliance_spec.cr"
+                "spec/integration/frame_processing_integration_spec.cr"
+                "spec/integration/http2/protocol_compliance_spec.cr"
+            )
+
+            if command -v parallel &> /dev/null; then
+                log_info "Using GNU parallel to distribute integration group 4 tests across 4 cores"
+                # Create unique temp directories for each parallel job to avoid Crystal compilation conflicts
+                printf '%s\n' "${integration_group4_tests[@]}" | parallel -j4 --halt now,fail=1 \
+                    'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
+            else
+                log_info "GNU parallel not available, running sequentially"
+                for test in "${integration_group4_tests[@]}"; do
+                    run_with_retry "crystal spec $test --verbose --error-trace" "Integration test: $test" || overall_success=false
+                done
+            fi
+            ;;
+
+        integration-group5)
+            log_info "Running integration tests group 5 with GNU parallel distribution"
+
+            # Start embedded test servers
+            start_test_servers
+
+            # Performance and optimization tests (5 tests)
+            integration_group5_tests=(
+                "spec/integration/io_optimization_integration_spec.cr"
+                "spec/integration/lazy_fiber_creation_spec.cr"
+                "spec/integration/improved_integration_spec.cr"
+                "spec/integration/h2_client_timeout_integration_spec.cr"
+                "spec/integration/http2/performance_spec.cr"
+            )
+
+            if command -v parallel &> /dev/null; then
+                log_info "Using GNU parallel to distribute integration group 5 tests across 4 cores"
+                # Create unique temp directories for each parallel job to avoid Crystal compilation conflicts
+                printf '%s\n' "${integration_group5_tests[@]}" | parallel -j4 --halt now,fail=1 \
+                    'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
+            else
+                log_info "GNU parallel not available, running sequentially"
+                for test in "${integration_group5_tests[@]}"; do
+                    run_with_retry "crystal spec $test --verbose --error-trace" "Integration test: $test" || overall_success=false
+                done
+            fi
+            ;;
+
+        integration-group6)
+            log_info "Running integration tests group 6 with GNU parallel distribution"
+
+            # Start embedded test servers
+            start_test_servers
+
+            # Heavy/comprehensive tests (5 tests)
+            integration_group6_tests=(
+                "spec/integration/massively_parallel_spec.cr"
+                "spec/integration/comprehensive_http2_validation_spec.cr"
+                "spec/integration/memory_management_integration_spec.cr"
+                "spec/integration/real_https_integration_spec.cr"
+                "spec/integration/regression_prevention_spec.cr"
+                "spec/integration/focused_parallel_spec.cr"
+            )
+
+            if command -v parallel &> /dev/null; then
+                log_info "Using GNU parallel to distribute integration group 6 tests across 4 cores"
+                # Create unique temp directories for each parallel job to avoid Crystal compilation conflicts
+                printf '%s\n' "${integration_group6_tests[@]}" | parallel -j4 --halt now,fail=1 \
+                    'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
+            else
+                log_info "GNU parallel not available, running sequentially"
+                for test in "${integration_group6_tests[@]}"; do
                     run_with_retry "crystal spec $test --verbose --error-trace" "Integration test: $test" || overall_success=false
                 done
             fi
@@ -379,7 +469,7 @@ main() {
 
         *)
             log_error "Unknown test suite: $1"
-            echo "Usage: $0 [unit|integration|integration-group1|integration-group2|performance|all]"
+            echo "Usage: $0 [unit|integration|integration-group1|integration-group2|integration-group3|integration-group4|integration-group5|integration-group6|performance|all]"
             exit 1
             ;;
     esac
