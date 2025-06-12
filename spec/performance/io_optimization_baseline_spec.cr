@@ -124,12 +124,16 @@ describe "I/O Optimization Baseline Performance" do
     iterations = 10_000
     data = Bytes.new(100) { |i| (i % 256).to_u8 }
 
+    # Use a channel to synchronize reader completion
+    reader_done = Channel(Nil).new
+
     # Spawn reader fiber
     spawn do
       buffer = Bytes.new(100)
       iterations.times do
         reader.read_fully(buffer)
       end
+      reader_done.send(nil)
     end
 
     # Measure write syscalls
@@ -141,6 +145,9 @@ describe "I/O Optimization Baseline Performance" do
     end
 
     syscall_time = Time.monotonic - start_time
+
+    # Wait for reader to complete before closing
+    reader_done.receive
 
     puts "Individual syscalls (100 byte writes):"
     puts "  Iterations: #{iterations}"

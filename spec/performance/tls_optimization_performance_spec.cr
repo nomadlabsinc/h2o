@@ -11,8 +11,6 @@ describe "TLS/Certificate Optimization Performance" do
     port = address.port
     spawn { server.listen }
 
-    sleep(0.1.seconds)
-
     connections_count = 10
 
     puts "\n=== BASELINE TLS Connection Performance ==="
@@ -24,7 +22,7 @@ describe "TLS/Certificate Optimization Performance" do
     connections_count.times do |_i|
       conn_start = Time.monotonic
       client = H2O::Client.new
-      response = client.get("http://localhost:#{port}/")
+      response = client.get("https://127.0.0.1:#{port}/")
       response.should_not be_nil
       conn_time = Time.monotonic - conn_start
       connection_times << conn_time

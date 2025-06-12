@@ -1,7 +1,7 @@
 require "../spec_helper"
 require "../support/http11_server"
 require "../../src/h2o/client"
-require "../performance_benchmarks_spec"
+require "./performance_benchmarks_spec"
 
 module ConnectionPoolingBenchmarks
   def self.run : PerformanceBenchmarks::PerformanceComparison
@@ -12,14 +12,14 @@ module ConnectionPoolingBenchmarks
     # Baseline: Create a new client for each request
     baseline_op = -> {
       client = H2O::Client.new
-      client.get("http://127.0.0.1:#{port}/")
+      client.get("http://#{TestConfig.http1_host}:#{port}/")
       client.close
     }
 
     # Optimized: Reuse a single client with connection pooling
     reused_client = H2O::Client.new
     optimized_op = -> {
-      reused_client.get("http://127.0.0.1:#{port}/")
+      reused_client.get("http://#{TestConfig.http1_host}:#{port}/")
     }
 
     iterations = 20

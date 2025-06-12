@@ -36,6 +36,25 @@ module H2O
   alias ConnectionKey = String
   alias HostPort = {String, Int32}
 
+  # Common test and benchmark aliases
+  alias TestResult = {String, Bool, Time::Span}
+  alias TestResultChannel = Channel(TestResult)
+  alias TestResultArray = Array(TestResult)
+  alias ResponseArray = Array(Response?)
+  alias BoolChannel = Channel(Bool)
+  alias BoolArray = Array(Bool)
+  alias TimeArray = Array(Time::Span)
+  alias StringArray = Array(String)
+  alias BytesArray = Array(Bytes)
+
+  # Performance measurement aliases
+  alias TimeSpan = Time::Span
+  alias MonotonicTime = Time::Span # Time.monotonic returns Time::Span
+  alias ProcessStatus = Process::Status
+
+  # Channel timeout patterns
+  alias ChannelTimeout = Time::Span
+
   enum FrameType : UInt8
     Data         = 0x0
     Headers      = 0x1

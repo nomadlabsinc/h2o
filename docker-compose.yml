@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   h2o-dev:
     build:
@@ -24,6 +22,39 @@ services:
     command: crystal spec
     environment:
       - CI=true
+      # Test server host configuration
+      - TEST_HTTP2_HOST=nginx-h2
+      - TEST_HTTP2_PORT=443
+      - TEST_HTTP1_HOST=httpbin-h2
+      - TEST_HTTP1_PORT=80
+      - TEST_H2_ONLY_HOST=h2-only-server
+      - TEST_H2_ONLY_PORT=8447
+      - TEST_CADDY_HOST=caddy-h2
+      - TEST_CADDY_PORT=8444
+      # Timeout configuration
+      - TEST_CLIENT_TIMEOUT_MS=5000
+      - TEST_FAST_TIMEOUT_MS=1000
+      # Debug configuration
+      - TEST_DEBUG=${TEST_DEBUG:-false}
+    networks:
+      - default
+      - integration_default
+
+  crystal:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/workspace
+      - crystal-cache:/home/crystal/.cache
+    working_dir: /workspace
+    command: tail -f /dev/null
+    ports:
+      - "8080:8080"   # httpbin
+      - "8443:8443"   # nginx HTTP/2
+      - "8445:8445"   # nginx HTTP/1.1
+    environment:
+      - CI=true
 
   h2o-docs:
     build:
@@ -40,3 +71,7 @@ services:
 
 volumes:
   crystal-cache:
+
+networks:
+  integration_default:
+    external: true

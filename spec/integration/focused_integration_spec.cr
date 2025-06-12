@@ -37,7 +37,7 @@ def retry_operation(max_retries = 3, &)
   max_retries.times do |attempt|
     result = yield
     return true if result
-    sleep(100.milliseconds) if attempt < max_retries - 1
+    sleep(20.milliseconds) if attempt < max_retries - 1
   end
   false
 end
@@ -46,7 +46,7 @@ end
 def test_focused_client_creation(channel)
   success = retry_operation do
     begin
-      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
+      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT, verify_ssl: false)
       result = !!(client && client.connections.empty?)
       client.close
       result
@@ -60,7 +60,7 @@ end
 def test_focused_multiple_close(channel)
   success = retry_operation do
     begin
-      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
+      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT, verify_ssl: false)
       client.close
       client.close # Should not cause segfault
       true
@@ -74,11 +74,11 @@ end
 def test_focused_connection_state(channel)
   success = retry_operation do
     begin
-      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
+      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT, verify_ssl: false)
       client.close
 
       # Should handle requests gracefully after close
-      response = client.get("https://httpbin.org/get")
+      response = client.get("#{TestConfig.http2_url}/get")
       # Either nil or valid response is acceptable - key is no crashes
       true
     rescue
@@ -99,9 +99,9 @@ def test_focused_http_validation(channel)
   success = retry_operation(5) do # Try 5 times instead of 3
     begin
       # Use shorter timeout as required by CLAUDE.md (5s or shorter)
-      client = H2O::Client.new(timeout: 1.seconds)
-      response = client.get("https://httpbin.org/get")
-      result = !!(response && response.status == 200 && response.body.includes?("httpbin.org"))
+      client = H2O::Client.new(timeout: 1.seconds, verify_ssl: false)
+      response = client.get("#{TestConfig.http2_url}/get")
+      result = !!(response && response.status == 200)
       client.close
       result
     rescue

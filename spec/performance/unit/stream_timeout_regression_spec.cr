@@ -1,4 +1,4 @@
-require "../spec_helper"
+require "../../spec_helper"
 
 # Regression tests for GitHub Issue #40: HTTP/2 requests timeout after 5 seconds and return nil instead of response
 describe "Stream timeout regression tests" do
@@ -43,7 +43,9 @@ describe "Stream timeout regression tests" do
       result = stream.await_response
       result.should eq(response)
       result.should_not be_nil
-      result.status.should eq(200)
+      if final_result = result
+        final_result.status.should eq(200)
+      end
     end
   end
 
@@ -59,8 +61,8 @@ describe "Stream timeout regression tests" do
     it "uses default timeout when no timeout specified" do
       client = H2O::Client.new
 
-      # Should use the default timeout (5 seconds)
-      client.timeout.should eq(5.seconds)
+      # Should use the default timeout (1 second)
+      client.timeout.should eq(1.seconds)
     end
   end
 end

@@ -1,4 +1,4 @@
-require "../spec_helper"
+require "../../spec_helper"
 
 describe H2O::Timeout do
   describe ".execute" do

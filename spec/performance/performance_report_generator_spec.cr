@@ -1,9 +1,9 @@
-require "./spec_helper"
+require "../spec_helper"
 require "./performance_benchmarks_spec"
-require "./performance/buffer_pooling_benchmarks_spec"
-require "./performance/hpack_benchmarks_spec"
-require "./performance/connection_pooling_benchmarks_spec"
-require "./performance/stream_management_benchmarks_spec"
+require "./buffer_pooling_benchmarks_spec"
+require "./hpack_benchmarks_spec"
+require "./connection_pooling_benchmarks_spec"
+require "./stream_management_benchmarks_spec"
 
 # Comprehensive performance report generator
 module PerformanceReportGenerator

@@ -1,4 +1,4 @@
-require "./spec_helper"
+require "../spec_helper"
 
 # Performance benchmarking framework for H2O optimizations
 module PerformanceBenchmarks

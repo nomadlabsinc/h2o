@@ -1,4 +1,4 @@
-require "../spec_helper"
+require "../../spec_helper"
 
 # Unit tests for configurable timeout settings
 describe "Configurable timeout settings" do
@@ -32,62 +32,35 @@ describe "Configurable timeout settings" do
     end
   end
 
-  describe "H2O::H2::Client timeout configuration" do
-    it "accepts both connect_timeout and request_timeout parameters" do
-      connect_timeout = 5.seconds
-      request_timeout = 15.seconds
-
-      client = H2O::H2::Client.new(
-        "example.com",
-        443,
-        connect_timeout: connect_timeout,
-        request_timeout: request_timeout
-      )
-
-      client.request_timeout.should eq(request_timeout)
-    end
-
-    it "uses default values when timeouts not specified" do
-      client = H2O::H2::Client.new("example.com", 443)
-
-      # Default request_timeout should be 5 seconds
-      client.request_timeout.should eq(5.seconds)
-    end
-
-    it "can set different connect and request timeouts" do
-      connect_timeout = 3.seconds
-      request_timeout = 25.seconds
-
-      client = H2O::H2::Client.new(
-        "example.com",
-        443,
-        connect_timeout: connect_timeout,
-        request_timeout: request_timeout
-      )
-
-      client.request_timeout.should eq(request_timeout)
-      # Note: connect_timeout is used during initialization and not stored as a property
-    end
-  end
+  # Note: H2O::H2::Client timeout configuration tests moved to integration tests
+  # due to network connection requirements during client initialization
 
   describe "H2O::Stream timeout configuration" do
     it "accepts timeout parameter in await_response" do
       stream = H2O::Stream.new(1_u32)
-      timeout = 5.seconds
+      timeout = 1.second
 
-      # This will timeout but we're just testing the parameter is accepted
-      expect_raises(H2O::TimeoutError) do
-        stream.await_response(timeout)
-      end
+      # This will timeout and should return nil
+      start_time = Time.monotonic
+      result = stream.await_response(timeout)
+      end_time = Time.monotonic
+
+      result.should be_nil
+      elapsed = end_time - start_time
+      elapsed.should be_close(timeout, 200.milliseconds)
     end
 
     it "uses default timeout when parameter not provided" do
       stream = H2O::Stream.new(1_u32)
 
-      # This will timeout quickly for testing
-      expect_raises(H2O::TimeoutError) do
-        stream.await_response(1.second) # Use 1 second for testing
-      end
+      # This will timeout and should return nil after default timeout (5s)
+      start_time = Time.monotonic
+      result = stream.await_response
+      end_time = Time.monotonic
+
+      result.should be_nil
+      elapsed = end_time - start_time
+      elapsed.should be_close(5.seconds, 200.milliseconds)
     end
   end
 
@@ -141,11 +114,15 @@ describe "Configurable timeout settings" do
   describe "Timeout edge cases" do
     it "handles very short timeouts" do
       stream = H2O::Stream.new(1_u32)
-      very_short = 1.millisecond
+      very_short = 100.milliseconds
 
-      expect_raises(H2O::TimeoutError) do
-        stream.await_response(very_short)
-      end
+      start_time = Time.monotonic
+      result = stream.await_response(very_short)
+      end_time = Time.monotonic
+
+      result.should be_nil
+      elapsed = end_time - start_time
+      elapsed.should be_close(very_short, 50.milliseconds)
     end
 
     it "handles longer timeouts" do
@@ -167,9 +144,14 @@ describe "Configurable timeout settings" do
       stream = H2O::Stream.new(1_u32)
       zero_timeout = 0.seconds
 
-      expect_raises(H2O::TimeoutError) do
-        stream.await_response(zero_timeout)
-      end
+      # Zero timeout should return immediately with nil
+      start_time = Time.monotonic
+      result = stream.await_response(zero_timeout)
+      end_time = Time.monotonic
+
+      result.should be_nil
+      elapsed = end_time - start_time
+      elapsed.should be < 100.milliseconds # Should return very quickly
     end
   end
 end

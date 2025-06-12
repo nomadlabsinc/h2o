@@ -47,6 +47,23 @@ module H2O
           nil
         end
       end
+
+      # Transfer file content efficiently
+      def transfer_file(file_path : String, output_io : IO) : Int32
+        start_time = Time.monotonic
+        bytes_transferred = 0
+
+        File.open(file_path, "r") do |file|
+          buffer = Bytes.new(MEDIUM_BUFFER_SIZE)
+          while (bytes_read = file.read(buffer)) > 0
+            output_io.write(buffer[0, bytes_read])
+            bytes_transferred += bytes_read
+          end
+        end
+
+        @stats.record_read(bytes_transferred, Time.monotonic - start_time)
+        bytes_transferred
+      end
     end
 
     # Zero-copy I/O helper for writing from buffers
@@ -76,6 +93,37 @@ module H2O
         end
 
         @stats.record_write(total_bytes, Time.monotonic - start_time)
+      end
+
+      # Serve file content efficiently
+      def serve_file(file_path : String) : Int32
+        start_time = Time.monotonic
+        bytes_written = 0
+
+        File.open(file_path, "r") do |file|
+          buffer = Bytes.new(MEDIUM_BUFFER_SIZE)
+          while (bytes_read = file.read(buffer)) > 0
+            @io.write(buffer[0, bytes_read])
+            bytes_written += bytes_read
+          end
+        end
+
+        @stats.record_write(bytes_written, Time.monotonic - start_time)
+        bytes_written
+      end
+
+      # Vectored write (writev simulation)
+      def writev(buffers : Array(Bytes)) : Int32
+        start_time = Time.monotonic
+        total_bytes = 0
+
+        buffers.each do |buffer|
+          @io.write(buffer)
+          total_bytes += buffer.size
+        end
+
+        @stats.record_write(total_bytes, Time.monotonic - start_time)
+        total_bytes
       end
     end
 

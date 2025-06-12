@@ -1,6 +1,6 @@
 # h2o
 
-A high-performance HTTP/2 client for Crystal with full protocol compliance, connection pooling, and advanced features like HPACK compression and stream multiplexing.
+A high-performance HTTP/2 client for Crystal with full protocol compliance, connection pooling, and advanced features like HPACK compression and stream multiplexing. Optimized for production use with comprehensive CI testing.
 
 ## Features
 
@@ -376,6 +376,52 @@ crystal tool format --check
 
 ### Testing
 
+h2o includes a comprehensive test suite with multiple testing approaches. We recommend using the Docker-based test runner for the most reliable and consistent testing experience.
+
+#### Docker Test Runner (Recommended)
+
+The project includes a comprehensive Docker-based test runner that ensures consistent testing across all environments:
+
+```bash
+# Run all tests (unit, integration, lint, build)
+./scripts/test-runner.sh
+
+# Run only unit tests (fast)
+./scripts/test-runner.sh unit
+
+# Run with verbose output and parallel execution
+./scripts/test-runner.sh -v --parallel
+
+# Run integration tests only
+./scripts/test-runner.sh integration
+
+# Run with coverage reporting
+./scripts/test-runner.sh -c
+
+# Run performance benchmarks
+./scripts/test-runner.sh --performance
+
+# Run only linting and formatting checks
+./scripts/test-runner.sh lint
+
+# Get help on all options
+./scripts/test-runner.sh --help
+```
+
+#### Test Suites
+
+The test runner supports multiple test suites:
+
+- **unit**: Fast unit tests that don't require external services
+- **integration**: Integration tests with real HTTP servers (nginx, httpbin)
+- **performance**: Performance benchmarks and stress tests
+- **lint**: Code formatting and linting checks
+- **build**: Build verification and documentation generation
+
+#### Native Crystal Testing
+
+You can also run tests directly with Crystal (requires local setup):
+
 ```bash
 # Run all tests
 crystal spec
@@ -385,23 +431,114 @@ crystal spec spec/h2o/client_spec.cr
 
 # Run with coverage
 crystal spec --coverage
+
+# Run verbose
+crystal spec --verbose
+
+# Run specific test pattern
+crystal spec --tag integration
+```
+
+#### CI Test Runner
+
+For CI environments, use the specialized CI test runner:
+
+```bash
+# Run unit tests for CI
+./scripts/ci_test_runner.sh unit
+
+# Run integration tests for CI
+./scripts/ci_test_runner.sh integration
+```
+
+#### Test Environment Setup
+
+The Docker test runner automatically sets up the required test environment:
+
+- **Crystal environment**: Uses `robnomad/crystal:dev-hoard` base image
+- **Test servers**: nginx HTTP/2 server, httpbin for API testing
+- **Dependencies**: All required Crystal shards and development tools
+- **Network isolation**: Proper container networking for integration tests
+
+#### Testing Best Practices
+
+1. **Use Docker for consistency**: The Docker test runner ensures identical environments
+2. **Run unit tests frequently**: Fast feedback during development
+3. **Run full test suite before commits**: Ensures nothing is broken
+4. **Use parallel testing**: Speed up test execution with `--parallel`
+5. **Monitor coverage**: Use `--coverage` to ensure adequate test coverage
+6. **Test in isolation**: Each test should be independent and not affect others
+
+#### Test Configuration
+
+Environment variables for test customization:
+
+```bash
+# Test timeout (default: 300 seconds)
+export H2O_TEST_TIMEOUT=600
+
+# Number of retries for flaky tests (default: 2)
+export H2O_TEST_RETRIES=3
+
+# Enable Docker BuildKit (default: 1)
+export DOCKER_BUILDKIT=1
+```
+
+#### Debugging Tests
+
+For debugging failing tests:
+
+```bash
+# Run with verbose output
+./scripts/test-runner.sh -v unit
+
+# Keep containers running after tests
+./scripts/test-runner.sh --no-cleanup unit
+
+# Run specific test file directly
+docker run --rm -v $(pwd):/workspace -w /workspace --user root h2o-dev \
+  bash -c "shards install && crystal spec spec/h2o/client_spec.cr --verbose"
 ```
 
 ### Docker Development
 
-Use the official Crystal image for development:
+h2o uses a specialized development Docker image based on `robnomad/crystal:dev-hoard`:
 
 ```bash
-# Pull the official Crystal image
-docker pull crystallang/crystal:latest
+# Build the development image
+docker build -f Dockerfile.dev -t h2o-dev .
 
 # Run development container
-docker run -it --rm -v $(pwd):/workspace crystallang/crystal:latest bash
+docker run -it --rm -v $(pwd):/workspace -w /workspace --user root h2o-dev bash
 
 # Inside container
-cd /workspace
 shards install
 crystal spec
+
+# Or use Docker Compose for integrated development
+docker-compose -f docker-compose.yml up -d
+docker-compose exec crystal bash
+```
+
+The development image includes:
+- Crystal 1.16.3 with all dependencies
+- Development tools (git, curl, vim, htop, etc.)
+- Debugging tools (tshark, nghttp2)
+- HTTP servers for testing (nginx, apache2, caddy)
+- Node.js for HTTP/2 test servers
+
+#### Development Workflow
+
+```bash
+# Quick development setup
+./scripts/test-runner.sh unit  # Fast unit tests during development
+./scripts/test-runner.sh -v    # Full test suite with verbose output
+
+# Continuous testing during development
+./scripts/test-runner.sh unit && echo "Tests passed!"
+
+# Pre-commit testing
+./scripts/test-runner.sh all --parallel
 ```
 
 ## Contributing

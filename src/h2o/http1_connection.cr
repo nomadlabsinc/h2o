@@ -2,7 +2,7 @@ require "./tls"
 
 module H2O
   abstract class BaseConnection
-    abstract def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response?
+    abstract def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response
     abstract def close : Nil
     abstract def closed? : Bool
   end
@@ -17,7 +17,7 @@ module H2O
       validate_http1_connection
     end
 
-    def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response?
+    def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response
       raise ConnectionError.new("Connection is closed") if @closed
 
       request_line = build_request_line(method, path)
@@ -90,9 +90,11 @@ module H2O
       end
     end
 
-    private def parse_response : Response?
+    private def parse_response : Response
       status_line = read_line
-      return nil unless status_line
+      unless status_line
+        return Response.error(500, "Failed to read status line", "HTTP/1.1")
+      end
 
       status = parse_status_line(status_line)
       headers = parse_headers

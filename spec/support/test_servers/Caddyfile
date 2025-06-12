@@ -1,0 +1,101 @@
+# Caddy HTTP/2 test server configuration
+# Listens on port 8447 with HTTP/2-only support
+
+{
+    # Global options
+    admin off
+    log {
+        output file /tmp/caddy.log
+        level WARN
+    }
+}
+
+# HTTP/2-only server on port 8447
+https://localhost:8447 {
+    # TLS configuration
+    tls /workspace/spec/support/test_servers/ssl/cert.pem /workspace/spec/support/test_servers/ssl/key.pem
+
+    # Health check endpoint
+    handle /health {
+        header Content-Type application/json
+        header X-Protocol HTTP/2
+        respond `{"status":"healthy","protocol":"HTTP/2","server":"Caddy HTTP/2-only","timestamp":"{time.now.format rfc3339}"}` 200
+    }
+
+    # GET endpoint
+    handle /get {
+        header Content-Type application/json
+        header X-Protocol HTTP/2
+        respond `{"method":"GET","protocol":"HTTP/2","path":"{uri}","query":"{query}","timestamp":"{time.now.format rfc3339}"}` 200
+    }
+
+    # Headers endpoint
+    handle /headers {
+        header Content-Type application/json
+        header X-Protocol HTTP/2
+        respond `{"headers":{"host":"{header.host}","user-agent":"{header.user-agent}","accept":"{header.accept}"},"protocol":"HTTP/2","method":"{method}","url":"{uri}"}` 200
+    }
+
+    # POST endpoint
+    handle /post {
+        header Content-Type application/json
+        header X-Protocol HTTP/2
+        respond `{"method":"POST","protocol":"HTTP/2","content_type":"{header.content-type}","content_length":"{header.content-length}","timestamp":"{time.now.format rfc3339}"}` 200
+    }
+
+    # PUT endpoint
+    handle /put {
+        header Content-Type application/json
+        header X-Protocol HTTP/2
+        respond `{"method":"PUT","protocol":"HTTP/2","content_type":"{header.content-type}","timestamp":"{time.now.format rfc3339}"}` 200
+    }
+
+    # DELETE endpoint
+    handle /delete {
+        header Content-Type application/json
+        header X-Protocol HTTP/2
+        respond `{"method":"DELETE","protocol":"HTTP/2","path":"{uri}","timestamp":"{time.now.format rfc3339}"}` 200
+    }
+
+    # Status code endpoints
+    handle /status/200 {
+        header Content-Type application/json
+        respond `{"status":200,"protocol":"HTTP/2"}` 200
+    }
+
+    handle /status/201 {
+        header Content-Type application/json
+        respond `{"status":201,"protocol":"HTTP/2"}` 201
+    }
+
+    handle /status/404 {
+        header Content-Type application/json
+        respond `{"status":404,"protocol":"HTTP/2"}` 404
+    }
+
+    handle /status/500 {
+        header Content-Type application/json
+        respond `{"status":500,"protocol":"HTTP/2"}` 500
+    }
+
+    # Delay endpoint (Caddy has limited delay support)
+    handle_path /delay/* {
+        header Content-Type application/json
+        header X-Protocol HTTP/2
+        respond `{"delayed":"{path.1}","protocol":"HTTP/2","timestamp":"{time.now.format rfc3339}","note":"Caddy limitation: no actual delay"}` 200
+    }
+
+    # HTTP/2-only reject endpoint
+    handle /reject-h1 {
+        header Content-Type application/json
+        header X-Protocol HTTP/2
+        respond `{"message":"This endpoint only works with HTTP/2","protocol":"HTTP/2","connection_successful":true,"timestamp":"{time.now.format rfc3339}"}` 200
+    }
+
+    # Default endpoint
+    handle {
+        header Content-Type application/json
+        header X-Protocol HTTP/2
+        respond `{"message":"Caddy HTTP/2-only test server","protocol":"HTTP/2","method":"{method}","path":"{uri}","timestamp":"{time.now.format rfc3339}"}` 200
+    }
+}

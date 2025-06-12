@@ -3,21 +3,18 @@ require "../../src/h2o"
 
 describe "TLS Optimization Integration" do
   it "demonstrates TLS caching in real HTTP/2 connections" do
-    # Skip if network tests disabled
-    pending("Network tests disabled") if ENV["SKIP_NETWORK_TESTS"]? == "true"
-
     # Clear cache before test
     H2O.tls_cache.clear
 
-    # Make multiple requests to the same HTTPS host to test TLS caching
+    # Make multiple requests to the same HTTPS host to test TLS caching using local server
     requests = 5 # Reduced for CI reliability
-    client = H2O::Client.new
+    client = H2O::Client.new(timeout: 1.seconds, verify_ssl: false)
 
     start_time = Time.monotonic
 
     requests.times do |i|
       begin
-        response = client.get("https://httpbin.org/headers")
+        response = client.get(TestConfig.http2_url)
         # Accept both success (200) and server errors (5xx) for network resilience
         if response.status >= 200 && response.status < 600
           puts "Request #{i + 1}: Status #{response.status}"
@@ -49,10 +46,7 @@ describe "TLS Optimization Integration" do
   end
 
   it "validates connection reuse with TLS optimizations" do
-    # Skip if network tests disabled
-    pending("Network tests disabled") if ENV["SKIP_NETWORK_TESTS"]? == "true"
-
-    client = H2O::Client.new
+    client = H2O::Client.new(timeout: 1.seconds, verify_ssl: false)
 
     # Track connection metrics
     connections_tested = 3
@@ -61,7 +55,7 @@ describe "TLS Optimization Integration" do
     connections_tested.times do |i|
       start_time = Time.monotonic
       begin
-        response = client.get("https://httpbin.org/ip")
+        response = client.get(TestConfig.http2_url)
         end_time = Time.monotonic
 
         # Accept successful responses and server errors (network resilience)
@@ -75,7 +69,7 @@ describe "TLS Optimization Integration" do
       end
 
       # Small delay between requests to allow for connection reuse validation
-      sleep(0.1.seconds)
+      sleep(20.milliseconds)
     end
 
     puts "\n=== Connection Reuse Performance ==="

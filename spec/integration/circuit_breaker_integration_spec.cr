@@ -51,6 +51,16 @@ class TestFiberAdapter
 end
 
 describe "Circuit Breaker Integration" do
+  # Reset configuration after each test to prevent test pollution
+  Spec.after_each do
+    H2O.configure do |config|
+      config.circuit_breaker_enabled = false
+      config.default_failure_threshold = 5
+      config.default_recovery_timeout = 60.seconds
+      config.default_circuit_breaker = nil
+    end
+  end
+
   describe "H2O::Client with circuit breaker" do
     it "integrates circuit breaker with client requests" do
       H2O.configure do |config|
@@ -59,7 +69,7 @@ describe "Circuit Breaker Integration" do
         config.default_recovery_timeout = 1.seconds
       end
 
-      client = H2O::Client.new(timeout: 1.seconds)
+      client = H2O::Client.new(timeout: 1.seconds, verify_ssl: false)
 
       # This will fail since we don't have a real server - should return error response
       response = client.get("https://nonexistent.example.com/test")
@@ -72,7 +82,7 @@ describe "Circuit Breaker Integration" do
         config.circuit_breaker_enabled = true
       end
 
-      client = H2O::Client.new(timeout: 1.seconds)
+      client = H2O::Client.new(timeout: 1.seconds, verify_ssl: false)
 
       # Should bypass circuit breaker - returns connection error response
       response = client.get("https://nonexistent.example.com/test", bypass_circuit_breaker: true)
@@ -85,7 +95,7 @@ describe "Circuit Breaker Integration" do
         config.circuit_breaker_enabled = false
       end
 
-      client = H2O::Client.new(timeout: 1.seconds)
+      client = H2O::Client.new(timeout: 1.seconds, verify_ssl: false)
 
       # Should enable circuit breaker for this request
       response = client.get("https://nonexistent.example.com/test", circuit_breaker: true)
@@ -103,7 +113,8 @@ describe "Circuit Breaker Integration" do
 
       client = H2O::Client.new(
         circuit_breaker_adapter: adapter,
-        timeout: 1.seconds
+        timeout: 1.seconds,
+        verify_ssl: false
       )
 
       # This will fail since we don't have a real server
@@ -124,10 +135,11 @@ describe "Circuit Breaker Integration" do
 
       client = H2O::Client.new(
         circuit_breaker_adapter: adapter,
-        timeout: 1.seconds
+        timeout: 1.seconds,
+        verify_ssl: false
       )
 
-      response = client.get("https://httpbin.org/get")
+      response = client.get("#{TestConfig.http2_url}/get")
       response.status.should eq(0) # Adapter rejection causes connection error
       response.error?.should be_true
     end
@@ -140,7 +152,7 @@ describe "Circuit Breaker Integration" do
         config.default_failure_threshold = 2
       end
 
-      client = H2O::Client.new(timeout: 1.seconds)
+      client = H2O::Client.new(timeout: 1.seconds, verify_ssl: false)
       channel = Channel(H2O::Response).new
 
       # This demonstrates the fix for the original issue where
@@ -150,7 +162,12 @@ describe "Circuit Breaker Integration" do
         channel.send(response)
       end
 
-      result = channel.receive
+      result = select
+      when r = channel.receive
+        r
+      when timeout(5.seconds)
+        raise "Timeout waiting for circuit breaker response"
+      end
       result.status.should eq(500) # Circuit breaker error
       result.error?.should be_true
     end
@@ -244,7 +261,7 @@ describe "Circuit Breaker Integration" do
         config.default_timeout = 5.seconds
       end
 
-      client = H2O::Client.new
+      client = H2O::Client.new(verify_ssl: false)
 
       client.circuit_breaker_enabled.should be_true
       client.timeout.should eq(5.seconds)
@@ -258,7 +275,8 @@ describe "Circuit Breaker Integration" do
 
       client = H2O::Client.new(
         circuit_breaker_enabled: false,
-        timeout: 10.seconds
+        timeout: 10.seconds,
+        verify_ssl: false
       )
 
       client.circuit_breaker_enabled.should be_false
@@ -275,7 +293,7 @@ describe "Circuit Breaker Integration" do
         config.default_circuit_breaker = global_breaker
       end
 
-      client = H2O::Client.new
+      client = H2O::Client.new(verify_ssl: false)
       client.default_circuit_breaker.should eq(global_breaker)
     end
   end
@@ -287,7 +305,7 @@ describe "Circuit Breaker Integration" do
         config.default_failure_threshold = 3
       end
 
-      client = H2O::Client.new(timeout: 1.seconds)
+      client = H2O::Client.new(timeout: 1.seconds, verify_ssl: false)
       channel = Channel(H2O::Response).new
       request_count = 5
 
@@ -299,10 +317,16 @@ describe "Circuit Breaker Integration" do
         end
       end
 
-      # Collect all responses
+      # Collect all responses with timeout
       responses = [] of H2O::Response
       request_count.times do
-        responses << channel.receive
+        response = select
+        when r = channel.receive
+          r
+        when timeout(5.seconds)
+          raise "Timeout waiting for concurrent circuit breaker response"
+        end
+        responses << response
       end
 
       # All should be error responses due to connection failures

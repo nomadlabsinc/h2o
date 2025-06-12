@@ -1,36 +1,104 @@
-version: '3.8'
-
 services:
+  # Essential nginx service for HTTP/1.1 and HTTP/2 testing
   nginx-h2:
     image: nginx:alpine
     ports:
       - "8443:443"
+      - "8445:8445"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
     command: ['nginx', '-g', 'daemon off;']
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:443/"]
+      interval: 2s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+          cpus: '0.25'
 
+  # Lightweight HTTP service for basic testing
   httpbin-h2:
-    image: kennethreitz/httpbin
+    image: nginx:alpine
     ports:
       - "8080:80"
-
-  caddy-h2:
-    image: caddy:alpine
-    ports:
-      - "8444:443"
+    restart: unless-stopped
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-    command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile']
+      - ./httpbin.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 2s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+          cpus: '0.25'
 
+  # HTTP/2-only server that rejects HTTP/1.1 connections
   h2-only-server:
     image: node:18-alpine
     ports:
       - "8447:8447"
     volumes:
-      - ./h2-only-server.js:/app/server.js
-      - ./ssl:/app/ssl
+      - ./h2-only-server.js:/app/server.js:ro
+      - ./ssl:/app/ssl:ro
     working_dir: /app
-    environment:
-      - PORT=8447
-    command: ['node', 'server.js']
+    command: ["node", "server.js"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "--no-check-certificate", "https://localhost:8447/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+          cpus: '0.25'
+
+  # Modern HTTP/2 server with automatic HTTPS
+  caddy-h2:
+    image: caddy:2-alpine
+    ports:
+      - "8444:8444"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./ssl:/etc/ssl/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "--no-check-certificate", "https://localhost:8444/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+          cpus: '0.25'
+
+# Network configuration for better isolation
+networks:
+  default:
+    driver: bridge

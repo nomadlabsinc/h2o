@@ -7,6 +7,7 @@ require "./h2o/version"
 require "./h2o/exceptions"
 require "./h2o/timeout"
 require "./h2o/types"
+require "./h2o/buffer_pool_stats"
 require "./h2o/buffer_pool"
 require "./h2o/object_pool"
 require "./h2o/string_pool"
@@ -72,9 +73,14 @@ module H2O
     property default_circuit_breaker : Breaker?
     property default_failure_threshold : Int32 = 5
     property default_recovery_timeout : Time::Span = 60.seconds
-    property default_timeout : Time::Span = 5.seconds
+    property default_timeout : Time::Span = 1.seconds
+    property verify_ssl : Bool = true
 
     def initialize
+      # Check environment variable for SSL verification override
+      if env_value = ENV["H2O_VERIFY_SSL"]?
+        @verify_ssl = env_value.downcase.in?("true", "1", "yes", "on")
+      end
     end
   end
 
