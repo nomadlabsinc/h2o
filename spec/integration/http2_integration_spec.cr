@@ -2,7 +2,7 @@ require "../spec_helper"
 
 describe "H2O HTTP/2 Integration Tests" do
   it "creates a client without frame initialization errors" do
-    client = H2O::Client.new
+    client = H2O::Client.new(verify_ssl: false)
     client.should_not be_nil
   end
 
@@ -39,15 +39,20 @@ describe "H2O HTTP/2 Integration Tests" do
     # cd spec/integration && docker-compose up -d
     # Then test: crystal spec spec/integration/
 
-    client = H2O::Client.new
+    client = H2O::Client.new(verify_ssl: false)
     client.should_not be_nil
 
     # Verify we can create connections (basic connectivity test)
     # Real HTTP/2 requests require the Docker test infrastructure
-    # This will fail without Docker servers, returning error response instead of raising
-    response = client.get("https://localhost:8443/")
+    # Test should work whether Docker servers are running or not
+    response = client.get(TestConfig.http2_url)
     response.should_not be_nil
-    response.error?.should be_true
-    response.status.should eq(0)
+
+    # Accept either successful response (Docker running) or error response (Docker not running)
+    if response.error?
+      response.status.should eq(0)
+    else
+      response.status.should eq(200)
+    end
   end
 end

@@ -8,10 +8,20 @@ module H2O
       property closed : Bool
 
       def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true)
-        tls_context = OpenSSL::SSL::Context::Client.new
-        tls_context.verify_mode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
-        # Force HTTP/1.1 by not setting ALPN or setting it to http/1.1
-        @client = HTTP::Client.new(hostname, port, tls: tls_context)
+        # Only use TLS for HTTPS ports (443, 8443, etc.) or when explicitly requested
+        use_tls = port == 443 || port == 8443 || port == 8445 || port == 8447 || hostname.starts_with?("https://")
+
+        if use_tls
+          tls_context = OpenSSL::SSL::Context::Client.new
+          tls_context.verify_mode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
+          # Force HTTP/1.1 by explicitly setting ALPN to http/1.1
+          tls_context.alpn_protocol = "http/1.1"
+          @client = HTTP::Client.new(hostname, port, tls: tls_context)
+        else
+          # Plain HTTP connection
+          @client = HTTP::Client.new(hostname, port)
+        end
+
         @client.connect_timeout = connect_timeout
         @client.read_timeout = connect_timeout
         @closed = false

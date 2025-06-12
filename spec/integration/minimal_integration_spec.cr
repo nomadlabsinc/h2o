@@ -29,6 +29,11 @@ describe "H2O Minimal Integration Tests" do
         invalid_hostname:     channels[:invalid_hostname].receive,
       }
 
+      # Debug which test failed
+      results.each do |name, success|
+        puts "#{name}: #{success}" unless success
+      end
+
       # ALL operations must succeed for reliability
       results.values.all?(&.itself).should be_true
     end
@@ -40,7 +45,7 @@ def retry_operation(max_retries = 3, &)
   max_retries.times do |attempt|
     result = yield
     return true if result
-    sleep(100.milliseconds) if attempt < max_retries - 1
+    sleep(20.milliseconds) if attempt < max_retries - 1
   end
   false
 end
@@ -49,7 +54,7 @@ end
 def test_minimal_creation_close(channel)
   success = retry_operation do
     begin
-      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
+      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT, verify_ssl: false)
       result = !!(client && client.connections.empty?)
       client.close
       result
@@ -63,7 +68,7 @@ end
 def test_minimal_double_close(channel)
   success = retry_operation do
     begin
-      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
+      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT, verify_ssl: false)
       client.close
       client.close # Should not segfault
       true
@@ -77,11 +82,11 @@ end
 def test_minimal_requests_after_close(channel)
   success = retry_operation do
     begin
-      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
+      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT, verify_ssl: false)
       client.close
 
       # Should not segfault (may return error response or valid response)
-      response = client.get("https://www.google.com/")
+      response = client.get(TestConfig.http2_url)
       # Either error response or valid response is acceptable - key is no segfault
       !response.nil?
     rescue
@@ -101,9 +106,9 @@ def test_minimal_http_request(channel)
 
   success = retry_operation do
     begin
-      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
-      response = client.get("https://httpbin.org/get")
-      result = response.status == 200 && response.body.includes?("httpbin.org")
+      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT, verify_ssl: false)
+      response = client.get("#{TestConfig.http2_url}/get")
+      result = response.status == 200 && response.body.includes?("HTTP/2")
       client.close
       result
     rescue
@@ -116,7 +121,7 @@ end
 def test_minimal_invalid_hostname(channel)
   success = retry_operation do
     begin
-      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT)
+      client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT, verify_ssl: false)
       response = client.get("https://invalid-hostname-test.invalid")
       client.close
       # Should return error response with status 0

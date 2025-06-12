@@ -13,13 +13,13 @@ describe "HTTP/1.1 Local Server Fallback" do
         # In practice, the H1::Client would be used directly for HTTP/1.1-only servers
 
         # Test direct H1::Client usage
-        h1_client = H2O::H1::Client.new("127.0.0.1", server.port, connect_timeout: 1.seconds)
+        h1_client = H2O::H1::Client.new(TestConfig.http1_host, server.port, connect_timeout: 1.seconds)
 
         # This will fail because H1::Client expects HTTPS, but demonstrates the pattern
         # In a real scenario, we'd configure the client for the appropriate protocol
 
         # For now, let's test the server independently
-        http_client = HTTP::Client.new("127.0.0.1", server.port)
+        http_client = HTTP::Client.new(TestConfig.http1_host, server.port)
         response = http_client.get("/get")
 
         response.status_code.should eq(200)
@@ -37,7 +37,7 @@ describe "HTTP/1.1 Local Server Fallback" do
       server.start
 
       begin
-        http_client = HTTP::Client.new("127.0.0.1", server.port)
+        http_client = HTTP::Client.new(TestConfig.http1_host, server.port)
 
         headers = HTTP::Headers{
           "Content-Type" => "application/json",
@@ -62,7 +62,7 @@ describe "HTTP/1.1 Local Server Fallback" do
       server.start
 
       begin
-        http_client = HTTP::Client.new("127.0.0.1", server.port)
+        http_client = HTTP::Client.new(TestConfig.http1_host, server.port)
 
         methods = [
           {"GET", "/get"},
@@ -96,7 +96,7 @@ describe "HTTP/1.1 Local Server Fallback" do
       server.start
 
       begin
-        http_client = HTTP::Client.new("127.0.0.1", server.port)
+        http_client = HTTP::Client.new(TestConfig.http1_host, server.port)
 
         response = http_client.get("/bytes/1024")
 
@@ -120,17 +120,22 @@ describe "HTTP/1.1 Local Server Fallback" do
         # Spawn multiple fibers to make concurrent requests
         5.times do
           spawn do
-            http_client = HTTP::Client.new("127.0.0.1", server.port)
+            http_client = HTTP::Client.new(TestConfig.http1_host, server.port)
             response = http_client.get("/get")
             channel.send(response)
             http_client.close
           end
         end
 
-        # Collect responses
+        # Collect responses with timeout
         responses = [] of HTTP::Client::Response
         5.times do
-          response = channel.receive
+          response = select
+          when r = channel.receive
+            r
+          when timeout(5.seconds)
+            raise "Timeout waiting for HTTP/1.1 response"
+          end
           responses << response
         end
 
@@ -159,7 +164,7 @@ describe "HTTP/1.1 Local Server Fallback" do
         # For HTTP-only servers, we'd need additional client configuration
 
         # Test that our test server correctly serves HTTP/1.1
-        http_client = HTTP::Client.new("127.0.0.1", server.port)
+        http_client = HTTP::Client.new(TestConfig.http1_host, server.port)
         response = http_client.get("/get")
 
         response.status_code.should eq(200)

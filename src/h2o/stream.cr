@@ -138,8 +138,8 @@ module H2O
       @remote_window_size += window_frame.window_size_increment.to_i32
     end
 
-    def await_response : Response?
-      Timeout(Response?).execute(5.seconds) do
+    def await_response(timeout : Time::Span = 5.seconds) : Response?
+      Timeout(Response?).execute(timeout) do
         @response_channel.receive
       end
     rescue Channel::ClosedError

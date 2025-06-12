@@ -18,13 +18,11 @@ module H2O
     @@small_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
     @@medium_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
 
-    # Performance tracking
-    @@allocation_count = Atomic(Int64).new(0)
-    @@return_count = Atomic(Int64).new(0)
-
     # Enhanced buffer allocation with size optimization
     def self.get_buffer(requested_size : Int32) : Bytes
-      @@allocation_count.add(1)
+      # Optional statistics tracking
+      stats = H2O.buffer_pool_stats?
+      stats.track_allocation if stats
 
       case requested_size
       when 0..SMALL_BUFFER_SIZE
@@ -49,7 +47,8 @@ module H2O
 
     def self.return_header_buffer(buffer : Bytes) : Nil
       return unless buffer.size == MAX_HEADER_BUFFER_SIZE
-      @@return_count.add(1)
+      stats = H2O.buffer_pool_stats?
+      stats.track_return if stats
 
       select
       when @@header_buffers.send(buffer)
@@ -77,7 +76,8 @@ module H2O
 
     def self.return_frame_buffer(buffer : Bytes) : Nil
       return unless buffer.size == MAX_FRAME_BUFFER_SIZE
-      @@return_count.add(1)
+      stats = H2O.buffer_pool_stats?
+      stats.track_return if stats
 
       select
       when @@frame_buffers.send(buffer)
@@ -98,7 +98,8 @@ module H2O
 
     def self.return_small_buffer(buffer : Bytes) : Nil
       return unless buffer.size == SMALL_BUFFER_SIZE
-      @@return_count.add(1)
+      stats = H2O.buffer_pool_stats?
+      stats.track_return if stats
 
       select
       when @@small_buffers.send(buffer)
@@ -119,7 +120,8 @@ module H2O
 
     def self.return_medium_buffer(buffer : Bytes) : Nil
       return unless buffer.size == MEDIUM_BUFFER_SIZE
-      @@return_count.add(1)
+      stats = H2O.buffer_pool_stats?
+      stats.track_return if stats
 
       select
       when @@medium_buffers.send(buffer)
@@ -209,18 +211,29 @@ module H2O
       end
     end
 
-    # Performance statistics
+    # Performance statistics (only available when stats tracking is enabled)
     def self.stats : {allocations: Int64, returns: Int64, hit_rate: Float64}
-      allocs = @@allocation_count.get
-      returns = @@return_count.get
-      hit_rate = returns > 0 ? (returns.to_f64 / allocs.to_f64) * 100.0 : 0.0
-
-      {allocations: allocs, returns: returns, hit_rate: hit_rate}
+      if stats = H2O.buffer_pool_stats?
+        stats.stats
+      else
+        {allocations: 0_i64, returns: 0_i64, hit_rate: 0.0}
+      end
     end
 
     def self.reset_stats : Nil
-      @@allocation_count.set(0)
-      @@return_count.set(0)
+      if stats = H2O.buffer_pool_stats?
+        stats.reset
+      end
+    end
+
+    # Enable statistics tracking (mainly for testing/benchmarking)
+    def self.enable_stats : Nil
+      H2O.enable_buffer_pool_stats
+    end
+
+    # Disable statistics tracking
+    def self.disable_stats : Nil
+      H2O.disable_buffer_pool_stats
     end
   end
 end

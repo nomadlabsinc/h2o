@@ -1,6 +1,6 @@
 require "../spec_helper"
 require "../../src/h2o/client"
-require "../performance_benchmarks_spec"
+require "./performance_benchmarks_spec"
 
 module StreamManagementBenchmarks
   def self.run : PerformanceBenchmarks::PerformanceComparison
@@ -8,7 +8,7 @@ module StreamManagementBenchmarks
     # Baseline: Simple GET requests
     baseline_op = -> {
       client = H2O::Client.new
-      client.get("http://httpbin.org/get")
+      client.get(TestConfig.http2_url("/get"))
       client.close
     }
 
@@ -18,7 +18,7 @@ module StreamManagementBenchmarks
       client = H2O::Client.new
       headers = H2O::Headers.new
       headers["X-Test"] = "true"
-      client.get("http://httpbin.org/get", headers: headers)
+      client.get(TestConfig.http2_url("/get"), headers: headers)
       client.close
     }
 

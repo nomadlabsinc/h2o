@@ -3,7 +3,7 @@ require "json"
 
 describe "Channel Fix Integration Test" do
   it "can create and close client without Channel::ClosedError" do
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+    client = H2O::Client.new(timeout: TestConfig::LOCALHOST_TIMEOUT, verify_ssl: false)
 
     begin
       # Test basic client functionality
@@ -13,7 +13,7 @@ describe "Channel Fix Integration Test" do
       client.connections.should be_empty
 
       # Try a simple request that will test the full HTTP/2 flow
-      response = client.get("https://httpbin.org/get")
+      response = client.get("#{TestConfig.http2_url}/get")
 
       # Response should be successful if network is available
       # Allow for various network conditions (timeout, connectivity issues, etc.)
@@ -30,7 +30,7 @@ describe "Channel Fix Integration Test" do
   end
 
   it "handles connection closure gracefully" do
-    client = H2O::Client.new(timeout: TestConfig::HTTPBIN_TIMEOUT)
+    client = H2O::Client.new(timeout: TestConfig::LOCALHOST_TIMEOUT, verify_ssl: false)
 
     begin
       # Test multiple close calls (should be idempotent)

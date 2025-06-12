@@ -1,37 +1,7 @@
-require "../spec_helper"
+require "../../spec_helper"
 
 describe "H2O Performance Optimizations" do
-  describe "Lazy Fiber Creation" do
-    it "should not start fibers on client creation" do
-      hostname = "httpbin.org"
-      port = 443
-
-      client = H2O::H2::Client.new(hostname, port, connect_timeout: 1.seconds)
-
-      # Verify fibers are not started yet (main optimization test)
-      client.fibers_started.should be_false
-
-      client.close
-    end
-
-    it "should start fibers on first request" do
-      hostname = "httpbin.org"
-      port = 443
-
-      client = H2O::H2::Client.new(hostname, port, connect_timeout: 1.seconds)
-      client.fibers_started.should be_false
-
-      start_time = Time.monotonic
-      response = client.request("GET", "/get")
-      request_time = Time.monotonic - start_time
-
-      # Fibers should be started after first request
-      client.fibers_started.should be_true
-      response.should_not be_nil
-
-      client.close
-    end
-  end
+  # Note: Lazy Fiber Creation tests moved to integration tests due to server dependency
 
   describe "Buffer Pooling" do
     it "should reuse header buffers for frame operations" do

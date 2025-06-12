@@ -1,4 +1,4 @@
-require "../spec_helper"
+require "../../spec_helper"
 
 describe "Connection Lifecycle Management" do
   describe "connection state management" do

@@ -43,3 +43,4 @@ coverage/
 # Temporary files
 tmp/
 temp/
+./h2o

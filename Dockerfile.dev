@@ -1,15 +1,41 @@
-FROM crystallang/crystal:1.16.0
+FROM robnomad/crystal:dev-hoard
 
-# Install development tools
-RUN apt-get update && apt-get install -y \
+# Install development and testing tools
+RUN apk update && apk add --no-cache \
     git \
     curl \
     wget \
     vim \
-    && rm -rf /var/lib/apt/lists/*
+    htop \
+    strace \
+    tcpdump \
+    netcat-openbsd \
+    bind-tools \
+    iputils \
+    ca-certificates \
+    bash \
+    parallel
+
+# Install debugging tools for HTTP/2
+RUN apk add --no-cache \
+    wireshark-common \
+    nghttp2
+
+# Install HTTP/HTTP2 servers for testing
+RUN apk add --no-cache \
+    nginx \
+    apache2
+
+# Install Caddy for HTTP/2 support (keeping for compatibility)
+RUN apk add --no-cache caddy
+
+# Enable Apache modules for HTTP/2 (Alpine uses different commands)
+RUN mkdir -p /etc/apache2/modules && \
+    echo 'LoadModule http2_module modules/mod_http2.so' >> /etc/apache2/httpd.conf && \
+    echo 'LoadModule ssl_module modules/mod_ssl.so' >> /etc/apache2/httpd.conf
 
 # Create development user
-RUN useradd -m -s /bin/bash crystal && \
+RUN adduser -D -s /bin/bash crystal && \
     chown -R crystal:crystal /home/crystal
 
 USER crystal
@@ -19,6 +45,16 @@ WORKDIR /workspace
 RUN echo 'alias ll="ls -la"' >> ~/.bashrc && \
     echo 'alias la="ls -A"' >> ~/.bashrc && \
     echo 'alias l="ls -CF"' >> ~/.bashrc
+
+# Set environment for better debugging
+ENV CRYSTAL_LOG_LEVEL=INFO
+ENV CRYSTAL_LOG_SOURCES="h2o.*"
+
+# Pre-create directories for test servers
+RUN mkdir -p /workspace/bin/test_servers
+
+# Copy and build embedded test servers during CI
+# This will be done at runtime to ensure fresh builds with current code
 
 # Install development dependencies when container starts
 CMD ["bash"]

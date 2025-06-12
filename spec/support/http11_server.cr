@@ -38,7 +38,23 @@ module TestSupport
 
     def start : Nil
       spawn { @server.listen }
-      sleep 100.milliseconds # Give server time to start
+      # Wait longer for server to be ready, especially with SSL
+      sleep 200.milliseconds
+
+      # Verify server is actually listening by checking if port is bound
+      max_attempts = 20
+      attempts = 0
+      while attempts < max_attempts
+        begin
+          # Just check if the port is listening, don't do full SSL handshake
+          socket = TCPSocket.new("127.0.0.1", @port)
+          socket.close
+          break # Server is ready
+        rescue
+          attempts += 1
+          sleep 25.milliseconds
+        end
+      end
     end
 
     def stop : Nil
@@ -64,12 +80,21 @@ module TestSupport
       context.certificate_chain = cert_path
       context.private_key = key_path
 
-      # Explicitly disable HTTP/2 by not setting ALPN protocols
-      # This forces HTTP/1.1 only (no context.alpn_protocol set)
+      # Configure for HTTP/1.1 only - explicitly advertise HTTP/1.1
+      context.verify_mode = OpenSSL::SSL::VerifyMode::NONE
+
+      # Set up TLS settings compatible with our test client
+      context.ciphers = "HIGH:!aNULL:!MD5"
+
+      # Explicitly set ALPN protocols to http/1.1 only
+      # This should cause proper ALPN negotiation where the client
+      # requests h2 but the server only supports http/1.1
+      context.alpn_protocol = "http/1.1"
 
       context
-    rescue
+    rescue ex
       # If SSL setup fails, return nil to fall back to HTTP
+      Log.warn { "SSL context creation failed: #{ex.message}" }
       nil
     end
 

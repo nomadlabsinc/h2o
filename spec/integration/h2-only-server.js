@@ -11,6 +11,9 @@ const options = {
   cert: fs.readFileSync(path.join(sslPath, 'cert.pem')),
   // Force HTTP/2 only - reject HTTP/1.1 connections
   allowHTTP1: false,
+  // More tolerant TLS configuration - remove conflicting options
+  minVersion: 'TLSv1.2',
+  ciphers: 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384',
   settings: {
     // HTTP/2 specific settings
     headerTableSize: 4096,
@@ -26,7 +29,21 @@ const options = {
 const server = http2.createSecureServer(options);
 
 server.on('error', (err) => {
-  console.error('Server error:', err);
+  console.error('Server error:', err.message);
+  // Don't crash on TLS errors - just log them
+});
+
+// Handle TLS socket errors gracefully
+server.on('secureConnection', (tlsSocket) => {
+  tlsSocket.on('error', (err) => {
+    console.log('TLS socket error (handled):', err.message);
+    // Don't crash - just close the problematic connection
+    try {
+      tlsSocket.destroy();
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+  });
 });
 
 server.on('request', (req, res) => {
@@ -103,25 +120,36 @@ server.on('request', (req, res) => {
   }
 });
 
-// Handle HTTP/1.1 connection attempts
+// Handle HTTP/1.1 connection attempts and TLS errors
 server.on('clientError', (err, socket) => {
-  console.log('Client error (likely HTTP/1.1 attempt):', err.message);
+  console.log('Client error (handled gracefully):', err.message);
 
-  if (err.code === 'EPROTO' || err.message.includes('HTTP/1.1')) {
-    // Send HTTP/1.1 response indicating HTTP/2 requirement
-    const response = [
-      'HTTP/1.1 426 Upgrade Required',
-      'Content-Type: application/json',
-      'Upgrade: h2',
-      'Connection: Upgrade',
-      'Content-Length: 140',
-      '',
-      '{"error":"HTTP/2 Required","message":"This server only accepts HTTP/2 connections","required_protocol":"HTTP/2.0","upgrade_to":"h2"}'
-    ].join('\r\n');
+  // Check if socket is still writable before attempting to respond
+  if (!socket.destroyed && socket.writable) {
+    try {
+      if (err.code === 'EPROTO' || err.message.includes('HTTP/1.1')) {
+        // Send HTTP/1.1 response indicating HTTP/2 requirement
+        const response = [
+          'HTTP/1.1 426 Upgrade Required',
+          'Content-Type: application/json',
+          'Upgrade: h2',
+          'Connection: Upgrade',
+          'Content-Length: 140',
+          '',
+          '{"error":"HTTP/2 Required","message":"This server only accepts HTTP/2 connections","required_protocol":"HTTP/2.0","upgrade_to":"h2"}'
+        ].join('\r\n');
 
-    socket.write(response);
-    socket.end();
-  } else {
+        socket.write(response);
+        socket.end();
+      } else {
+        // For TLS errors or other issues, just close gracefully
+        socket.destroy();
+      }
+    } catch (writeErr) {
+      console.log('Error writing to socket (ignored):', writeErr.message);
+      socket.destroy();
+    }
+  } else if (!socket.destroyed) {
     socket.destroy();
   }
 });

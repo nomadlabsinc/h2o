@@ -7,6 +7,7 @@ Adhere to these principles to ensure a high-quality, performant, and maintainabl
     *   Leverage Crystal's concurrency primitives (`Channel`, `Fiber`, `Mutex`) appropriately.
     *   Prioritize type safety; use explicit type annotations where beneficial for clarity or performance, especially in performance-critical paths or public APIs.
     *   Employ `raise` for exceptional conditions and `begin...rescue` for robust error handling.
+    *   Avoid unnecessary use of `begin` when working in crystal and ruby with exception handling.
 
 2.  **Performance Focus:**
     *   Consult Crystal's [Performance Guide](https://crystal-lang.org/reference/1.16/guides/performance.html).
@@ -28,6 +29,15 @@ Adhere to these principles to ensure a high-quality, performant, and maintainabl
     *   Write tests *before* or concurrently with implementation.
     *   Ensure high unit test coverage for all components.
     *   Develop robust integration tests against real and mock servers.
+    *   **Success Rate in Tests:**
+        *   Tests must always aim for 100% success rate
+        *   Avoid partial success metrics like:
+            ```crystal
+            # bad!
+            success_rate = successful_count.to_f / results.size
+            129        success_rate.should be >= 0.87 # At least 87% success rate (13/15 requests)
+            ```
+        *   Strive for complete test coverage and full passing status
 
 5.  **Observability & Debugging:**
     *   Integrate Crystal's `Log` module for structured logging. Define log levels (e.g., `DEBUG`, `INFO`, `WARN`, `ERROR`) and allow configuration via environment variables (e.g., `LOG_LEVEL`).
@@ -40,6 +50,9 @@ Adhere to these principles to ensure a high-quality, performant, and maintainabl
 
 7.  **Timing and Concurrency:**
     *   Always use `sleep(0.1.seconds)`, not `sleep(0.1)` or `sleep 0.1`
+
+8.  **Docker Practices:**
+    *   Don't use version fields in docker-compose -- that's outdated.
 
 ## 🚨 CRITICAL: Code Quality and Formatting Standards
 

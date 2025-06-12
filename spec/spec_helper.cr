@@ -1,6 +1,12 @@
 require "spec"
 require "../src/h2o"
 require "./support/http11_server"
+require "./support/test_urls"
+require "./support/test_config"
+
+{% if env("CI") %}
+  require "./support/ci_test_helper"
+{% end %}
 
 # Test configuration
 Log.setup("h2o", :debug)
@@ -8,10 +14,10 @@ Log.setup("h2o", :debug)
 # Centralized timeout configuration for tests
 module TestConfig
   # Reliable 1-second timeouts for all operations
-  GOOGLE_TIMEOUT     = 1.seconds
-  HTTPBIN_TIMEOUT    = 1.seconds
-  NGHTTP2_TIMEOUT    = 1.seconds
-  GITHUB_API_TIMEOUT = 1.seconds
+  LOCALHOST_TIMEOUT   = 1.seconds
+  LOCAL_API_TIMEOUT   = 1.seconds
+  LOCAL_HTTP2_TIMEOUT = 1.seconds
+  FAST_LOCAL_TIMEOUT  = 1.seconds
 
   # Connection pooling tests
   CONNECTION_POOLING_TIMEOUT = 1.seconds
@@ -62,5 +68,31 @@ module NetworkTestHelper
     end
 
     false
+  end
+end
+
+# Helper for clearing global state between tests to prevent interference
+module GlobalStateHelper
+  def self.clear_all_caches
+    # Clear the global TLS cache
+    H2O.tls_cache.clear
+    # Clear buffer pool stats to prevent interference between tests
+    H2O::BufferPool.reset_stats
+  end
+
+  # Clear performance benchmark shared state
+  def self.clear_benchmark_state
+    # Clear allocation tracker state if the module is loaded
+    {% if @type.has_constant?("PerformanceBenchmarks") %}
+      PerformanceBenchmarks::AllocationTracker.reset
+    {% end %}
+  end
+
+  # Call this before tests that require clean global state
+  def self.ensure_clean_state
+    clear_all_caches
+    clear_benchmark_state
+    # Small delay to ensure any background fibers have finished
+    sleep 1.milliseconds
   end
 end

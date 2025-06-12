@@ -71,6 +71,7 @@ module H2O
     property connections : ConnectionsHash
     property default_circuit_breaker : Breaker?
     property timeout : Time::Span
+    property verify_ssl : Bool
 
     # Enhanced connection management
     @connection_metadata : ConnectionMetadataHash
@@ -78,6 +79,7 @@ module H2O
 
     def initialize(@connection_pool_size : Int32 = 10,
                    @timeout : Time::Span = H2O.config.default_timeout,
+                   @verify_ssl : Bool = H2O.config.verify_ssl,
                    @circuit_breaker_enabled : Bool = H2O.config.circuit_breaker_enabled,
                    @circuit_breaker_adapter : CircuitBreakerAdapter? = nil,
                    @default_circuit_breaker : Breaker? = H2O.config.default_circuit_breaker)
@@ -263,13 +265,16 @@ module H2O
       end
 
       # No cache entry, try HTTP/2 first then fallback
+      Log.debug { "Attempting connection to #{host}:#{port}" }
       if connection = try_http2_connection(host, port)
         @protocol_cache.cache_protocol(host, port, ProtocolVersion::Http2)
         connection
       elsif connection = try_http1_connection(host, port)
+        Log.debug { "Falling back to HTTP/1.1 for #{host}:#{port}" }
         @protocol_cache.cache_protocol(host, port, ProtocolVersion::Http11)
         connection
       else
+        Log.error { "Failed to connect to #{host}:#{port} with both HTTP/2 and HTTP/1.1" }
         nil
       end
     rescue ex : Exception
@@ -294,10 +299,10 @@ module H2O
     end
 
     private def execute_request(connection : BaseConnection, method : String, path : String, headers : Headers, body : String?) : Response
-      start_time = Time.monotonic
+      start_time : MonotonicTime = Time.monotonic
 
       begin
-        result = Timeout(Response).execute_with_handler(@timeout, -> { Response.error(0, "Request timed out", "HTTP/2") }) do
+        result : Response = Timeout(Response).execute_with_handler(@timeout, -> { Response.error(0, "Request timed out", "HTTP/2") }) do
           connection.request(method, path, headers, body)
         end
 
@@ -480,30 +485,31 @@ module H2O
     end
 
     private def try_http2_connection(host : String, port : Int32) : BaseConnection?
-      connection : H2::Client = H2::Client.new(host, port, connect_timeout: @timeout, request_timeout: @timeout)
+      connection : H2::Client = H2::Client.new(host, port, connect_timeout: @timeout, request_timeout: @timeout, verify_ssl: @verify_ssl)
       Log.debug { "Using HTTP/2 for #{host}:#{port}" }
       connection
-    rescue ex : ConnectionError
-      # Only fallback to HTTP/1.1 if the issue is specifically ALPN negotiation
+    rescue ex : ConnectionError | OpenSSL::SSL::Error
+      # Fallback to HTTP/1.1 for ALPN negotiation failures or certain SSL errors
       if message = ex.message
-        if message.includes?("HTTP/2 not negotiated via ALPN")
+        if message.includes?("HTTP/2 not negotiated via ALPN") ||
+           message.includes?("no application protocol") ||
+           message.includes?("tlsv1 alert no application protocol")
           Log.debug { "HTTP/2 not supported by #{host}:#{port} (ALPN), falling back to HTTP/1.1" }
           nil
         else
-          # Re-raise other connection errors (network issues, TLS problems, etc.)
-          Log.error { "HTTP/2 connection failed for #{host}:#{port}: #{message}" }
-          raise ex
+          # For other errors, still try HTTP/1.1 as a fallback
+          Log.debug { "HTTP/2 connection failed for #{host}:#{port}: #{message}, will try HTTP/1.1" }
+          nil
         end
       else
-        # No message available, assume it's a connection issue and re-raise
-        Log.error { "HTTP/2 connection failed for #{host}:#{port}: unknown error" }
-        raise ex
+        # No message available, try HTTP/1.1 fallback
+        Log.debug { "HTTP/2 connection failed for #{host}:#{port}: unknown error, will try HTTP/1.1" }
+        nil
       end
     end
 
     private def try_http1_connection(host : String, port : Int32) : BaseConnection?
-      verify_ssl : Bool = !(host == "localhost" || host == "127.0.0.1")
-      connection : H1::Client = H1::Client.new(host, port, connect_timeout: @timeout, verify_ssl: verify_ssl)
+      connection : H1::Client = H1::Client.new(host, port, connect_timeout: @timeout, verify_ssl: @verify_ssl)
       Log.debug { "Using HTTP/1.1 for #{host}:#{port}" }
       connection
     end

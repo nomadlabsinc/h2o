@@ -1,15 +1,11 @@
-:443 {
-    tls internal
-    
-    respond /health `{"status": "healthy", "protocol": "HTTP/2"}` 200 {
-        header Content-Type application/json
-    }
-    
-    respond /echo `{"method": "{method}", "path": "{path}", "headers": "{header.*}"}` 200 {
-        header Content-Type application/json
-    }
-    
-    respond /* `{"message": "Caddy HTTP/2 server", "path": "{path}"}` 200 {
-        header Content-Type application/json
-    }
+:8444 {
+    tls /etc/ssl/certs/cert.pem /etc/ssl/certs/key.pem
+
+    header Content-Type application/json
+
+    respond /health `{"status": "healthy", "protocol": "HTTP/2", "server": "Caddy"}` 200
+
+    respond /echo `{"method": "{method}", "path": "{path}", "protocol": "HTTP/2"}` 200
+
+    respond /* `{"message": "Caddy HTTP/2 server", "path": "{path}", "timestamp": "{now}"}` 200
 }

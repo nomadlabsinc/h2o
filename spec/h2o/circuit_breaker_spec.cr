@@ -49,7 +49,7 @@ describe H2O::Breaker do
       breaker = H2O::Breaker.new("test")
       response = H2O::Response.new(200)
 
-      result = breaker.execute("http://example.com", H2O::Headers.new) { response }
+      result = breaker.execute("http://mock.test", H2O::Headers.new) { response }
 
       result.should eq(response)
       breaker.statistics.success_count.should eq(1)
@@ -59,7 +59,7 @@ describe H2O::Breaker do
     it "handles exceptions and records failures" do
       breaker = H2O::Breaker.new("test", failure_threshold: 2)
 
-      result = breaker.execute("http://example.com", H2O::Headers.new) do
+      result = breaker.execute("http://mock.test", H2O::Headers.new) do
         raise Exception.new("Test error")
       end
 
@@ -75,13 +75,13 @@ describe H2O::Breaker do
       breaker = H2O::Breaker.new("test", failure_threshold: 2)
 
       # First failure
-      breaker.execute("http://example.com", H2O::Headers.new) do
+      breaker.execute("http://mock.test", H2O::Headers.new) do
         raise Exception.new("Test error")
       end
       breaker.state.should eq(H2O::CircuitBreaker::State::Closed)
 
       # Second failure - should open circuit
-      breaker.execute("http://example.com", H2O::Headers.new) do
+      breaker.execute("http://mock.test", H2O::Headers.new) do
         raise Exception.new("Test error")
       end
       breaker.state.should eq(H2O::CircuitBreaker::State::Open)
@@ -91,7 +91,7 @@ describe H2O::Breaker do
       breaker = H2O::Breaker.new("test")
       breaker.force_open
 
-      result = breaker.execute("http://example.com", H2O::Headers.new) do
+      result = breaker.execute("http://mock.test", H2O::Headers.new) do
         H2O::Response.new(200)
       end
 
@@ -142,7 +142,7 @@ describe H2O::Breaker do
         callback_stats = stats
       end
 
-      breaker.execute("http://example.com", H2O::Headers.new) do
+      breaker.execute("http://mock.test", H2O::Headers.new) do
         raise Exception.new("Test error")
       end
 

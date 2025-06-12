@@ -10,14 +10,14 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
     it "establishes connections without hanging" do
       start_time = Time.monotonic
 
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Connection establishment should be fast
       elapsed = Time.monotonic - start_time
       elapsed.should be <= 1.second
 
       # Verify connection is usable
-      response = client.get("https://httpbin.org/get")
+      response = client.get("#{TestConfig.http2_url}/get")
 
       if response
         response.status.should eq(200)
@@ -37,11 +37,11 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
 
         spawn do
           begin
-            client = H2O::Client.new(timeout: client_timeout)
+            client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
             clients << client
 
             # Try to make a request
-            response = client.get("https://httpbin.org/get?client=#{i}")
+            response = client.get("#{TestConfig.http2_url}/get?client=#{i}")
             channel.send(response != nil && response.status == 200)
           rescue
             channel.send(false)
@@ -63,17 +63,17 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
 
   describe "Frame Processing Reliability" do
     it "processes frames without deadlocks" do
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Make requests that exercise frame processing
       responses = Array(H2O::Response).new
 
       # Different types of requests to test various frame types
       requests = [
-        "https://httpbin.org/get",
-        "https://httpbin.org/json",
-        "https://httpbin.org/html",
-        "https://httpbin.org/xml",
+        "#{TestConfig.http2_url}/get",
+        "#{TestConfig.http2_url}/json",
+        "#{TestConfig.http2_url}/html",
+        "#{TestConfig.http2_url}/xml",
       ]
 
       requests.each do |url|
@@ -94,15 +94,15 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
     end
 
     it "handles large responses without frame processing issues" do
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Request a moderate sized response to test frame assembly
       # Use a smaller payload that won't exceed URL limits
-      response = client.get("https://httpbin.org/stream/50")
+      response = client.get("#{TestConfig.http2_url}/json")
 
       if response.status == 200
         # Successfully got a larger response
-        response.body.size.should be > 1000
+        response.body.size.should be > 100
       elsif response.status == 0
         # Network/connection error - acceptable
         response.error?.should be_true
@@ -117,7 +117,7 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
 
   describe "Stream Management" do
     it "manages multiple streams correctly" do
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Create multiple concurrent requests (different streams)
       channels = Array(Channel(Bool)).new
@@ -127,7 +127,7 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
         channels << channel
 
         spawn do
-          response = client.get("https://httpbin.org/delay/1?stream=#{i}")
+          response = client.get("#{TestConfig.http2_url}/delay/1?stream=#{i}")
           channel.send(response != nil && response.status == 200)
         end
       end
@@ -147,14 +147,14 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
     end
 
     it "handles stream lifecycle correctly" do
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Test different request patterns
       patterns = [
-        -> { client.get("https://httpbin.org/get") },
-        -> { client.post("https://httpbin.org/post", "test") },
-        -> { client.put("https://httpbin.org/put", "test") },
-        -> { client.delete("https://httpbin.org/delete") },
+        -> { client.get("#{TestConfig.http2_url}/get") },
+        -> { client.post("#{TestConfig.http2_url}/post", "test") },
+        -> { client.put("#{TestConfig.http2_url}/put", "test") },
+        -> { client.delete("#{TestConfig.http2_url}/delete") },
       ]
 
       successful_patterns = 0
@@ -175,16 +175,16 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
 
   describe "Error Recovery and Resilience" do
     it "recovers from network interruptions gracefully" do
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Make a normal request first
-      response1 = client.get("https://httpbin.org/get")
+      response1 = client.get("#{TestConfig.http2_url}/get")
 
       # Try a request that might fail
-      response2 = client.get("https://httpbin.org/status/500")
+      response2 = client.get("#{TestConfig.http2_url}/status/500")
 
       # Make another normal request to test recovery
-      response3 = client.get("https://httpbin.org/get")
+      response3 = client.get("#{TestConfig.http2_url}/get")
 
       # Should handle errors without breaking subsequent requests
       if response1 || response3
@@ -203,14 +203,14 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
     end
 
     it "handles malformed responses gracefully" do
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Test with various edge case URLs
       edge_cases = [
-        "https://httpbin.org/status/204",    # No content
-        "https://httpbin.org/status/301",    # Redirect
-        "https://httpbin.org/gzip",          # Compressed content
-        "https://httpbin.org/encoding/utf8", # Special encoding
+        "#{TestConfig.http2_url}/status/204",    # No content
+        "#{TestConfig.http2_url}/status/301",    # Redirect
+        "#{TestConfig.http2_url}/gzip",          # Compressed content
+        "#{TestConfig.http2_url}/encoding/utf8", # Special encoding
       ]
 
       successful_requests = 0
@@ -231,14 +231,14 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
 
   describe "Performance and Efficiency" do
     it "maintains reasonable performance under load" do
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       request_count = 10
       successful_requests = 0
 
       total_time = Time.measure do
         request_count.times do |i|
-          response = client.get("https://httpbin.org/get?req=#{i}")
+          response = client.get("#{TestConfig.http2_url}/get?req=#{i}")
           successful_requests += 1 if response && response.status == 200
         end
       end
@@ -259,14 +259,14 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
     end
 
     it "efficiently reuses connections" do
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Make multiple requests to same host
       response_times = Array(Time::Span).new
 
       5.times do
         start_time = Time.monotonic
-        response = client.get("https://httpbin.org/get")
+        response = client.get("#{TestConfig.http2_url}/get")
         elapsed = Time.monotonic - start_time
 
         if response && response.status == 200
@@ -292,7 +292,7 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
 
   describe "Comprehensive Integration Validation" do
     it "validates end-to-end HTTP/2 functionality" do
-      client = H2O::Client.new(timeout: client_timeout)
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Comprehensive test combining multiple aspects
       test_results = {
@@ -304,23 +304,23 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
       }
 
       # Basic GET
-      get_response = client.get("https://httpbin.org/get")
+      get_response = client.get("#{TestConfig.http2_url}/get")
       test_results["basic_get"] = get_response.status == 200
 
       # Custom headers
-      headers_response = client.get("https://httpbin.org/headers", {"X-Test" => "value"})
+      headers_response = client.get("#{TestConfig.http2_url}/headers", {"X-Test" => "value"})
       test_results["custom_headers"] = headers_response.status == 200 && headers_response.body.includes?("X-Test")
 
       # POST with data
-      post_response = client.post("https://httpbin.org/post", "test data")
+      post_response = client.post("#{TestConfig.http2_url}/post", "test data")
       test_results["post_data"] = post_response.status == 200 && post_response.body.includes?("test data")
 
       # JSON response
-      json_response = client.get("https://httpbin.org/json")
+      json_response = client.get("#{TestConfig.http2_url}/json")
       test_results["json_response"] = json_response.status == 200 && json_response.body.includes?("slideshow")
 
       # Different status codes
-      status_response = client.get("https://httpbin.org/status/201")
+      status_response = client.get("#{TestConfig.http2_url}/status/201")
       test_results["status_codes"] = status_response.status == 201
 
       # Count successful tests

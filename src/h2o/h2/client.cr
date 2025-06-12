@@ -19,6 +19,7 @@ module H2O
       property writer_fiber : FiberRef
       property dispatcher_fiber : FiberRef
       property fibers_started : Bool
+      property connection_setup : Bool
       property outgoing_frames : OutgoingFrameChannel
       property incoming_frames : IncomingFrameChannel
       property continuation_limits : ContinuationLimits
@@ -27,8 +28,9 @@ module H2O
       property enable_batch_processing : Bool
       property request_timeout : Time::Span
 
-      def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds)
-        verify_mode : OpenSSL::SSL::VerifyMode = determine_verify_mode(hostname)
+      def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true)
+        verify_mode : OpenSSL::SSL::VerifyMode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
+        Log.debug { "Creating H2::Client for #{hostname}:#{port} with verify_mode=#{verify_mode}" }
         @socket = TlsSocket.new(hostname, port, verify_mode: verify_mode, connect_timeout: connect_timeout)
         validate_http2_negotiation
 
@@ -56,8 +58,9 @@ module H2O
         @writer_fiber = nil
         @dispatcher_fiber = nil
         @fibers_started = false
+        @connection_setup = false
 
-        setup_connection
+        # Defer connection setup until first request for performance
       end
 
       def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response
@@ -72,8 +75,11 @@ module H2O
           send_request_body(stream, body) if body
 
           # Wait for response with proper error handling
-          response : Response = stream.await_response(@request_timeout)
-          response
+          if response = stream.await_response(@request_timeout)
+            response
+          else
+            Response.error(408, "Request timeout", "HTTP/2")
+          end
         rescue ex : TimeoutError | ConnectionError
           Log.error { "H2 request failed: #{ex.message}" }
 
@@ -178,11 +184,6 @@ module H2O
         Log.debug { "Unexpected error in close_socket_safely: #{ex.message}" }
       end
 
-      private def determine_verify_mode(hostname : String) : OpenSSL::SSL::VerifyMode
-        local_host : Bool = hostname == "localhost" || hostname == "127.0.0.1"
-        local_host ? OpenSSL::SSL::VerifyMode::NONE : OpenSSL::SSL::VerifyMode::PEER
-      end
-
       private def send_request_headers(stream : Stream, method : String, path : String, headers : Headers, body : String?) : Nil
         request_headers : Headers = build_request_headers(method, path, headers)
         encoded_headers : Bytes = @hpack_encoder.encode(request_headers)
@@ -209,6 +210,12 @@ module H2O
 
         start_fibers
         @fibers_started = true
+
+        # Also perform connection setup if not done yet
+        unless @connection_setup
+          setup_connection_internal
+          @connection_setup = true
+        end
       end
 
       private def fiber_still_running? : Bool
@@ -222,10 +229,8 @@ module H2O
         reader_alive || writer_alive || dispatcher_alive
       end
 
-      private def setup_connection : Nil
-        # Start fibers BEFORE sending preface so we can process server responses
-        ensure_fibers_started
-
+      private def setup_connection_internal : Nil
+        # Send preface and initial settings - fibers are already started
         Preface.send_preface(@socket.to_io)
 
         initial_settings = Preface.create_initial_settings
