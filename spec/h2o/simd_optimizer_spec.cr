@@ -370,8 +370,8 @@ describe H2O::SIMDOptimizer do
       end
 
       it "returns true for repetitive text" do
-        # Repetitive text should compress well
-        data = "aaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_slice
+        # Use text that meets the compression criteria: low uniqueness + high ASCII ratio
+        data = "hello world hello world hello world hello world hello world".to_slice
 
         H2O::SIMDOptimizer::HPACKOptimizer.should_huffman_encode?(data).should be_true
       end

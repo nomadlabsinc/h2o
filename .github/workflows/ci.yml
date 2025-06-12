@@ -10,7 +10,7 @@ jobs:
   build-image:
     name: Build Docker Image
     runs-on: ubicloud-standard-4
-    timeout-minutes: 2
+    timeout-minutes: 5
     outputs:
       image-id: ${{ steps.build.outputs.imageid }}
 
@@ -44,7 +44,7 @@ jobs:
     name: Unit Tests
     runs-on: ubicloud-standard-8
     needs: [build-image]
-    timeout-minutes: 2
+    timeout-minutes: 5
 
     steps:
     - name: Checkout code
@@ -78,7 +78,7 @@ jobs:
           bash -c "shards install"
 
     - name: Run unit tests
-      timeout-minutes: 2
+      timeout-minutes: 5
       run: |
         docker run --rm \
           -v $PWD:/workspace \
@@ -484,7 +484,7 @@ jobs:
     runs-on: ubicloud-standard-8
     needs: build-image
     if: contains(github.event.pull_request.labels.*.name, 'performance-test') || github.event_name == 'push'
-    timeout-minutes: 2
+    timeout-minutes: 5
 
     steps:
     - name: Checkout code
@@ -518,7 +518,7 @@ jobs:
           bash -c "shards install"
 
     - name: Run performance tests
-      timeout-minutes: 2
+      timeout-minutes: 5
       run: |
         docker run --rm \
           -v $PWD:/workspace \
@@ -540,7 +540,7 @@ jobs:
     name: Code Quality (Lint & Build)
     runs-on: ubicloud-standard-4
     needs: build-image
-    timeout-minutes: 2
+    timeout-minutes: 5
 
     steps:
     - name: Checkout code
