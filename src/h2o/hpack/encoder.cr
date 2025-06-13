@@ -145,12 +145,8 @@ module H2O::HPACK
       when {"accept-encoding", "gzip, deflate"}
         io.write_byte(0x90_u8) # Static table index 16
       else
-        # Use literal without indexing for everything else
-        io.write_byte(0x00_u8)
-        io.write_byte(name.bytesize.to_u8)
-        io.write(name.to_slice)
-        io.write_byte(value.bytesize.to_u8)
-        io.write(value.to_slice)
+        # Use proper encoding for literal headers
+        encode_literal_without_indexing_new_name(io, name, value)
       end
     end
 
