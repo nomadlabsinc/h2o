@@ -61,14 +61,37 @@ module H2O::HPACK
       else
         # Literal header without indexing (fastest path for non-static headers)
         result.write_byte(0x00_u8)
-        result.write_byte(name.bytesize.to_u8)
-        result.write(name.to_slice)
-        result.write_byte(value.bytesize.to_u8)
-        result.write(value.to_slice)
+        encode_simple_string(result, name)
+        encode_simple_string(result, value)
       end
     end
 
     result.to_slice
+  end
+
+  # Helper methods for proper HPACK string encoding
+  private def self.encode_simple_string(io : IO, string : String) : Nil
+    # Use proper HPACK integer encoding for string length
+    encode_simple_integer(io, string.bytesize, 7, 0x00_u8)
+    io.write(string.to_slice)
+  end
+
+  private def self.encode_simple_integer(io : IO, value : Int32, prefix_bits : Int32, pattern : UInt8) : Nil
+    max_value = (1 << prefix_bits) - 1
+
+    if value < max_value
+      io.write_byte(pattern | value.to_u8)
+    else
+      io.write_byte(pattern | max_value.to_u8)
+      value -= max_value
+
+      while value >= 128
+        io.write_byte(((value % 128) + 128).to_u8)
+        value //= 128
+      end
+
+      io.write_byte(value.to_u8)
+    end
   end
 
   # Full-featured HPACK encoder with dynamic table management

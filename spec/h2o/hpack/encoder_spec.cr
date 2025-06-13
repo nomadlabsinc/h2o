@@ -173,4 +173,81 @@ describe H2O::HPACK::Encoder do
       encoded_custom.size.should be > 20
     end
   end
+
+  describe "regression tests" do
+    it "properly encodes string lengths using HPACK integer encoding (issue #50)" do
+      # This test prevents regression of the HPACK encoding bug where invalid single-byte
+      # length encoding was causing Google APIs to reject requests with CompressionError
+      encoder = H2O::HPACK::Encoder.new
+
+      # Test with headers that don't match static table entries
+      # These headers were failing with Google Maps API due to invalid length encoding
+      headers = H2O::Headers{
+        ":method"    => "GET",
+        ":path"      => "/maps/api/place/nearbysearch/json",
+        ":scheme"    => "https",
+        ":authority" => "maps.googleapis.com",
+        "accept"     => "application/json", # This header triggers literal encoding
+        "user-agent" => "H2O/2.0",
+      }
+
+      encoded = encoder.encode(headers)
+      encoded.should_not be_empty
+
+      # Verify round-trip encoding/decoding works correctly
+      decoder = H2O::HPACK::Decoder.new(4096, H2O::HpackSecurityLimits.new)
+      decoded = decoder.decode(encoded)
+      decoded.should eq(headers)
+
+      # Test encode_fast method specifically (where the bug was)
+      fast_encoded = H2O::HPACK.encode_fast(headers)
+      fast_encoded.should_not be_empty
+
+      # Verify fast encoding can also be decoded correctly
+      fast_decoded = decoder.decode(fast_encoded)
+      fast_decoded.should eq(headers)
+    end
+
+    it "properly encodes headers with long values using HPACK integer encoding" do
+      # Test with various string lengths to ensure proper HPACK integer encoding
+      encoder = H2O::HPACK::Encoder.new
+
+      test_cases = [
+        {"short", "x"},               # 1 byte value
+        {"medium", "x" * 126},        # 126 bytes (near single-byte limit)
+        {"boundary", "x" * 127},      # 127 bytes (exactly at 7-bit limit)
+        {"over_boundary", "x" * 128}, # 128 bytes (requires multi-byte encoding)
+        {"large", "x" * 255},         # 255 bytes
+        {"very_large", "x" * 1000},   # 1000 bytes
+      ]
+
+      test_cases.each do |name, value|
+        headers = H2O::Headers{
+          ":method"        => "GET",
+          ":path"          => "/test",
+          ":scheme"        => "https",
+          ":authority"     => "example.com",
+          "x-test-#{name}" => value,
+        }
+
+        # Test both encoder methods
+        encoded = encoder.encode(headers)
+        encoded.should_not be_empty
+
+        fast_encoded = H2O::HPACK.encode_fast(headers)
+        fast_encoded.should_not be_empty
+
+        # Verify both can be decoded correctly
+        decoder = H2O::HPACK::Decoder.new(4096, H2O::HpackSecurityLimits.new)
+
+        decoded = decoder.decode(encoded)
+        decoded.should eq(headers)
+        decoded["x-test-#{name}"].should eq(value)
+
+        fast_decoded = decoder.decode(fast_encoded)
+        fast_decoded.should eq(headers)
+        fast_decoded["x-test-#{name}"].should eq(value)
+      end
+    end
+  end
 end
