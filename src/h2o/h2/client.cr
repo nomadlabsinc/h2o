@@ -187,16 +187,96 @@ module H2O
       private def send_request_headers(stream : Stream, method : String, path : String, headers : Headers, body : String?) : Nil
         request_headers : Headers = build_request_headers(method, path, headers)
         encoded_headers : Bytes = @hpack_encoder.encode(request_headers)
-        flags : UInt8 = HeadersFrame::FLAG_END_HEADERS | (body.nil? ? HeadersFrame::FLAG_END_STREAM : 0_u8)
-        headers_frame : HeadersFrame = HeadersFrame.new(stream.id, encoded_headers, flags)
-        send_frame(headers_frame)
-        stream.send_headers(headers_frame)
+        max_frame_size = @remote_settings.max_frame_size.to_i32
+
+        if encoded_headers.size <= max_frame_size
+          # Single HEADERS frame - fits within max frame size
+          flags : UInt8 = HeadersFrame::FLAG_END_HEADERS | (body.nil? ? HeadersFrame::FLAG_END_STREAM : 0_u8)
+          headers_frame : HeadersFrame = HeadersFrame.new(stream.id, encoded_headers, flags)
+          send_frame(headers_frame)
+          stream.send_headers(headers_frame)
+        else
+          # Multiple frames - fragment headers using CONTINUATION frames
+          send_fragmented_headers(stream, encoded_headers, body.nil?, max_frame_size)
+        end
+      end
+
+      private def send_fragmented_headers(stream : Stream, encoded_headers : Bytes, end_stream : Bool, max_frame_size : Int32) : Nil
+        total_size = encoded_headers.size
+        offset = 0
+
+        while offset < total_size
+          # Calculate chunk size for this frame
+          remaining = total_size - offset
+          chunk_size = Math.min(remaining, max_frame_size)
+
+          # Extract chunk data
+          chunk_data = encoded_headers[offset, chunk_size]
+
+          # Determine if this is the last header frame
+          is_last_header_frame = (offset + chunk_size) >= total_size
+
+          if offset == 0
+            # First frame is HEADERS frame
+            flags : UInt8 = 0_u8
+            flags |= HeadersFrame::FLAG_END_HEADERS if is_last_header_frame
+            flags |= HeadersFrame::FLAG_END_STREAM if end_stream
+
+            headers_frame : HeadersFrame = HeadersFrame.new(stream.id, chunk_data, flags)
+            send_frame(headers_frame)
+            stream.send_headers(headers_frame)
+          else
+            # Subsequent frames are CONTINUATION frames
+            continuation_frame : ContinuationFrame = ContinuationFrame.new(stream.id, chunk_data, is_last_header_frame)
+            send_frame(continuation_frame)
+          end
+
+          offset += chunk_size
+
+          Log.debug { "Sent header frame chunk: #{chunk_size} bytes, total progress: #{offset}/#{total_size}" }
+        end
       end
 
       private def send_request_body(stream : Stream, body : String) : Nil
-        data_frame : DataFrame = DataFrame.new(stream.id, body.to_slice, DataFrame::FLAG_END_STREAM)
-        send_frame(data_frame)
-        stream.send_data(data_frame)
+        body_bytes = body.to_slice
+        max_frame_size = @remote_settings.max_frame_size.to_i32
+
+        if body_bytes.size <= max_frame_size
+          # Single frame - body fits within max frame size
+          data_frame : DataFrame = DataFrame.new(stream.id, body_bytes, DataFrame::FLAG_END_STREAM)
+          send_frame(data_frame)
+          stream.send_data(data_frame)
+        else
+          # Multiple frames - fragment body to honor max_frame_size
+          send_fragmented_body(stream, body_bytes, max_frame_size)
+        end
+      end
+
+      private def send_fragmented_body(stream : Stream, body_bytes : Bytes, max_frame_size : Int32) : Nil
+        total_size = body_bytes.size
+        offset = 0
+
+        while offset < total_size
+          # Calculate chunk size for this frame
+          remaining = total_size - offset
+          chunk_size = Math.min(remaining, max_frame_size)
+
+          # Extract chunk data
+          chunk_data = body_bytes[offset, chunk_size]
+
+          # Determine if this is the last frame
+          is_last_frame = (offset + chunk_size) >= total_size
+          flags = is_last_frame ? DataFrame::FLAG_END_STREAM : 0_u8
+
+          # Create and send data frame
+          data_frame : DataFrame = DataFrame.new(stream.id, chunk_data, flags)
+          send_frame(data_frame)
+          stream.send_data(data_frame)
+
+          offset += chunk_size
+
+          Log.debug { "Sent DATA frame chunk: #{chunk_size} bytes, total progress: #{offset}/#{total_size}" }
+        end
       end
 
       private def validate_http2_negotiation : Nil
