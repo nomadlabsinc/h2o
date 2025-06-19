@@ -70,6 +70,7 @@ module H2O
     property connection_pool_size : Int32
     property connections : ConnectionsHash
     property default_circuit_breaker : Breaker?
+    property h2_prior_knowledge : Bool
     property timeout : Time::Span
     property verify_ssl : Bool
 
@@ -78,6 +79,7 @@ module H2O
     @warmup_hosts : HostSet
 
     def initialize(@connection_pool_size : Int32 = 10,
+                   @h2_prior_knowledge : Bool = false,
                    @timeout : Time::Span = H2O.config.default_timeout,
                    @verify_ssl : Bool = H2O.config.verify_ssl,
                    @circuit_breaker_enabled : Bool = H2O.config.circuit_breaker_enabled,
@@ -180,8 +182,8 @@ module H2O
     private def parse_url_with_host(url : String) : UrlParseResult
       uri : URI = URI.parse(url)
 
-      unless uri.scheme == "https"
-        raise ArgumentError.new("Only HTTPS URLs are supported")
+      unless uri.scheme == "https" || (uri.scheme == "http" && @h2_prior_knowledge)
+        raise ArgumentError.new("Only HTTPS URLs are supported (or HTTP with h2_prior_knowledge enabled)")
       end
 
       host : String? = uri.host
@@ -485,7 +487,7 @@ module H2O
     end
 
     private def try_http2_connection(host : String, port : Int32) : BaseConnection?
-      connection : H2::Client = H2::Client.new(host, port, connect_timeout: @timeout, request_timeout: @timeout, verify_ssl: @verify_ssl)
+      connection : H2::Client = H2::Client.new(host, port, connect_timeout: @timeout, request_timeout: @timeout, verify_ssl: @verify_ssl, use_tls: !@h2_prior_knowledge)
       Log.debug { "Using HTTP/2 for #{host}:#{port}" }
       connection
     rescue ex : ConnectionError | OpenSSL::SSL::Error
@@ -509,6 +511,7 @@ module H2O
     end
 
     private def try_http1_connection(host : String, port : Int32) : BaseConnection?
+      return nil if @h2_prior_knowledge # No HTTP/1.1 fallback with prior knowledge
       connection : H1::Client = H1::Client.new(host, port, connect_timeout: @timeout, verify_ssl: @verify_ssl)
       Log.debug { "Using HTTP/1.1 for #{host}:#{port}" }
       connection
