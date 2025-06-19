@@ -1,11 +1,12 @@
 require "../tls"
+require "../tcp_socket"
 require "../preface"
 require "../frames/frame_batch_processor"
 
 module H2O
   module H2
     class Client < BaseConnection
-      property socket : TlsSocket
+      property socket : TlsSocket | TcpSocket
       property stream_pool : StreamPool
       property local_settings : Settings
       property remote_settings : Settings
@@ -28,11 +29,16 @@ module H2O
       property enable_batch_processing : Bool
       property request_timeout : Time::Span
 
-      def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true)
-        verify_mode : OpenSSL::SSL::VerifyMode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
-        Log.debug { "Creating H2::Client for #{hostname}:#{port} with verify_mode=#{verify_mode}" }
-        @socket = TlsSocket.new(hostname, port, verify_mode: verify_mode, connect_timeout: connect_timeout)
-        validate_http2_negotiation
+      def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true, use_tls : Bool = true)
+        if use_tls
+          verify_mode : OpenSSL::SSL::VerifyMode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
+          Log.debug { "Creating H2::Client for #{hostname}:#{port} with TLS and verify_mode=#{verify_mode}" }
+          @socket = TlsSocket.new(hostname, port, verify_mode: verify_mode, connect_timeout: connect_timeout)
+          validate_http2_negotiation
+        else
+          Log.debug { "Creating H2::Client for #{hostname}:#{port} with prior knowledge (no TLS)" }
+          @socket = TcpSocket.new(hostname, port)
+        end
 
         @stream_pool = StreamPool.new
         @local_settings = Settings.new
@@ -280,9 +286,13 @@ module H2O
       end
 
       private def validate_http2_negotiation : Nil
-        unless @socket.negotiated_http2?
-          raise ConnectionError.new("HTTP/2 not negotiated via ALPN")
+        # Only validate ALPN negotiation for TLS sockets
+        if socket = @socket.as?(TlsSocket)
+          unless socket.negotiated_http2?
+            raise ConnectionError.new("HTTP/2 not negotiated via ALPN")
+          end
         end
+        # For TCP sockets (prior knowledge), no validation needed
       end
 
       private def ensure_fibers_started : Nil
@@ -329,13 +339,14 @@ module H2O
 
           begin
             # Use non-blocking approach with timeout
-            if @socket.to_io.responds_to?(:read_timeout)
-              @socket.to_io.read_timeout = 100.milliseconds
+            io = @socket.to_io
+            if io.responds_to?(:read_timeout=)
+              io.read_timeout = 100.milliseconds
             end
 
             if @enable_batch_processing
               # Batch processing mode
-              frames = @batch_processor.read_batch(@socket.to_io)
+              frames = @batch_processor.read_batch(io)
 
               # Send all frames unless closed
               unless @closed
@@ -345,7 +356,7 @@ module H2O
               end
             else
               # Single frame processing mode (fallback)
-              frame = Frame.from_io(@socket.to_io)
+              frame = Frame.from_io(io)
 
               # Check if we should still send the frame
               unless @closed
