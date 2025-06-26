@@ -1,10 +1,10 @@
 module H2O
   class GoawayFrame < Frame
-    property last_stream_id : StreamId
+    property last_stream_id : UInt32
     property error_code : ErrorCode
     property debug_data : Bytes
 
-    def initialize(last_stream_id : StreamId, error_code : ErrorCode, debug_data : Bytes = Bytes.empty)
+    def initialize(last_stream_id : UInt32, error_code : ErrorCode, debug_data : Bytes = Bytes.empty)
       @last_stream_id = last_stream_id & 0x7fffffff_u32
       @error_code = error_code
       @debug_data = debug_data
@@ -12,7 +12,7 @@ module H2O
       super(8_u32 + debug_data.size.to_u32, FrameType::Goaway, 0_u8, 0_u32)
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : GoawayFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : GoawayFrame
       raise FrameError.new("GOAWAY frame must have stream ID 0") if stream_id != 0
       raise FrameError.new("GOAWAY frame must have at least 8 bytes") if payload.size < 8
 

@@ -1,0 +1,1 @@
+- Avoid unnecessary use of `begin` when working in crystal and ruby with exception handling.

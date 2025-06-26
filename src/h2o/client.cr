@@ -195,7 +195,7 @@ module H2O
     end
 
     private def get_connection(host : String, port : Int32) : BaseConnection
-      connection_key : ConnectionKey = String.build do |key|
+      connection_key : String = String.build do |key|
         key << host << ':' << port
       end
 
@@ -396,7 +396,7 @@ module H2O
       @circuit_breaker_enabled
     end
 
-    private def find_existing_connection(connection_key : ConnectionKey) : BaseConnection?
+    private def find_existing_connection(connection_key : String) : BaseConnection?
       existing_connection : BaseConnection? = @connections[connection_key]?
       return nil if !existing_connection || existing_connection.closed?
       return nil unless connection_healthy?(existing_connection)

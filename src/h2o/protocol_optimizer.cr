@@ -73,19 +73,19 @@ module H2O
       property connection_window : Int32
       property last_update_time : Time
       property mutex : Mutex
-      property stream_consumed : Hash(StreamId, Int32)
-      property stream_windows : Hash(StreamId, Int32)
+      property stream_consumed : Hash(UInt32, Int32)
+      property stream_windows : Hash(UInt32, Int32)
 
       def initialize(@connection_window : Int32 = 65535)
         @connection_consumed = 0
-        @stream_consumed = Hash(StreamId, Int32).new(0)
-        @stream_windows = Hash(StreamId, Int32).new(65535)
+        @stream_consumed = Hash(UInt32, Int32).new(0)
+        @stream_windows = Hash(UInt32, Int32).new(65535)
         @last_update_time = Time.utc
         @mutex = Mutex.new
       end
 
       # Track consumed bytes
-      def consume(stream_id : StreamId, bytes : Int32) : Nil
+      def consume(stream_id : UInt32, bytes : Int32) : Nil
         @mutex.synchronize do
           @connection_consumed += bytes
           @stream_consumed[stream_id] = @stream_consumed[stream_id] + bytes
@@ -93,7 +93,7 @@ module H2O
       end
 
       # Check if window update is needed
-      def needs_update?(stream_id : StreamId) : Bool
+      def needs_update?(stream_id : UInt32) : Bool
         @mutex.synchronize do
           stream_consumed = @stream_consumed[stream_id]
           stream_window = @stream_windows[stream_id]
@@ -130,9 +130,9 @@ module H2O
 
       struct WindowUpdate
         property increment : UInt32
-        property stream_id : StreamId
+        property stream_id : UInt32
 
-        def initialize(@stream_id : StreamId, consumed : Int32)
+        def initialize(@stream_id : UInt32, consumed : Int32)
           @increment = consumed.to_u32
         end
       end
@@ -140,16 +140,16 @@ module H2O
 
     # Stream priority optimizer
     class PriorityOptimizer
-      property dependencies : Hash(StreamId, StreamId)
-      property weights : Hash(StreamId, UInt8)
+      property dependencies : Hash(UInt32, UInt32)
+      property weights : Hash(UInt32, UInt8)
 
       def initialize
-        @dependencies = Hash(StreamId, StreamId).new
-        @weights = Hash(StreamId, UInt8).new(DEFAULT_STREAM_WEIGHT)
+        @dependencies = Hash(UInt32, UInt32).new
+        @weights = Hash(UInt32, UInt8).new(DEFAULT_STREAM_WEIGHT)
       end
 
       # Set stream priority based on content type
-      def optimize_by_content_type(stream_id : StreamId, content_type : String?) : Nil
+      def optimize_by_content_type(stream_id : UInt32, content_type : String?) : Nil
         return unless content_type
 
         weight = case content_type
@@ -169,7 +169,7 @@ module H2O
       end
 
       # Get optimized write order for frames
-      def get_write_order(streams : Array(StreamId)) : Array(StreamId)
+      def get_write_order(streams : Array(UInt32)) : Array(UInt32)
         # Sort by weight (higher weight = higher priority)
         streams.sort_by { |id| 256 - @weights[id] }
       end

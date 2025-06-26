@@ -1,0 +1,5 @@
+2025-06-12T05:02:53.327040Z   INFO - http2_test_server: Starting HTTP/2 test server on 0.0.0.0:8443
+2025-06-12T05:02:53.335400Z   INFO - http2_test_server: HTTPS/HTTP2 server ready with TLS
+2025-06-12T05:02:58.400945Z   INFO - http2_test_server: GET /health - HTTP/HTTP/1.1
+\nShutting down HTTP/2 test server...
+2025-06-12T05:23:45.955243Z   INFO - http2_test_server: Stopping HTTP/2 test server

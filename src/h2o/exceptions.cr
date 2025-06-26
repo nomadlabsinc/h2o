@@ -12,9 +12,9 @@ module H2O
   class FlowControlError < Error; end
 
   class StreamError < Error
-    getter stream_id : StreamId
+    getter stream_id : UInt32
 
-    def initialize(message : String, @stream_id : StreamId)
+    def initialize(message : String, @stream_id : UInt32)
       super(message)
     end
   end

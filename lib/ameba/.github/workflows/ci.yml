@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: "0 3 * * 1" # Every monday at 3 AM
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        crystal: [latest, nightly]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Set timezone to UTC
+        uses: szenius/set-timezone@v2.0
+
+      - name: Install Crystal
+        uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: ${{ matrix.crystal }}
+
+      - name: Download source
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: shards install
+
+      - name: Install typos-cli
+        if: matrix.os == 'macos-latest'
+        run: brew install typos-cli
+
+      - name: Run specs
+        run: make spec
+
+      - name: Build ameba binary
+        run: make build
+
+      - name: Run ameba linter
+        run: make lint

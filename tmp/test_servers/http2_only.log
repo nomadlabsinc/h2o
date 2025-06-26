@@ -1,0 +1,5 @@
+2025-06-12T05:02:54.348269Z   INFO - http2_only_test_server: Starting HTTP/2-only test server on 0.0.0.0:8447
+2025-06-12T05:02:54.355884Z   INFO - http2_only_test_server: HTTPS/HTTP2-only server ready with TLS - will reject HTTP/1.1
+2025-06-12T05:02:58.411945Z   INFO - http2_only_test_server: GET /health - HTTP/HTTP/1.1 (accepted)
+\nShutting down HTTP/2-only test server...
+2025-06-12T05:23:45.955245Z   INFO - http2_only_test_server: Stopping HTTP/2-only test server

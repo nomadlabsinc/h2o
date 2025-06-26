@@ -1,0 +1,4 @@
+{"level":"info","ts":1749705162.5255015,"msg":"using provided configuration","config_file":"/workspace/spec/support/test_servers/Caddyfile","config_adapter":""}
+{"level":"warn","ts":1749705162.5399237,"msg":"Caddyfile input is not formatted; run 'caddy fmt --overwrite' to fix inconsistencies","adapter":"caddyfile","file":"/workspace/spec/support/test_servers/Caddyfile","line":3}
+{"level":"info","ts":1749705162.542445,"msg":"redirected default logger","from":"stderr","to":"/tmp/caddy.log"}
+{"level":"info","ts":1749705162.5598118,"msg":"failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes for details."}

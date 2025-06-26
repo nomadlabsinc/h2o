@@ -6,7 +6,7 @@ module H2O
     property data : Bytes
     property padding_length : UInt8
 
-    def initialize(stream_id : StreamId, data : Bytes, flags : UInt8 = 0_u8, padding_length : UInt8 = 0_u8)
+    def initialize(stream_id : UInt32, data : Bytes, flags : UInt8 = 0_u8, padding_length : UInt8 = 0_u8)
       @data = data
       @padding_length = padding_length
 
@@ -18,7 +18,7 @@ module H2O
       validate_stream_id_non_zero
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : DataFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : DataFrame
       if flags & FLAG_PADDED != 0
         raise FrameError.new("Invalid DATA frame: empty payload with PADDED flag") if payload.empty?
 

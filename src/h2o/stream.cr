@@ -1,6 +1,6 @@
 module H2O
   class Stream
-    property id : StreamId
+    property id : UInt32
     property state : StreamState
     property request : Request?
     property response : Response?
@@ -14,7 +14,7 @@ module H2O
     property last_activity : Time
     property closed_at : Time?
     property priority : UInt8
-    property dependency : StreamId?
+    property dependency : UInt32?
 
     # State transition optimization lookup table
     VALID_TRANSITIONS = {
@@ -25,7 +25,7 @@ module H2O
       StreamState::Closed           => [] of StreamState,
     }
 
-    def initialize(@id : StreamId, @local_window_size : Int32 = 65535, @remote_window_size : Int32 = 65535)
+    def initialize(@id : UInt32, @local_window_size : Int32 = 65535, @remote_window_size : Int32 = 65535)
       @state = StreamState::Idle
       @request = nil
       @response = nil
@@ -41,7 +41,7 @@ module H2O
     end
 
     # Reset stream for object pool reuse
-    def reset_for_reuse(new_id : StreamId) : Nil
+    def reset_for_reuse(new_id : UInt32) : Nil
       @id = new_id
       @state = StreamState::Idle
       @request = nil
@@ -273,7 +273,7 @@ module H2O
     end
 
     # Stream priority management for HTTP/2 prioritization
-    def set_priority(priority : UInt8, dependency : StreamId? = nil) : Nil
+    def set_priority(priority : UInt8, dependency : UInt32? = nil) : Nil
       @priority = priority
       @dependency = dependency
     end
@@ -301,7 +301,7 @@ module H2O
     @@available_streams = Channel(Stream).new(DEFAULT_POOL_SIZE)
     @@pool_size = Atomic(Int32).new(0)
 
-    def self.get_stream(id : StreamId) : Stream
+    def self.get_stream(id : UInt32) : Stream
       select
       when stream = @@available_streams.receive?
         if stream
@@ -333,7 +333,7 @@ module H2O
 
   class StreamPool
     property streams : StreamsHash
-    property next_stream_id : StreamId
+    property next_stream_id : UInt32
     property max_concurrent_streams : UInt32?
     property rate_limit_config : StreamRateLimitConfig
     @cached_active_streams : StreamArray?
@@ -376,11 +376,11 @@ module H2O
       stream
     end
 
-    def get_stream(id : StreamId) : Stream?
+    def get_stream(id : UInt32) : Stream?
       @streams[id]?
     end
 
-    def remove_stream(id : StreamId) : Nil
+    def remove_stream(id : UInt32) : Nil
       stream = @streams[id]?
       if stream
         current_time = Time.utc
@@ -489,7 +489,7 @@ module H2O
       end
     end
 
-    def track_stream_reset(stream_id : StreamId) : Nil
+    def track_stream_reset(stream_id : UInt32) : Nil
       # Validate rate limit before tracking
       current_resets = get_recent_reset_count(@rate_limit_config.reset_detection_window)
       if current_resets >= @rate_limit_config.max_resets_per_minute
@@ -527,7 +527,7 @@ module H2O
       @stream_lifecycle_events.reject! { |event| event.timestamp < cutoff_time }
     end
 
-    private def allocate_stream_id : StreamId
+    private def allocate_stream_id : UInt32
       current_id = @next_stream_id
       @next_stream_id += 2
       current_id

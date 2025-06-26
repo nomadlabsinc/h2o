@@ -8,12 +8,12 @@ module H2O
     property header_block : Bytes
     property padding_length : UInt8
     property priority_exclusive : Bool
-    property priority_dependency : StreamId
+    property priority_dependency : UInt32
     property priority_weight : UInt8
 
-    def initialize(stream_id : StreamId, header_block : Bytes, flags : UInt8 = 0_u8,
+    def initialize(stream_id : UInt32, header_block : Bytes, flags : UInt8 = 0_u8,
                    padding_length : UInt8 = 0_u8, priority_exclusive : Bool = false,
-                   priority_dependency : StreamId = 0_u32, priority_weight : UInt8 = 0_u8)
+                   priority_dependency : UInt32 = 0_u32, priority_weight : UInt8 = 0_u8)
       @header_block = header_block
       @padding_length = padding_length
       @priority_exclusive = priority_exclusive
@@ -29,7 +29,7 @@ module H2O
       validate_stream_id_non_zero
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : HeadersFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : HeadersFrame
       offset = 0
       padding_length = 0_u8
       priority_exclusive = false

@@ -2,7 +2,7 @@ module H2O
   class RstStreamFrame < Frame
     property error_code : ErrorCode
 
-    def initialize(stream_id : StreamId, error_code : ErrorCode)
+    def initialize(stream_id : UInt32, error_code : ErrorCode)
       raise FrameError.new("RST_STREAM frame must have non-zero stream ID") if stream_id == 0
 
       @error_code = error_code
@@ -10,7 +10,7 @@ module H2O
       super(4_u32, FrameType::RstStream, 0_u8, stream_id)
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : RstStreamFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : RstStreamFrame
       raise FrameError.new("RST_STREAM frame must have non-zero stream ID") if stream_id == 0
       raise FrameError.new("RST_STREAM frame must have 4-byte payload") if payload.size != 4
 

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ameba:*)",
+      "Bash(shards install:*)",
+      "Bash(./bin/ameba:*)",
+      "Bash(crystal spec:*)"
+    ],
+    "deny": []
+  }
+}

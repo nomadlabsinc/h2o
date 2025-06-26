@@ -1,10 +1,10 @@
 module H2O
   class PriorityFrame < Frame
     property exclusive : Bool
-    property dependency : StreamId
+    property dependency : UInt32
     property weight : UInt8
 
-    def initialize(stream_id : StreamId, exclusive : Bool, dependency : StreamId, weight : UInt8)
+    def initialize(stream_id : UInt32, exclusive : Bool, dependency : UInt32, weight : UInt8)
       raise FrameError.new("PRIORITY frame must have non-zero stream ID") if stream_id == 0
 
       @exclusive = exclusive
@@ -14,7 +14,7 @@ module H2O
       super(5_u32, FrameType::Priority, 0_u8, stream_id)
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : PriorityFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : PriorityFrame
       raise FrameError.new("PRIORITY frame must have non-zero stream ID") if stream_id == 0
       raise FrameError.new("PRIORITY frame must have 5-byte payload") if payload.size != 5
 

@@ -13,7 +13,7 @@ module H2O
       property hpack_encoder : HPACK::Encoder
       property hpack_decoder : HPACK::Decoder
       property connection_window_size : Int32
-      property last_stream_id : StreamId
+      property last_stream_id : UInt32
       property closed : Bool
       property closing : Bool
       property reader_fiber : FiberRef
@@ -24,7 +24,7 @@ module H2O
       property outgoing_frames : OutgoingFrameChannel
       property incoming_frames : IncomingFrameChannel
       property continuation_limits : ContinuationLimits
-      property header_fragments : Hash(StreamId, HeaderFragmentState)
+      property header_fragments : Hash(UInt32, HeaderFragmentState)
       property batch_processor : FrameBatchProcessor
       property enable_batch_processing : Bool
       property request_timeout : Time::Span
@@ -54,7 +54,7 @@ module H2O
         @incoming_frames = IncomingFrameChannel.new(1000)
 
         @continuation_limits = ContinuationLimits.new
-        @header_fragments = Hash(StreamId, HeaderFragmentState).new
+        @header_fragments = Hash(UInt32, HeaderFragmentState).new
 
         @batch_processor = FrameBatchProcessor.new
         @enable_batch_processing = false # Disable batch processing for debugging
@@ -632,7 +632,7 @@ module H2O
         end
       end
 
-      private def process_accumulated_headers(stream_id : StreamId) : Nil
+      private def process_accumulated_headers(stream_id : UInt32) : Nil
         return unless fragment_state = @header_fragments.delete(stream_id)
 
         # Validate final header size
@@ -664,7 +664,7 @@ module H2O
         end
       end
 
-      private def start_header_fragment(stream_id : StreamId, initial_data : Bytes) : Nil
+      private def start_header_fragment(stream_id : UInt32, initial_data : Bytes) : Nil
         # Clean up any existing fragment for this stream (should not happen in well-formed HTTP/2)
         @header_fragments.delete(stream_id)
 

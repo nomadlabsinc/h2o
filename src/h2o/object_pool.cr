@@ -68,7 +68,7 @@ module H2O
       @pool = ObjectPool(Stream).new(capacity, factory, reset)
     end
 
-    def acquire(stream_id : StreamId) : Stream
+    def acquire(stream_id : UInt32) : Stream
       stream = @pool.acquire
       stream.id = stream_id
       stream
@@ -85,7 +85,7 @@ module H2O
       @@instance ||= StreamObjectPool.new
     end
 
-    def self.get_stream(stream_id : StreamId) : Stream
+    def self.get_stream(stream_id : UInt32) : Stream
       instance.acquire(stream_id)
     end
 
@@ -143,7 +143,7 @@ module H2O
       )
     end
 
-    def acquire_data_frame(stream_id : StreamId, data : Bytes, flags : UInt8) : DataFrame
+    def acquire_data_frame(stream_id : UInt32, data : Bytes, flags : UInt8) : DataFrame
       frame = @data_frame_pool.acquire
       # Set stream_id before any other operations
       frame.stream_id = stream_id
@@ -152,7 +152,7 @@ module H2O
       frame
     end
 
-    def acquire_headers_frame(stream_id : StreamId, header_block : Bytes, flags : UInt8) : HeadersFrame
+    def acquire_headers_frame(stream_id : UInt32, header_block : Bytes, flags : UInt8) : HeadersFrame
       frame = @headers_frame_pool.acquire
       # Set stream_id before any other operations
       frame.stream_id = stream_id

@@ -3,11 +3,11 @@ module H2O
     FLAG_END_HEADERS = 0x4_u8
     FLAG_PADDED      = 0x8_u8
 
-    property promised_stream_id : StreamId
+    property promised_stream_id : UInt32
     property header_block : Bytes
     property padding_length : UInt8
 
-    def initialize(stream_id : StreamId, promised_stream_id : StreamId, header_block : Bytes,
+    def initialize(stream_id : UInt32, promised_stream_id : UInt32, header_block : Bytes,
                    end_headers : Bool = false, padding_length : UInt8 = 0_u8)
       raise FrameError.new("PUSH_PROMISE frame must have non-zero stream ID") if stream_id == 0
 
@@ -26,7 +26,7 @@ module H2O
       super(total_length, FrameType::PushPromise, flags, stream_id)
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : PushPromiseFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : PushPromiseFrame
       raise FrameError.new("PUSH_PROMISE frame must have non-zero stream ID") if stream_id == 0
       raise FrameError.new("PUSH_PROMISE frame must have at least 4 bytes") if payload.size < 4
 

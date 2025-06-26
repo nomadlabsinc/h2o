@@ -4,7 +4,7 @@ module H2O
 
     property header_block : Bytes
 
-    def initialize(stream_id : StreamId, header_block : Bytes, end_headers : Bool = false)
+    def initialize(stream_id : UInt32, header_block : Bytes, end_headers : Bool = false)
       raise FrameError.new("CONTINUATION frame must have non-zero stream ID") if stream_id == 0
 
       @header_block = header_block
@@ -13,7 +13,7 @@ module H2O
       super(header_block.size.to_u32, FrameType::Continuation, flags, stream_id)
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : ContinuationFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : ContinuationFrame
       raise FrameError.new("CONTINUATION frame must have non-zero stream ID") if stream_id == 0
 
       end_headers = (flags & FLAG_END_HEADERS) != 0

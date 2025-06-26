@@ -3,18 +3,14 @@ module H2O
   alias ConnectionsHash = Hash(String, BaseConnection)
   alias FiberRef = Fiber?
   alias Headers = Hash(String, String)
-  alias IncomingFrameChannel = Channel(Frame)
-  alias OutgoingFrameChannel = Channel(Frame)
-  alias StreamId = UInt32
-  alias StreamsHash = Hash(StreamId, Stream)
+  alias StreamsHash = Hash(UInt32, Stream)
   alias StreamArray = Array(Stream)
   alias TimeoutCallback = Proc(Bool)
-  alias TimeoutResult = Bool
   alias StreamResetTracker = Hash(Time, UInt32)
   alias ResponseChannel = Channel(Response?)
   alias ContinuationFrameBuffer = IO::Memory
   alias HeaderFragmentState = NamedTuple(
-    stream_id: StreamId,
+    stream_id: UInt32,
     accumulated_size: Int32,
     continuation_count: Int32,
     buffer: IO::Memory)
@@ -24,7 +20,6 @@ module H2O
   alias ConnectionResult = BaseConnection?
   alias ProtocolResult = ProtocolVersion?
   alias RequestBlock = Proc(Response)
-  alias RequestUrl = String
   alias UrlParseResult = {URI, String}
 
   # Client method parameter aliases
@@ -33,7 +28,6 @@ module H2O
     circuit_breaker: Bool?)
 
   # Connection management aliases
-  alias ConnectionKey = String
   alias HostPort = {String, Int32}
 
   # Common test and benchmark aliases
@@ -48,7 +42,6 @@ module H2O
   alias BytesArray = Array(Bytes)
 
   # Performance measurement aliases
-  alias TimeSpan = Time::Span
   alias MonotonicTime = Time::Span # Time.monotonic returns Time::Span
   alias ProcessStatus = Process::Status
 

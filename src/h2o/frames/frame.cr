@@ -6,9 +6,9 @@ module H2O
     property length : UInt32
     property frame_type : FrameType
     property flags : UInt8
-    property stream_id : StreamId
+    property stream_id : UInt32
 
-    def initialize(@length : UInt32, @frame_type : FrameType, @flags : UInt8, @stream_id : StreamId)
+    def initialize(@length : UInt32, @frame_type : FrameType, @flags : UInt8, @stream_id : UInt32)
       validate_length
       validate_stream_id
     end
@@ -102,11 +102,11 @@ module H2O
       @flags = flags
     end
 
-    private def self.create_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : FramePayload) : Frame
+    private def self.create_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : UInt32, payload : FramePayload) : Frame
       create_frame_by_type(frame_type, length, flags, stream_id, payload)
     end
 
-    private def self.create_frame_by_type(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : FramePayload) : Frame
+    private def self.create_frame_by_type(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : UInt32, payload : FramePayload) : Frame
       case frame_type
       when .data?
         DataFrame.from_payload(length, flags, stream_id, payload)
@@ -123,7 +123,7 @@ module H2O
       end
     end
 
-    private def self.create_header_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+    private def self.create_header_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : Frame
       case frame_type
       when .headers?
         HeadersFrame.from_payload(length, flags, stream_id, payload)
@@ -134,7 +134,7 @@ module H2O
       end
     end
 
-    private def self.create_control_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+    private def self.create_control_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : Frame
       case frame_type
       when .priority?
         PriorityFrame.from_payload(length, flags, stream_id, payload)
@@ -145,7 +145,7 @@ module H2O
       end
     end
 
-    private def self.create_connection_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+    private def self.create_connection_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : Frame
       case frame_type
       when .settings?
         SettingsFrame.from_payload(length, flags, stream_id, payload)

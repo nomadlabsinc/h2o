@@ -119,7 +119,7 @@ module H2O
     end
 
     # Optimized frame creation avoiding multiple case statements
-    private def create_frame_optimized(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
+    private def create_frame_optimized(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : Frame
       case frame_type
       when .data?
         DataFrame.from_payload(length, flags, stream_id, payload)

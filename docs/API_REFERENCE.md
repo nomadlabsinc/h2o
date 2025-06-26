@@ -76,73 +76,73 @@ All HTTP methods support circuit breaker control through named parameters.
 #### GET Request
 
 ```crystal
-def get(url : String, 
-        headers : Headers = Headers.new, 
-        *, 
-        bypass_circuit_breaker : Bool = false, 
+def get(url : String,
+        headers : Headers = Headers.new,
+        *,
+        bypass_circuit_breaker : Bool = false,
         circuit_breaker : Bool? = nil) : Response?
 ```
 
 #### POST Request
 
 ```crystal
-def post(url : String, 
-         body : String? = nil, 
-         headers : Headers = Headers.new, 
-         *, 
-         bypass_circuit_breaker : Bool = false, 
+def post(url : String,
+         body : String? = nil,
+         headers : Headers = Headers.new,
+         *,
+         bypass_circuit_breaker : Bool = false,
          circuit_breaker : Bool? = nil) : Response?
 ```
 
 #### PUT Request
 
 ```crystal
-def put(url : String, 
-        body : String? = nil, 
-        headers : Headers = Headers.new, 
-        *, 
-        bypass_circuit_breaker : Bool = false, 
+def put(url : String,
+        body : String? = nil,
+        headers : Headers = Headers.new,
+        *,
+        bypass_circuit_breaker : Bool = false,
         circuit_breaker : Bool? = nil) : Response?
 ```
 
 #### DELETE Request
 
 ```crystal
-def delete(url : String, 
-           headers : Headers = Headers.new, 
-           *, 
-           bypass_circuit_breaker : Bool = false, 
+def delete(url : String,
+           headers : Headers = Headers.new,
+           *,
+           bypass_circuit_breaker : Bool = false,
            circuit_breaker : Bool? = nil) : Response?
 ```
 
 #### HEAD Request
 
 ```crystal
-def head(url : String, 
-         headers : Headers = Headers.new, 
-         *, 
-         bypass_circuit_breaker : Bool = false, 
+def head(url : String,
+         headers : Headers = Headers.new,
+         *,
+         bypass_circuit_breaker : Bool = false,
          circuit_breaker : Bool? = nil) : Response?
 ```
 
 #### OPTIONS Request
 
 ```crystal
-def options(url : String, 
-            headers : Headers = Headers.new, 
-            *, 
-            bypass_circuit_breaker : Bool = false, 
+def options(url : String,
+            headers : Headers = Headers.new,
+            *,
+            bypass_circuit_breaker : Bool = false,
             circuit_breaker : Bool? = nil) : Response?
 ```
 
 #### PATCH Request
 
 ```crystal
-def patch(url : String, 
-          body : String? = nil, 
-          headers : Headers = Headers.new, 
-          *, 
-          bypass_circuit_breaker : Bool = false, 
+def patch(url : String,
+          body : String? = nil,
+          headers : Headers = Headers.new,
+          *,
+          bypass_circuit_breaker : Bool = false,
           circuit_breaker : Bool? = nil) : Response?
 ```
 
@@ -156,12 +156,12 @@ def patch(url : String,
 ### Generic Request Method
 
 ```crystal
-def request(method : String, 
-            url : String, 
-            headers : Headers = Headers.new, 
-            body : String? = nil, 
-            *, 
-            bypass_circuit_breaker : Bool = false, 
+def request(method : String,
+            url : String,
+            headers : Headers = Headers.new,
+            body : String? = nil,
+            *,
+            bypass_circuit_breaker : Bool = false,
             circuit_breaker : Bool? = nil) : Response?
 ```
 
@@ -237,7 +237,7 @@ def reset : Nil
 ### Request Execution
 
 ```crystal
-def execute(url : RequestUrl, headers : Headers, &block : RequestBlock) : CircuitBreakerResult
+def execute(url : String, headers : Headers, &block : RequestBlock) : CircuitBreakerResult
 ```
 
 Execute a request block with circuit breaker protection.
@@ -395,7 +395,7 @@ class Statistics
   property success_count : Int32 = 0
   property timeout_count : Int32 = 0
   property total_requests : Int32 = 0
-  
+
   def record_failure!(current_time : Time, is_timeout : Bool = false) : Nil
   def record_success!(current_time : Time) : Nil
   def reset! : Nil
@@ -424,7 +424,6 @@ alias CircuitBreakerResult = Response?
 alias ConnectionResult = BaseConnection?
 alias ProtocolResult = ProtocolVersion?
 alias RequestBlock = Proc(Response?)
-alias RequestUrl = String
 alias UrlParseResult = {URI, String}
 
 # Client method parameter aliases
@@ -434,7 +433,6 @@ alias CircuitBreakerOptions = NamedTuple(
 )
 
 # Connection management aliases
-alias ConnectionKey = String
 alias HostPort = {String, Int32}
 
 # Callback type aliases
@@ -451,9 +449,9 @@ class Response
   property body : String
   property protocol : String
 
-  def initialize(status : Int32, 
-                 headers : Headers = Headers.new, 
-                 body : String = "", 
+  def initialize(status : Int32,
+                 headers : Headers = Headers.new,
+                 body : String = "",
                  protocol : String = "HTTP/2")
 end
 ```

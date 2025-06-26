@@ -2,7 +2,7 @@ module H2O
   class WindowUpdateFrame < Frame
     property window_size_increment : UInt32
 
-    def initialize(stream_id : StreamId, window_size_increment : UInt32)
+    def initialize(stream_id : UInt32, window_size_increment : UInt32)
       raise FrameError.new("WINDOW_UPDATE increment must be non-zero") if window_size_increment == 0
       raise FrameError.new("WINDOW_UPDATE increment too large") if window_size_increment > 0x7fffffff_u32
 
@@ -11,7 +11,7 @@ module H2O
       super(4_u32, FrameType::WindowUpdate, 0_u8, stream_id)
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : WindowUpdateFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : WindowUpdateFrame
       raise FrameError.new("WINDOW_UPDATE frame must have 4-byte payload") if payload.size != 4
 
       window_size_increment = ((payload[0].to_u32 << 24) | (payload[1].to_u32 << 16) |

@@ -231,7 +231,7 @@ module H2O
     end
 
     # Execute a request with circuit breaker protection
-    def execute(url : RequestUrl, headers : Headers, &block : RequestBlock) : CircuitBreakerResult
+    def execute(url : String, headers : Headers, &block : RequestBlock) : CircuitBreakerResult
       unless should_allow_request?
         return Response.error(503, "Circuit breaker open - request blocked", "HTTP/2")
       end

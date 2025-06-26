@@ -13,7 +13,7 @@ module H2O
       validate_ack_frame if ack
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : SettingsFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : SettingsFrame
       raise FrameError.new("SETTINGS frame must have stream ID 0") if stream_id != 0
 
       if flags & FLAG_ACK != 0

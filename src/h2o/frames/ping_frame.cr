@@ -14,7 +14,7 @@ module H2O
       super(PING_PAYLOAD_SIZE.to_u32, FrameType::Ping, flags, 0_u32)
     end
 
-    def self.from_payload(length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : PingFrame
+    def self.from_payload(length : UInt32, flags : UInt8, stream_id : UInt32, payload : Bytes) : PingFrame
       raise FrameError.new("PING frame must have stream ID 0") if stream_id != 0
       raise FrameError.new("PING frame must have 8-byte payload") if payload.size != PING_PAYLOAD_SIZE
 
