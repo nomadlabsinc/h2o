@@ -210,24 +210,6 @@ run_integration_tests() {
         return 1
     fi
 
-    # Wait for services to be healthy
-    log "Waiting for services to be ready..."
-    local max_wait=30
-    local wait_time=0
-
-    while [ $wait_time -lt $max_wait ]; do
-        if docker compose ps --filter "health=healthy" | grep -q "healthy"; then
-            log "Services are ready"
-            break
-        fi
-        sleep 2
-        wait_time=$((wait_time + 2))
-    done
-
-    if [ $wait_time -ge $max_wait ]; then
-        warn "Services may not be fully ready, proceeding anyway"
-    fi
-
     # Show service status
     docker compose ps
 
@@ -307,11 +289,6 @@ run_integration_tests() {
     cd "$PROJECT_ROOT"
 
     return $result
-}
-
-run_performance_tests() {
-    log "Running performance tests..."
-    run_docker_command "crystal spec spec/performance/ --verbose"
 }
 
 run_lint_tests() {

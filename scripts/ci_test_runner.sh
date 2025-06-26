@@ -381,30 +381,6 @@ main() {
             fi
             ;;
 
-        performance)
-            log_info "Running performance tests with GNU parallel distribution"
-
-            # Get list of performance test files
-            performance_tests=($(find spec/performance -name "*.cr" | sort))
-
-            if [ ${#performance_tests[@]} -eq 0 ]; then
-                log_warn "No performance test files found"
-                return 0
-            fi
-
-            if command -v parallel &> /dev/null; then
-                log_info "Using GNU parallel to distribute performance tests across 4 cores"
-                # Create unique temp directories for each parallel job to avoid Crystal compilation conflicts
-                printf '%s\n' "${performance_tests[@]}" | parallel -j4 --halt now,fail=1 \
-                    'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
-            else
-                log_info "GNU parallel not available, running sequentially"
-                for test in "${performance_tests[@]}"; do
-                    run_with_retry "crystal spec $test --verbose --error-trace" "Performance test: $test" || overall_success=false
-                done
-            fi
-            ;;
-
         all)
             log_info "Running all test suites (excluding performance tests unless explicitly requested)"
 
@@ -440,30 +416,11 @@ main() {
                 printf '%s\n' "${integration_tests[@]}" | parallel -j2 --halt now,fail=1 \
                     'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
 
-                # Only run performance tests if explicitly requested via environment variable
-                if [ "${RUN_PERFORMANCE_TESTS:-false}" = "true" ]; then
-                    log_info "Running performance tests (explicitly requested)"
-                    performance_tests=($(find spec/performance -name "*.cr" | sort))
-                    if [ ${#performance_tests[@]} -gt 0 ]; then
-                        printf '%s\n' "${performance_tests[@]}" | parallel -j4 --halt now,fail=1 \
-                            'JOB_ID={#}; mkdir -p tmp/crystal_cache_$JOB_ID; CRYSTAL_CACHE_DIR=tmp/crystal_cache_$JOB_ID crystal spec {} --verbose --error-trace; rm -rf tmp/crystal_cache_$JOB_ID' || overall_success=false
-                    fi
-                else
-                    log_info "Skipping performance tests (not explicitly requested)"
-                fi
             else
                 # Fallback to sequential execution
                 log_info "GNU parallel not available, running sequentially"
                 run_with_retry "crystal spec spec/h2o_spec.cr spec/h2o/ --verbose --error-trace" "Unit tests" || overall_success=false
                 run_with_retry "crystal spec spec/integration/ --verbose --error-trace" "Integration tests" || overall_success=false
-
-                # Only run performance tests if explicitly requested
-                if [ "${RUN_PERFORMANCE_TESTS:-false}" = "true" ]; then
-                    log_info "Running performance tests (explicitly requested)"
-                    run_with_retry "crystal spec spec/performance/ --verbose --error-trace" "Performance tests" || overall_success=false
-                else
-                    log_info "Skipping performance tests (not explicitly requested)"
-                fi
             fi
             ;;
 

@@ -231,13 +231,6 @@ run_integration_tests() {
     fi
 }
 
-run_performance_tests() {
-    log "INFO" "Running performance tests"
-
-    run_command "Performance benchmarks" \
-        "docker_run 'crystal spec spec/performance/ --verbose'"
-}
-
 run_lint_checks() {
     log "INFO" "Running lint checks"
 

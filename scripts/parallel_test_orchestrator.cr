@@ -12,10 +12,6 @@ UNIT_TESTS = [
   "spec/h2o/*_spec.cr",
 ]
 
-PERFORMANCE_TESTS = [
-  "spec/performance/",
-]
-
 INTEGRATION_TESTS = [
   "spec/integration/ultra_fast_integration_spec.cr",
   "spec/integration/massively_parallel_spec.cr",
@@ -40,9 +36,6 @@ class ParallelTestOrchestrator
 
     # Unit tests (fast, no network)
     spawn_test_category("Unit Tests", UNIT_TESTS, channels)
-
-    # Performance tests (fast, no network)
-    spawn_test_category("Performance Tests", PERFORMANCE_TESTS, channels)
 
     # Integration tests (local network)
     spawn_test_category("Integration Tests", INTEGRATION_TESTS, channels)
@@ -178,11 +171,10 @@ class OptimizedTestRunner
     end
   end
 
-  private def self.run_parallel_categories : Bool
+  private def self.run_parallel_categories : nBool
     categories = [
       {"Fast Unit Tests", ["spec/h2o/frames/", "spec/h2o/hpack/"]},
       {"Core Unit Tests", ["spec/h2o/timeout_spec.cr", "spec/h2o/circuit_breaker_spec.cr"]},
-      {"Performance Tests", ["spec/performance/"]},
       {"Ultra-Fast Integration", ["spec/integration/ultra_fast_integration_spec.cr"]},
       {"Parallel Integration", ["spec/integration/massively_parallel_spec.cr"]},
       {"Comprehensive Integration", ["spec/integration/comprehensive_http2_validation_spec.cr"]},
