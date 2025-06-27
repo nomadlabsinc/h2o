@@ -10,7 +10,7 @@ jobs:
   test:
     name: Test
     runs-on: ubicloud-standard-8
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
     - name: Checkout code
@@ -19,6 +19,20 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Run tests
+    - name: Build test harness
       run: |
-        docker-compose run --rm app crystal spec
+        git clone https://github.com/nomadlabsinc/h2-client-test-harness.git
+        cd h2-client-test-harness
+        docker build -t h2-client-test-harness .
+
+    - name: Run unit tests
+      run: |
+        docker-compose run --rm app crystal spec --exclude-pattern "spec/integration/**" --exclude-pattern "spec/compliance/**"
+
+    - name: Run core integration tests
+      run: |
+        docker-compose run --rm app crystal spec spec/integration/circuit_breaker_integration_spec.cr spec/integration/connection_pooling_integration_spec.cr spec/integration/h1_client_integration_spec.cr spec/integration/regression_prevention_spec.cr spec/integration/ssl_verification_integration_spec.cr spec/integration/channel_fix_test_spec.cr spec/integration/minimal_integration_spec.cr spec/integration/http1_fallback_spec.cr
+
+    - name: Run H2SPEC compliance tests
+      run: |
+        docker-compose run --rm app crystal spec spec/compliance/parallel_harness_spec.cr
