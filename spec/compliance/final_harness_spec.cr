@@ -5,7 +5,7 @@ require "process"
 # This version fixes all timeout and connection issues
 
 # All 146 test case IDs (verified working)
-H2SPEC_TEST_CASES = [
+FINAL_H2SPEC_TEST_CASES = [
   "3.5/1", "3.5/2",
   "4.1/1", "4.1/2", "4.1/3",
   "4.2/1", "4.2/2", "4.2/3",
@@ -130,14 +130,14 @@ describe "H2O Final HTTP/2 Compliance Tests" do
   # Run all tests and generate report
   it "passes h2spec compliance tests" do
     puts "\nRunning H2O HTTP/2 Compliance Tests (Final Version)"
-    puts "Total test cases: #{H2SPEC_TEST_CASES.size}"
+    puts "Total test cases: #{FINAL_H2SPEC_TEST_CASES.size}"
     puts "=" * 60
     
     results = [] of TestResult
     
     # Run each test
-    H2SPEC_TEST_CASES.each_with_index do |test_id, index|
-      print "\r[#{index + 1}/#{H2SPEC_TEST_CASES.size}] Running #{test_id.ljust(20)}"
+    FINAL_H2SPEC_TEST_CASES.each_with_index do |test_id, index|
+      print "\r[#{index + 1}/#{FINAL_H2SPEC_TEST_CASES.size}] Running #{test_id.ljust(20)}"
       result = ComplianceTestRunner.run_single_test(test_id)
       results << result
       

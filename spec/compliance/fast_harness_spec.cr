@@ -5,7 +5,7 @@ require "process"
 # Optimized for speed - should complete all 146 tests in under 5 minutes
 
 # All 146 test case IDs (verified working)
-H2SPEC_TEST_CASES = [
+FAST_H2SPEC_TEST_CASES = [
   "3.5/1", "3.5/2",
   "4.1/1", "4.1/2", "4.1/3",
   "4.2/1", "4.2/2", "4.2/3",
@@ -130,16 +130,16 @@ describe "H2O Fast HTTP/2 Compliance Tests" do
   # Run all tests and generate report
   it "passes h2spec compliance tests quickly" do
     puts "\nRunning H2O HTTP/2 Compliance Tests (Fast Version - Target: <5 minutes)"
-    puts "Total test cases: #{H2SPEC_TEST_CASES.size}"
-    puts "Estimated time: #{(H2SPEC_TEST_CASES.size * 1.5).round(1)} seconds"
+    puts "Total test cases: #{FAST_H2SPEC_TEST_CASES.size}"
+    puts "Estimated time: #{(FAST_H2SPEC_TEST_CASES.size * 1.5).round(1)} seconds"
     puts "=" * 60
     
     overall_start = Time.monotonic
     results = [] of TestResult
     
     # Run each test
-    H2SPEC_TEST_CASES.each_with_index do |test_id, index|
-      print "\r[#{index + 1}/#{H2SPEC_TEST_CASES.size}] Running #{test_id.ljust(20)}"
+    FAST_H2SPEC_TEST_CASES.each_with_index do |test_id, index|
+      print "\r[#{index + 1}/#{FAST_H2SPEC_TEST_CASES.size}] Running #{test_id.ljust(20)}"
       result = FastComplianceTestRunner.run_single_test(test_id)
       results << result
       
@@ -154,8 +154,8 @@ describe "H2O Fast HTTP/2 Compliance Tests" do
       if (index + 1) % 25 == 0
         elapsed = Time.monotonic - overall_start
         avg_per_test = elapsed.total_seconds / (index + 1)
-        estimated_remaining = avg_per_test * (H2SPEC_TEST_CASES.size - index - 1)
-        puts "  📊 Progress: #{index + 1}/#{H2SPEC_TEST_CASES.size} (#{((index + 1) * 100.0 / H2SPEC_TEST_CASES.size).round(1)}%) - ETA: #{estimated_remaining.round(1)}s"
+        estimated_remaining = avg_per_test * (FAST_H2SPEC_TEST_CASES.size - index - 1)
+        puts "  📊 Progress: #{index + 1}/#{FAST_H2SPEC_TEST_CASES.size} (#{((index + 1) * 100.0 / FAST_H2SPEC_TEST_CASES.size).round(1)}%) - ETA: #{estimated_remaining.round(1)}s"
       end
     end
     

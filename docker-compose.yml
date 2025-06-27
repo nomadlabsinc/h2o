@@ -28,9 +28,9 @@ services:
     ports:
       - "8443:4430"
     volumes:
-      - /Users/robcole/dev/h2o/spec/integration/ssl/cert.pem:/srv/cert.pem
-      - /Users/robcole/dev/h2o/spec/integration/ssl/key.pem:/srv/key.pem
-      - /Users/robcole/dev/h2o/spec/integration:/srv
+      - ./spec/integration/ssl/cert.pem:/srv/cert.pem
+      - ./spec/integration/ssl/key.pem:/srv/key.pem
+      - ./spec/integration:/srv
     command:
       - "nghttpd"
       - "-v"

@@ -7,7 +7,7 @@ require "channel"
 # Target: Complete all 146 tests in under 2 minutes
 
 # All 146 test case IDs (verified working)
-H2SPEC_TEST_CASES = [
+PARALLEL_H2SPEC_TEST_CASES = [
   "3.5/1", "3.5/2",
   "4.1/1", "4.1/2", "4.1/3",
   "4.2/1", "4.2/2", "4.2/3",
@@ -57,6 +57,7 @@ end
 
 # Parallel test runner with optimizations
 module ParallelComplianceTestRunner
+  extend self
   def self.run_single_test(test_id : String) : TestResult
     start_time = Time.monotonic
     container_name = "h2-parallel-#{test_id.gsub(/[\/\.]/, "-")}-#{Random.rand(1000000)}"
@@ -168,7 +169,7 @@ describe "H2O Parallel HTTP/2 Compliance Tests" do
   # Run all tests in parallel
   it "passes h2spec compliance tests in parallel" do
     puts "\n🚀 Running H2O HTTP/2 Compliance Tests (Parallel Version - Target: <2 minutes)"
-    puts "Total test cases: #{H2SPEC_TEST_CASES.size}"
+    puts "Total test cases: #{PARALLEL_H2SPEC_TEST_CASES.size}"
     puts "Concurrency level: 8 tests in parallel"
     puts "Estimated time: ~90-120 seconds"
     puts "=" * 80
@@ -176,7 +177,7 @@ describe "H2O Parallel HTTP/2 Compliance Tests" do
     overall_start = Time.monotonic
     
     # Run tests in parallel with controlled concurrency
-    results = ParallelComplianceTestRunner.run_tests_in_parallel(H2SPEC_TEST_CASES, concurrency: 8)
+    results = ParallelComplianceTestRunner.run_tests_in_parallel(PARALLEL_H2SPEC_TEST_CASES, concurrency: 8)
     
     # Sort results by test_id for consistent reporting
     results.sort_by!(&.test_id)

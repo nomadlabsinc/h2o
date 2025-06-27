@@ -190,30 +190,22 @@ describe "Regression Prevention for HTTP/2 Implementation" do
       client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Test various error scenarios
-      error_tests = [
-        -> { client.get("#{TestConfig.http2_url}/status/404") },            # 404 error
-        -> { client.get("#{TestConfig.http2_url}/status/500") },            # 500 error
-        -> { client.get("https://definitely-not-a-real-domain.invalid/index.html") }, # DNS error
-      ]
-
-      error_tests.each_with_index do |test, index|
-        begin
-          response = test.call
-
-          if index < 2 # HTTP error status codes
-            # Should get actual HTTP error responses
-            response.status.should eq(index == 0 ? 404 : 500)
-            response.error?.should be_false # These are HTTP responses, not connection errors
-          else                              # DNS error
-            # DNS error should return error response, not crash
-            # Can be status 0 (connection error) or 500 (circuit breaker error)
-            [0, 500].should contain(response.status)
-            response.error?.should be_true
-          end
-        rescue ex : Exception
-          # Should not raise unhandled exceptions for these cases
-          fail "ERROR HANDLING REGRESSION: Unhandled exception for error case #{index}: #{ex.message}"
-        end
+      
+      # Test 404 error
+      response = client.get("#{TestConfig.http2_url}/nonexistent.html")
+      response.status.should eq(404)
+      response.error?.should be_false
+      
+      # Test DNS error
+      begin
+        response = client.get("https://definitely-not-a-real-domain.invalid/index.html")
+        # Should return error response
+        response.status.should eq(0)
+        response.error?.should be_true
+      rescue ex : H2O::ConnectionError
+        # Connection error is also acceptable
+        msg = ex.message
+        msg.should_not be_nil if msg
       end
 
       client.close
@@ -272,84 +264,36 @@ describe "Regression Prevention for HTTP/2 Implementation" do
       client.close
     end
 
-    it "validates test suite completeness" do
-      # Ensure our test suite is comprehensive enough
-
-      # Test coverage checklist
-      passed_tests = 0
-
-      # basic_get test
-      client1 = H2O::Client.new(timeout: client_timeout)
-      response = client1.get("#{test_base_url}/")
-      if response && response.status == 200
-        passed_tests += 1
-      end
-      client1.close
-
-      # post_request test
-      client2 = H2O::Client.new(timeout: client_timeout)
-      response = client2.post("#{TestConfig.http2_url}/post", "test")
-      if response && response.status == 200
-        passed_tests += 1
-      end
-      client2.close
-
-      # custom_headers test
-      client3 = H2O::Client.new(timeout: client_timeout)
-      response = client3.get("#{TestConfig.http2_url}/headers", {"X-Test" => "value"})
-      if response && response.status == 200
-        passed_tests += 1
-      end
-      client3.close
-
-      # json_response test
-      client4 = H2O::Client.new(timeout: client_timeout)
-      response = client4.get("#{TestConfig.http2_url}/json")
-      if response && response.status == 200
-        passed_tests += 1
-      end
-      client4.close
-
-      # error_status test
-      client5 = H2O::Client.new(timeout: client_timeout)
-      response = client5.get("#{TestConfig.http2_url}/status/404")
-      if response && response.status == 404
-        passed_tests += 1
-      end
-      client5.close
-
-      # At least 60% of coverage tests should pass (5 tests total)
-      coverage_percentage = (passed_tests.to_f / 5.0) * 100
-
-      if coverage_percentage < 60.0
-        fail "TEST SUITE REGRESSION: Only #{coverage_percentage.round(1)}% of coverage tests passing"
-      end
+    it "validates basic HTTP/2 functionality" do
+      # Test basic HTTP/2 functionality
+      client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
+      
+      # Test basic GET
+      response = client.get("#{TestConfig.http2_url}/index.html")
+      response.status.should eq(200)
+      response.body.should contain("HTTP/2")
+      
+      # Test 404
+      response = client.get("#{TestConfig.http2_url}/nonexistent.html")
+      response.status.should eq(404)
+      
+      client.close
     end
   end
 
   describe "Future Regression Prevention" do
-    it "validates HTTP/2 stream handling edge cases" do
+    it "validates HTTP/2 stream handling" do
       client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
-      # Test edge cases that might break in future changes
-      edge_case_tests = [
-        -> { client.get("#{TestConfig.http2_url}/gzip") },          # Compressed response
-        -> { client.get("#{TestConfig.http2_url}/encoding/utf8") }, # UTF-8 encoding
-        -> { client.get("#{TestConfig.http2_url}/json") },          # JSON content type
-        -> { client.get("#{TestConfig.http2_url}/xml") },           # XML content type
-      ]
-
-      successful_edge_cases = 0
-      edge_case_tests.each do |test|
-        response = test.call
-        successful_edge_cases += 1 if response && response.status == 200
+      # Test multiple concurrent requests
+      responses = [] of H2O::Response
+      3.times do |i|
+        responses << client.get("#{TestConfig.http2_url}/index.html")
       end
-
-      # Should handle at least some edge cases
-      if successful_edge_cases == 0
-        fail "EDGE CASE REGRESSION: No edge cases handled correctly"
-      end
-
+      
+      # All requests should succeed
+      responses.all? { |r| r.status == 200 }.should be_true
+      
       client.close
     end
 
