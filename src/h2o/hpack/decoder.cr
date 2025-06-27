@@ -51,13 +51,23 @@ module H2O::HPACK
 
       # Convert UInt32 to Int32 with bounds checking
       if index_raw > Int32::MAX
+        Log.debug { "Header index too large: #{index_raw}" }
         raise CompressionError.new("Header index too large: #{index_raw}")
       end
       index = index_raw.to_i32
 
+      # Special handling for index 0 (invalid) and out-of-bounds indices
+      if index == 0
+        Log.debug { "Invalid header index: 0 (reserved)" }
+        raise CompressionError.new("Invalid header index: #{index}")
+      end
+
       entry = @dynamic_table[index]
 
-      raise CompressionError.new("Invalid header index: #{index}") unless entry
+      unless entry
+        Log.debug { "Invalid header index: #{index} (out of bounds, table size: #{@dynamic_table.size})" }
+        raise CompressionError.new("Invalid header index: #{index}")
+      end
 
       add_header_safely(headers, entry.name, entry.value)
     end
@@ -113,19 +123,24 @@ module H2O::HPACK
 
     private def decode_string(io : IO) : String
       first_byte = io.read_byte
-      raise CompressionError.new("Unexpected end of data") unless first_byte
+      unless first_byte
+        Log.debug { "Unexpected end of data while reading string length byte" }
+        raise CompressionError.new("Unexpected end of data")
+      end
 
       huffman_encoded = (first_byte & 0x80) != 0
       length_raw = decode_integer(io, first_byte & 0x7f, 7)
 
       # Convert UInt32 to Int32 with bounds checking for string length
       if length_raw > Int32::MAX
+        Log.debug { "String length too large: #{length_raw}" }
         raise CompressionError.new("String length too large: #{length_raw}")
       end
       length = length_raw.to_i32
 
       # Validate against security limits
       if length > @security_limits.max_string_length
+        Log.debug { "String length exceeds security limit: #{length} > #{@security_limits.max_string_length}" }
         raise HpackBombError.new("String length exceeds security limit: #{length} > #{@security_limits.max_string_length}")
       end
 
@@ -133,7 +148,10 @@ module H2O::HPACK
         BufferPool.with_header_buffer do |buffer|
           data = buffer[0, length]
           bytes_read = io.read(data)
-          raise CompressionError.new("Unexpected end of data") if bytes_read != length
+          if bytes_read != length
+            Log.debug { "Unexpected end of data while reading string: expected #{length} bytes, got #{bytes_read}" }
+            raise CompressionError.new("Unexpected end of data")
+          end
 
           if huffman_encoded
             Huffman.decode(data, @security_limits.max_string_length)
@@ -145,7 +163,10 @@ module H2O::HPACK
         # For very large strings, fallback to direct allocation
         data = Bytes.new(length)
         bytes_read = io.read(data)
-        raise CompressionError.new("Unexpected end of data") if bytes_read != length
+        if bytes_read != length
+          Log.debug { "Unexpected end of data while reading large string: expected #{length} bytes, got #{bytes_read}" }
+          raise CompressionError.new("Unexpected end of data")
+        end
 
         if huffman_encoded
           Huffman.decode(data, @security_limits.max_string_length)
