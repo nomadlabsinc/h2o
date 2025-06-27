@@ -2,10 +2,11 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.test
     platform: linux/amd64
     volumes:
       - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /workspace
     depends_on:
       - httpbin
@@ -14,7 +15,9 @@ services:
       - TEST_HTTPBIN_URL=http://httpbin:80
       - TEST_NGHTTPD_URL=https://nghttpd:4430
       - H2O_VERIFY_SSL=false
+      - DOCKER_HOST=unix:///var/run/docker.sock
     command: crystal spec
+    privileged: true
 
   httpbin:
     image: kennethreitz/httpbin

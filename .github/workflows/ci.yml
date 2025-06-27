@@ -2,13 +2,29 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, simplify-testing ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, simplify-testing ]
 
 jobs:
-  test:
-    name: Test
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Run unit tests
+      run: |
+        docker compose run --rm app crystal spec spec/h2o/ spec/h2o_spec.cr spec/parallel_test_runner_spec.cr
+
+  integration-tests:
+    name: Integration Tests
     runs-on: ubicloud-standard-8
     timeout-minutes: 15
 
@@ -19,19 +35,24 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build test harness
-      run: |
-        cd spec/compliance/harness
-        docker build -t h2-client-test-harness .
-
-    - name: Run unit tests
-      run: |
-        docker compose run --rm app crystal spec spec/h2o/ spec/h2o_spec.cr spec/parallel_test_runner_spec.cr
-
-    - name: Run core integration tests
+    - name: Run integration tests
       run: |
         docker compose run --rm app crystal spec spec/integration/circuit_breaker_integration_spec.cr spec/integration/connection_pooling_integration_spec.cr spec/integration/h1_client_integration_spec.cr spec/integration/regression_prevention_spec.cr spec/integration/ssl_verification_integration_spec.cr spec/integration/channel_fix_test_spec.cr spec/integration/minimal_integration_spec.cr spec/integration/http1_fallback_spec.cr
 
-  # Note: Compliance tests are run locally only for now
-  # They require a Go harness server which is complex to run in CI
-  # The integration tests provide good coverage of HTTP/2 functionality
+  compliance-tests:
+    name: H2SPEC Compliance Tests
+    runs-on: ubicloud-standard-8
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Run optimized compliance tests in Docker
+      run: |
+        # Run Docker-optimized compliance tests with built-in harness
+        # Uses compiled Go harness binary inside container for efficiency
+        docker compose run --rm app crystal spec spec/compliance/docker_optimized_spec.cr
