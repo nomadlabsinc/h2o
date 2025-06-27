@@ -33,7 +33,7 @@ describe "HTTP/2 Error Handling and Edge Cases" do
       # Test with non-existent host
       expect_raises(Exception) do
         HTTP2TestHelpers.retry_request do
-          client.get("https://nonexistent.invalid.host.example.com/")
+          client.get("https://nonexistent.invalid.host.example.com/index.html")
         end
       end
 

@@ -13,7 +13,7 @@ describe "Channel Fix Integration Test" do
       client.connections.should be_empty
 
       # Try a simple request that will test the full HTTP/2 flow
-      response = client.get("#{TestConfig.http2_url}/get")
+      response = client.get("#{TestConfig.http2_url}/index.html")
 
       # Response should be successful if network is available
       # Allow for various network conditions (timeout, connectivity issues, etc.)

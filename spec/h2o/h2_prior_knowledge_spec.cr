@@ -53,7 +53,7 @@ describe H2O::Client do
     pending "successfully connects to h2c server with prior knowledge" do
       # Would need an h2c test server running on port 8080
       client = H2O::Client.new(h2_prior_knowledge: true)
-      response = client.get("http://localhost:8080/")
+      response = client.get("http://localhost:8080/index.html")
       response.status.should eq(200)
     end
 

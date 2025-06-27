@@ -26,7 +26,7 @@ def retry_request(max_attempts = 3, acceptable_statuses = (200..299), &)
         if attempts >= max_attempts
           return result
         end
-        puts "Attempt #{attempts} failed with status #{result.status}, retrying..."
+        
         sleep(10.milliseconds) # Fast local retry
       end
     rescue ex
@@ -34,7 +34,7 @@ def retry_request(max_attempts = 3, acceptable_statuses = (200..299), &)
       if attempts >= max_attempts
         raise ex
       end
-      puts "Attempt #{attempts} failed with error: #{ex.message}, retrying..."
+      
       sleep(20.milliseconds) # Fast local retry
     end
   end
@@ -52,7 +52,7 @@ describe "Regression Prevention for HTTP/2 Implementation" do
 
       # Try the simplest possible HTTP/2 request with retries
       response = retry_request(max_attempts: 5, acceptable_statuses: (200..599)) do
-        client.get("#{test_base_url}/")
+        client.get("#{test_base_url}/index.html")
       end
 
       if response.nil?
@@ -84,7 +84,7 @@ describe "Regression Prevention for HTTP/2 Implementation" do
 
       # Normal client should handle normal requests
       normal_response = retry_request do
-        normal_client.get("#{test_base_url}/")
+        normal_client.get("#{test_base_url}/index.html")
       end
 
       # At least normal client should work
@@ -134,7 +134,7 @@ describe "Regression Prevention for HTTP/2 Implementation" do
 
       # Measure performance of basic operations
       single_request_time = Time.measure do
-        response = client.get("#{test_base_url}/")
+        response = client.get("#{test_base_url}/index.html")
         response.should_not be_nil if response
       end
 
@@ -146,7 +146,7 @@ describe "Regression Prevention for HTTP/2 Implementation" do
       # Test multiple requests
       multiple_requests_time = Time.measure do
         3.times do
-          response = client.get("#{test_base_url}/")
+          response = client.get("#{test_base_url}/index.html")
           break if response.nil? # Don't continue if requests fail
         end
       end
@@ -166,7 +166,7 @@ describe "Regression Prevention for HTTP/2 Implementation" do
       # Create and close many clients
       10.times do
         client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
-        response = client.get("#{test_base_url}/")
+        response = client.get("#{test_base_url}/index.html")
         client.close
 
         # Don't accumulate clients in memory
@@ -175,7 +175,7 @@ describe "Regression Prevention for HTTP/2 Implementation" do
 
       # Create a final client to ensure functionality still works
       final_client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
-      final_response = final_client.get("#{test_base_url}/")
+      final_response = final_client.get("#{test_base_url}/index.html")
 
       if final_response.nil?
         fail "MEMORY LEAK REGRESSION: Client creation/destruction affects functionality"
@@ -193,7 +193,7 @@ describe "Regression Prevention for HTTP/2 Implementation" do
       error_tests = [
         -> { client.get("#{TestConfig.http2_url}/status/404") },            # 404 error
         -> { client.get("#{TestConfig.http2_url}/status/500") },            # 500 error
-        -> { client.get("https://definitely-not-a-real-domain.invalid/") }, # DNS error
+        -> { client.get("https://definitely-not-a-real-domain.invalid/index.html") }, # DNS error
       ]
 
       error_tests.each_with_index do |test, index|
@@ -231,7 +231,7 @@ describe "Regression Prevention for HTTP/2 Implementation" do
 
       # HTTP (not HTTPS) should raise ArgumentError
       expect_raises(ArgumentError, /Only HTTPS URLs are supported/) do
-        client.get("#{TestConfig.http1_url}/get")
+        client.get("#{TestConfig.http1_url}/index.html")
       end
 
       client.close
@@ -260,7 +260,7 @@ describe "Regression Prevention for HTTP/2 Implementation" do
 
       # Test HTTP/2 implementation
       client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
-      h2_response = client.get("#{test_base_url}/")
+      h2_response = client.get("#{test_base_url}/index.html")
 
       if h2_response.nil?
         fail "CI/CD HEALTH ISSUE: HTTP/1.1 works but HTTP/2 completely fails - implementation regression"

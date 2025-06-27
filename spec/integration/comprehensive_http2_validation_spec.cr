@@ -38,7 +38,7 @@ def retry_request(max_attempts = 2, acceptable_statuses = (200..299), &)
         if attempts >= max_attempts
           return result
         end
-        puts "Attempt #{attempts} failed with status #{result.status}, retrying..."
+        
         sleep(10.milliseconds) # Very fast retry for local servers
       end
     rescue ex
@@ -46,7 +46,7 @@ def retry_request(max_attempts = 2, acceptable_statuses = (200..299), &)
       if attempts >= max_attempts
         raise ex
       end
-      puts "Attempt #{attempts} failed with error: #{ex.message}, retrying..."
+      
       sleep(20.milliseconds) # Fast retry for local servers
     end
   end
@@ -71,7 +71,7 @@ describe "Comprehensive HTTP/2 Validation" do
       response.status.should eq(200)
       response.protocol.should eq("HTTP/2")
       response.body.should_not be_empty
-      response.body.should contain("Nginx HTTP/2 test server")
+      response.body.should contain("httpbin")
 
       # Headers validation
       response.headers.should_not be_empty
@@ -102,7 +102,7 @@ describe "Comprehensive HTTP/2 Validation" do
       json_response.should_not be_nil
       json_response.status.should eq(200)
       json_response.headers["content-type"]?.try(&.includes?("application/json")).should be_true
-      json_response.body.should contain("HTTP/2 test server")
+      json_response.body.should contain("httpbin")
 
       # JSON response from HTTP/2-only server
       http2_response = retry_request do
@@ -215,7 +215,7 @@ describe "Comprehensive HTTP/2 Validation" do
       # All requests should succeed or return acceptable server errors
       responses.each do |response|
         response.should_not be_nil
-        # Accept 200 (success), 5xx (server error from 127.0.0.1:8443 under load), or 0 (connection error)
+        # Accept 200 (success), 5xx (server error from 127.0.0.1:84430 under load), or 0 (connection error)
         if response.status == 200 || (response.status >= 500 && response.status < 600) || response.status == 0
           # Any of these is acceptable - test passes
         else
@@ -235,7 +235,7 @@ describe "Comprehensive HTTP/2 Validation" do
       # Should get a successful response
       response.should_not be_nil
       response.status.should eq(200)
-      response.body.should contain("HTTP/2 test server")
+      response.body.should contain("httpbin")
     end
 
     it "handles requests that exceed timeout appropriately" do
@@ -253,7 +253,7 @@ describe "Comprehensive HTTP/2 Validation" do
         # Timeout was handled correctly with error response
         response.error?.should be_true
       elsif response.status >= 500 && response.status < 600
-        # Server error from 127.0.0.1:8443 under load - acceptable
+        # Server error from 127.0.0.1:84430 under load - acceptable
         # Test passes as long as we get a response without hanging
       else
         # If response succeeded, server was faster than expected
@@ -335,7 +335,7 @@ describe "Comprehensive HTTP/2 Validation" do
       protocols = Array(String).new
 
       3.times do
-        response = client.get("#{test_base_url}/get")
+        response = client.get("#{test_base_url}/index.html")
         if response.status > 0
           protocols << response.protocol
         end

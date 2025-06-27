@@ -116,7 +116,7 @@ describe "Ultra-Fast HTTP/2 Integration Tests" do
       client = H2O::Client.new(timeout: 200.milliseconds, verify_ssl: false) # Very short timeout
 
       # This should fail fast and return an error response
-      response = client.get("https://nonexistent-host.invalid/")
+      response = client.get("https://nonexistent-host.invalid/index.html")
       response.status.should eq(0)
       response.error?.should be_true
 
@@ -137,7 +137,7 @@ describe "Ultra-Fast HTTP/2 Integration Tests" do
       end
 
       expect_raises(ArgumentError) do
-        client.get("http://example.com/") # HTTP not HTTPS
+        client.get("http://example.com/index.html") # HTTP not HTTPS
       end
 
       client.close

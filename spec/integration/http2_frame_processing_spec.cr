@@ -17,7 +17,7 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
       elapsed.should be <= 1.second
 
       # Verify connection is usable
-      response = client.get("#{TestConfig.http2_url}/get")
+      response = client.get("#{TestConfig.http2_url}/index.html")
 
       if response
         response.status.should eq(200)
@@ -151,7 +151,7 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
 
       # Test different request patterns
       patterns = [
-        -> { client.get("#{TestConfig.http2_url}/get") },
+        -> { client.get("#{TestConfig.http2_url}/index.html") },
         -> { client.post("#{TestConfig.http2_url}/post", "test") },
         -> { client.put("#{TestConfig.http2_url}/put", "test") },
         -> { client.delete("#{TestConfig.http2_url}/delete") },
@@ -178,13 +178,13 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
       client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # Make a normal request first
-      response1 = client.get("#{TestConfig.http2_url}/get")
+      response1 = client.get("#{TestConfig.http2_url}/index.html")
 
       # Try a request that might fail
       response2 = client.get("#{TestConfig.http2_url}/status/500")
 
       # Make another normal request to test recovery
-      response3 = client.get("#{TestConfig.http2_url}/get")
+      response3 = client.get("#{TestConfig.http2_url}/index.html")
 
       # Should handle errors without breaking subsequent requests
       if response1 || response3
@@ -266,7 +266,7 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
 
       5.times do
         start_time = Time.monotonic
-        response = client.get("#{TestConfig.http2_url}/get")
+        response = client.get("#{TestConfig.http2_url}/index.html")
         elapsed = Time.monotonic - start_time
 
         if response && response.status == 200
@@ -304,7 +304,7 @@ describe "HTTP/2 Frame Processing and Low-Level Functionality" do
       }
 
       # Basic GET
-      get_response = client.get("#{TestConfig.http2_url}/get")
+      get_response = client.get("#{TestConfig.http2_url}/index.html")
       test_results["basic_get"] = get_response.status == 200
 
       # Custom headers

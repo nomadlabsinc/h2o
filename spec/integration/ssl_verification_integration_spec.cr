@@ -72,7 +72,7 @@ describe "SSL Verification Integration" do
       # This test verifies that SSL verification is working
       # by attempting to connect to a known bad SSL endpoint
       spawn do
-        client.get("https://expired.badssl.com/")
+        client.get("https://expired.badssl.com/index.html")
       rescue ex : H2O::ConnectionError
         # We expect this to fail due to SSL verification
         # The error should mention certificate issues

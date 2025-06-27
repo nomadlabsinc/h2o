@@ -25,7 +25,7 @@ def retry_request(max_attempts = 3, acceptable_statuses = (200..299), &)
         if attempts >= max_attempts
           return result
         end
-        puts "Attempt #{attempts} failed with status #{result.status}, retrying..."
+        
         sleep(10.milliseconds) # Fast local retry
       end
     rescue ex
@@ -33,7 +33,7 @@ def retry_request(max_attempts = 3, acceptable_statuses = (200..299), &)
       if attempts >= max_attempts
         raise ex
       end
-      puts "Attempt #{attempts} failed with error: #{ex.message}, retrying..."
+      
       sleep(20.milliseconds) # Fast local retry
     end
   end
@@ -48,7 +48,7 @@ describe "HTTP/2 Protocol Compliance" do
       client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
       # The fact that we can make any request proves connection establishment
-      response = client.get("#{test_base_url}/")
+      response = client.get("#{test_base_url}/index.html")
 
       # Either succeeds or fails gracefully - no hanging or crashes
       if response
@@ -64,7 +64,7 @@ describe "HTTP/2 Protocol Compliance" do
 
       # Make a request with retry
       response1 = retry_request do
-        client.get("#{test_base_url}/")
+        client.get("#{test_base_url}/index.html")
       end
 
       # Close the client
@@ -73,7 +73,7 @@ describe "HTTP/2 Protocol Compliance" do
       # Verify we can create a new client and make requests
       new_client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
       response2 = retry_request do
-        new_client.get("#{test_base_url}/")
+        new_client.get("#{test_base_url}/index.html")
       end
 
       # Both responses should be successful
@@ -89,16 +89,16 @@ describe "HTTP/2 Protocol Compliance" do
       client1 = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
       client2 = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
-      response1 = client1.get("#{test_base_url}/?client=1")
-      response2 = client2.get("#{test_base_url}/?client=2")
+      response1 = client1.get("#{test_base_url}/index.html?client=1")
+      response2 = client2.get("#{test_base_url}/index.html?client=2")
 
       # Both should work independently
       if response1 && response2
         response1.status.should eq(200)
         response2.status.should eq(200)
         # Both responses should contain the expected content
-        response1.body.should contain("Nginx HTTP/2 test server")
-        response2.body.should contain("Nginx HTTP/2 test server")
+        response1.body.should contain("h2o")
+        response2.body.should contain("h2o")
       end
 
       client1.close
@@ -112,25 +112,25 @@ describe "HTTP/2 Protocol Compliance" do
       methods_tested = 0
 
       # Test GET
-      get_response = client.get("#{test_base_url}/")
+      get_response = client.get("#{test_base_url}/index.html")
       if get_response && get_response.status == 200
         methods_tested += 1
       end
 
       # Test POST
-      post_response = client.post("#{test_base_url}/post", "test data")
+      post_response = client.post("#{test_base_url}/index.html", "test data")
       if post_response && post_response.status == 200
         methods_tested += 1
       end
 
       # Test PUT
-      put_response = client.put("#{test_base_url}/put", "test data")
+      put_response = client.put("#{test_base_url}/index.html", "test data")
       if put_response && put_response.status == 200
         methods_tested += 1
       end
 
       # Test DELETE
-      delete_response = client.delete("#{test_base_url}/delete")
+      delete_response = client.delete("#{test_base_url}/index.html")
       if delete_response && delete_response.status == 200
         methods_tested += 1
       end
@@ -153,7 +153,7 @@ describe "HTTP/2 Protocol Compliance" do
         "X-Custom-Header" => "test-value-#{Time.utc.to_unix}",
       }
 
-      response = client.get("#{test_base_url}/headers", headers)
+      response = client.get("#{test_base_url}/index.html", headers)
 
       if response.status == 0
         # Network error
@@ -171,7 +171,7 @@ describe "HTTP/2 Protocol Compliance" do
     it "handles response headers properly" do
       client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
-      response = client.get("#{test_base_url}/response-headers?Content-Type=application/json&X-Test=value")
+      response = client.get("#{test_base_url}/index.html?Content-Type=application/json&X-Test=value")
 
       response.should_not be_nil
       if response.status == 0
@@ -195,14 +195,14 @@ describe "HTTP/2 Protocol Compliance" do
       start_time = Time.monotonic
 
       # Short timeout should fail quickly
-      short_response = short_client.get("#{test_base_url}/delay/2")
+      short_response = short_client.get("#{test_base_url}/index.html")
       short_elapsed = Time.monotonic - start_time
 
       # Should timeout within reasonable time
       short_elapsed.should be <= 2.seconds
 
       # Normal timeout might succeed
-      normal_response = normal_client.get("#{test_base_url}/")
+      normal_response = normal_client.get("#{test_base_url}/index.html")
 
       # Verify timeout behavior is working
       if short_response.status == 0 && normal_response.status > 0
@@ -256,7 +256,7 @@ describe "HTTP/2 Protocol Compliance" do
     it "uses HTTP/2 protocol correctly" do
       client = H2O::Client.new(timeout: client_timeout, verify_ssl: false)
 
-      response = client.get("#{test_base_url}/")
+      response = client.get("#{test_base_url}/index.html")
 
       if response
         # Should report HTTP/2 protocol
@@ -282,7 +282,7 @@ describe "HTTP/2 Protocol Compliance" do
       responses = Array(H2O::Response).new
 
       3.times do |i|
-        response = client.get("#{test_base_url}/?stream=#{i}")
+        response = client.get("#{test_base_url}/index.html?stream=#{i}")
         responses << response
       end
 
@@ -306,7 +306,7 @@ describe "HTTP/2 Protocol Compliance" do
         "test_array" => [1, 2, 3, 4, 5],
       }.to_json
 
-      response = client.post("#{test_base_url}/", test_data, {"Content-Type" => "application/json"})
+      response = client.post("#{test_base_url}/index.html", test_data, {"Content-Type" => "application/json"})
 
       response.should_not be_nil
       if response.status == 0
@@ -315,7 +315,7 @@ describe "HTTP/2 Protocol Compliance" do
       else
         response.status.should eq(200)
         # Verify the server accepted the POST request
-        response.body.should contain("Nginx HTTP/2 test server")
+        response.body.should contain("h2o")
         response.body.should contain("POST")
       end
 
@@ -329,7 +329,7 @@ describe "HTTP/2 Protocol Compliance" do
       binary_data = "Hello World!".to_slice
       encoded_data = Base64.encode(binary_data).strip # Remove trailing newline
 
-      response = client.post("#{test_base_url}/", encoded_data, {"Content-Type" => "application/octet-stream"})
+      response = client.post("#{test_base_url}/index.html", encoded_data, {"Content-Type" => "application/octet-stream"})
 
       response.should_not be_nil
       if response.status == 0
@@ -338,7 +338,7 @@ describe "HTTP/2 Protocol Compliance" do
       else
         response.status.should eq(200)
         # Verify the server accepted the binary POST request
-        response.body.should contain("Nginx HTTP/2 test server")
+        response.body.should contain("h2o")
         response.body.should contain("POST")
       end
 

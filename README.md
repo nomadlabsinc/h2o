@@ -339,47 +339,6 @@ cd h2o
 
 # Install dependencies
 shards install
-
-# Set up Git hooks for code quality
-./scripts/setup-git-hooks.sh
-```
-
-### Pre-Commit Hooks
-
-This project uses pre-commit hooks to ensure code quality standards:
-
-```bash
-# The hooks automatically check:
-# ✓ Crystal code formatting (crystal tool format)
-# ✓ Trailing newlines on all text files
-# ✓ No trailing whitespace
-# ✓ Crystal specs pass
-# ✓ Crystal syntax is valid
-
-# Run checks manually
-./scripts/pre-commit-checks.sh
-
-# Skip hooks for a commit (not recommended)
-git commit --no-verify
-```
-
-### Building
-
-```bash
-# Build the library
-crystal build src/h2o.cr
-
-# Build with optimizations
-crystal build --release src/h2o.cr
-
-# Check syntax without building
-crystal build --no-codegen src/h2o.cr
-
-# Format code
-crystal tool format
-
-# Check formatting
-crystal tool format --check
 ```
 
 ### Testing
@@ -392,28 +351,10 @@ The project includes a comprehensive Docker-based test runner that ensures consi
 
 ```bash
 # Run all tests (unit, integration, lint, build)
-./scripts/test-runner.sh
+docker compose run --rm app crystal spec
 
-# Run only unit tests (fast)
-./scripts/test-runner.sh unit
-
-# Run with verbose output and parallel execution
-./scripts/test-runner.sh -v --parallel
-
-# Run integration tests only
-./scripts/test-runner.sh integration
-
-# Run with coverage reporting
-./scripts/test-runner.sh -c
-
-# Run performance benchmarks
-./scripts/test-runner.sh --performance
-
-# Run only linting and formatting checks
-./scripts/test-runner.sh lint
-
-# Get help on all options
-./scripts/test-runner.sh --help
+# Run h2spec compliance tests
+docker compose run --rm h2spec
 ```
 
 #### Test Suites
@@ -421,133 +362,12 @@ The project includes a comprehensive Docker-based test runner that ensures consi
 The test runner supports multiple test suites:
 
 - **unit**: Fast unit tests that don't require external services
-- **integration**: Integration tests with real HTTP servers (nginx, httpbin)
-- **performance**: Performance benchmarks and stress tests
-- **lint**: Code formatting and linting checks
-- **build**: Build verification and documentation generation
-
-#### Native Crystal Testing
-
-You can also run tests directly with Crystal (requires local setup):
-
-```bash
-# Run all tests
-crystal spec
-
-# Run specific test file
-crystal spec spec/h2o/client_spec.cr
-
-# Run with coverage
-crystal spec --coverage
-
-# Run verbose
-crystal spec --verbose
-
-# Run specific test pattern
-crystal spec --tag integration
-```
+- **integration**: Integration tests with real HTTP servers (nghttpd, httpbin)
+- **h2spec**: HTTP/2 compliance tests against a known-good server
 
 #### CI Test Runner
 
-For CI environments, use the specialized CI test runner:
-
-```bash
-# Run unit tests for CI
-./scripts/ci_test_runner.sh unit
-
-# Run integration tests for CI
-./scripts/ci_test_runner.sh integration
-```
-
-#### Test Environment Setup
-
-The Docker test runner automatically sets up the required test environment:
-
-- **Crystal environment**: Uses `robnomad/crystal:dev-hoard` base image
-- **Test servers**: nginx HTTP/2 server, httpbin for API testing
-- **Dependencies**: All required Crystal shards and development tools
-- **Network isolation**: Proper container networking for integration tests
-
-#### Testing Best Practices
-
-1. **Use Docker for consistency**: The Docker test runner ensures identical environments
-2. **Run unit tests frequently**: Fast feedback during development
-3. **Run full test suite before commits**: Ensures nothing is broken
-4. **Use parallel testing**: Speed up test execution with `--parallel`
-5. **Monitor coverage**: Use `--coverage` to ensure adequate test coverage
-6. **Test in isolation**: Each test should be independent and not affect others
-
-#### Test Configuration
-
-Environment variables for test customization:
-
-```bash
-# Test timeout (default: 300 seconds)
-export H2O_TEST_TIMEOUT=600
-
-# Number of retries for flaky tests (default: 2)
-export H2O_TEST_RETRIES=3
-
-# Enable Docker BuildKit (default: 1)
-export DOCKER_BUILDKIT=1
-```
-
-#### Debugging Tests
-
-For debugging failing tests:
-
-```bash
-# Run with verbose output
-./scripts/test-runner.sh -v unit
-
-# Keep containers running after tests
-./scripts/test-runner.sh --no-cleanup unit
-
-# Run specific test file directly
-docker run --rm -v $(pwd):/workspace -w /workspace --user root h2o-dev \
-  bash -c "shards install && crystal spec spec/h2o/client_spec.cr --verbose"
-```
-
-### Docker Development
-
-h2o uses a specialized development Docker image based on `robnomad/crystal:dev-hoard`:
-
-```bash
-# Build the development image
-docker build -f Dockerfile.dev -t h2o-dev .
-
-# Run development container
-docker run -it --rm -v $(pwd):/workspace -w /workspace --user root h2o-dev bash
-
-# Inside container
-shards install
-crystal spec
-
-# Or use Docker Compose for integrated development
-docker-compose -f docker-compose.yml up -d
-docker-compose exec crystal bash
-```
-
-The development image includes:
-- Crystal 1.16.3 with all dependencies
-- Development tools (git, curl, vim, htop, etc.)
-- Debugging tools (tshark, nghttp2)
-- HTTP servers for testing (nginx, apache2, caddy)
-- Node.js for HTTP/2 test servers
-
-#### Development Workflow
-
-```bash
-# Quick development setup
-./scripts/test-runner.sh unit  # Fast unit tests during development
-./scripts/test-runner.sh -v    # Full test suite with verbose output
-
-# Continuous testing during development
-./scripts/test-runner.sh unit && echo "Tests passed!"
-
-# Pre-commit testing
-./scripts/test-runner.sh all --parallel
-```
+For CI environments, the same `docker compose` command is used.
 
 ## Contributing
 

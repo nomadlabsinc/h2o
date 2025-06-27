@@ -12,7 +12,7 @@ class HTTP2TestServer
 
   @server : HTTP::Server
 
-  def initialize(@port : Int32 = 8443, @host : String = "0.0.0.0", @ssl_cert_path : String? = nil, @ssl_key_path : String? = nil)
+  def initialize(@port : Int32 = 84430, @host : String = "0.0.0.0", @ssl_cert_path : String? = nil, @ssl_key_path : String? = nil)
     @server = create_server
   end
 
@@ -244,7 +244,7 @@ class HTTP2TestServer
 end
 
 # CLI handling
-port = 8443
+port = 84430
 host = "0.0.0.0"
 ssl_cert_path : String? = nil
 ssl_key_path : String? = nil
@@ -252,7 +252,7 @@ ssl_key_path : String? = nil
 OptionParser.parse do |parser|
   parser.banner = "Usage: http2_server [options]"
 
-  parser.on("-p PORT", "--port=PORT", "Port to listen on (default: 8443)") do |port_arg|
+  parser.on("-p PORT", "--port=PORT", "Port to listen on (default: 84430)") do |port_arg|
     port = port_arg.to_i
   end
 

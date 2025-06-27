@@ -78,7 +78,7 @@ def test_focused_connection_state(channel)
       client.close
 
       # Should handle requests gracefully after close
-      response = client.get("#{TestConfig.http2_url}/get")
+      response = client.get("#{TestConfig.http2_url}/index.html")
       # Either nil or valid response is acceptable - key is no crashes
       true
     rescue
@@ -100,7 +100,7 @@ def test_focused_http_validation(channel)
     begin
       # Use shorter timeout as required by CLAUDE.md (5s or shorter)
       client = H2O::Client.new(timeout: 1.seconds, verify_ssl: false)
-      response = client.get("#{TestConfig.http2_url}/get")
+      response = client.get("#{TestConfig.http2_url}/index.html")
       result = !!(response && response.status == 200)
       client.close
       result

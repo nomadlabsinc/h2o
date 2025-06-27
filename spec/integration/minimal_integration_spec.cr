@@ -31,7 +31,7 @@ describe "H2O Minimal Integration Tests" do
 
       # Debug which test failed
       results.each do |name, success|
-        puts "#{name}: #{success}" unless success
+        
       end
 
       # ALL operations must succeed for reliability
@@ -107,7 +107,7 @@ def test_minimal_http_request(channel)
   success = retry_operation do
     begin
       client = H2O::Client.new(timeout: TestConfig::DEFAULT_TIMEOUT, verify_ssl: false)
-      response = client.get("#{TestConfig.http2_url}/get")
+      response = client.get("#{TestConfig.http2_url}/index.html")
       result = response.status == 200 && response.body.includes?("HTTP/2")
       client.close
       result

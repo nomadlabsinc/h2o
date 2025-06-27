@@ -546,7 +546,7 @@ end
 def test_invalid_url_reliable : Bool
   # Test invalid URL scheme - should return error or raise exception
   client = H2O::Client.new
-  response = client.get("ftp://invalid-scheme.example.com/") # Use actually invalid scheme
+  response = client.get("ftp://invalid-scheme.example.com/index.html") # Use actually invalid scheme
   client.close
   # Should return error response for invalid scheme (graceful error handling)
   response.error?
@@ -566,7 +566,7 @@ def test_timeout_handling_reliable : Bool
     begin
       client = H2O::Client.new(timeout: TestConfig::ERROR_TIMEOUT, verify_ssl: false)
       # Use a guaranteed non-routable IP (RFC 5737 test address)
-      response = client.get("https://192.0.2.1/")
+      response = client.get("https://192.0.2.1/index.html")
       client.close
       # Should return error response due to timeout/connection failure
       response.error?
@@ -586,7 +586,7 @@ def test_nonexistent_domain_reliable : Bool
     begin
       client = H2O::Client.new(timeout: TestConfig::ERROR_TIMEOUT, verify_ssl: false)
       # Use a guaranteed nonexistent domain (RFC 6761)
-      response = client.get("https://test.invalid/")
+      response = client.get("https://test.invalid/index.html")
       client.close
       # Should return error response due to DNS failure
       response.error?

@@ -28,9 +28,8 @@ module CITestHelper
         last_error = ex
 
         if attempts < MAX_RETRIES
-          STDERR.puts "Attempt #{attempts}/#{MAX_RETRIES} failed for: #{description}"
-          STDERR.puts "Error: #{ex.message}"
-          STDERR.puts "Retrying in #{RETRY_DELAY.total_seconds}s..."
+          
+          
           sleep RETRY_DELAY
         else
           break
@@ -49,7 +48,7 @@ module CITestHelper
 
     loop do
       begin
-        response = client.get("/")
+        response = client.get("/index.html")
         return if response.success?
       rescue
         # Ignore connection errors during startup

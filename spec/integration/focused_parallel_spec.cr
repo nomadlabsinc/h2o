@@ -121,7 +121,7 @@ describe "Focused Parallel HTTP/2 Tests" do
 
       # Different request types in parallel - only reliable ones (33% reduction from 3)
       test_scenarios = [
-        -> { client.get("#{test_base_url}/") },
+        -> { client.get("#{test_base_url}/index.html") },
         -> { client.get("#{test_base_url}/?param=1") },
       ]
 

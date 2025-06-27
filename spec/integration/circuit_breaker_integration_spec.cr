@@ -139,7 +139,7 @@ describe "Circuit Breaker Integration" do
         verify_ssl: false
       )
 
-      response = client.get("#{TestConfig.http2_url}/get")
+      response = client.get("#{TestConfig.http2_url}/index.html")
       response.status.should eq(0) # Adapter rejection causes connection error
       response.error?.should be_true
     end

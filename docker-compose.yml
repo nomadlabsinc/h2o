@@ -1,60 +1,48 @@
 services:
-  h2o-test:
+  app:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    platform: linux/amd64
     volumes:
       - .:/workspace
-      - crystal-cache:/home/crystal/.cache
     working_dir: /workspace
+    depends_on:
+      - httpbin
+      - nghttpd
+    environment:
+      - TEST_HTTPBIN_URL=http://httpbin:80
+      - TEST_NGHTTPD_URL=https://nghttpd:4430
+      - H2O_VERIFY_SSL=false
     command: crystal spec
-    environment:
-      - CI=true
-      # Test server host configuration
-      - TEST_HTTP2_HOST=localhost
-      - TEST_HTTP2_PORT=443
-      - TEST_HTTP1_HOST=localhost
-      - TEST_HTTP1_PORT=80
-      - TEST_H2_ONLY_HOST=localhost
-      - TEST_H2_ONLY_PORT=8447
-      - TEST_CADDY_HOST=localhost
-      - TEST_CADDY_PORT=8444
-      # Timeout configuration
-      - TEST_CLIENT_TIMEOUT_MS=5000
-      - TEST_FAST_TIMEOUT_MS=1000
-      # Debug configuration
-      - TEST_DEBUG=${TEST_DEBUG:-false}
-    networks:
-      - default
 
-  crystal:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    volumes:
-      - .:/workspace
-      - crystal-cache:/home/crystal/.cache
-    working_dir: /workspace
-    command: tail -f /dev/null
+  httpbin:
+    image: kennethreitz/httpbin
+    platform: linux/amd64
     ports:
-      - "8080:8080"   # httpbin
-      - "8443:8443"   # nginx HTTP/2
-      - "8445:8445"   # nginx HTTP/1.1
-    environment:
-      - CI=true
+      - "8080:80"
 
-  h2o-docs:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    volumes:
-      - .:/workspace
-      - crystal-cache:/home/crystal/.cache
-      - ./docs:/workspace/docs
-    working_dir: /workspace
-    command: crystal docs
+  nghttpd:
+    image: "svagi/nghttp2"
+    platform: linux/amd64
     ports:
-      - "8080:8080"
+      - "8443:4430"
+    volumes:
+      - /Users/robcole/dev/h2o/spec/integration/ssl/cert.pem:/srv/cert.pem
+      - /Users/robcole/dev/h2o/spec/integration/ssl/key.pem:/srv/key.pem
+      - /Users/robcole/dev/h2o/spec/integration:/srv
+    command:
+      - "nghttpd"
+      - "-v"
+      - "--htdocs=/srv"
+      - "4430"
+      - "/srv/key.pem"
+      - "/srv/cert.pem"
 
-volumes:
-  crystal-cache:
+  h2spec:
+    build:
+      context: ./h2spec
+    platform: linux/amd64
+    command: -h nghttpd -p 4430 -k -t
+    depends_on:
+      - nghttpd

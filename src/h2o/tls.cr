@@ -72,10 +72,11 @@ module H2O
       socket.read(slice)
     end
 
-    def write(slice : Bytes) : Nil
+    def write(slice : Bytes) : Int32
       socket = @socket
       raise IO::Error.new("Socket is closed") if @closed || !socket
       socket.write(slice)
+      slice.size
     end
 
     def flush : Nil
