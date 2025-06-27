@@ -1,12 +1,16 @@
 FROM robnomad/crystal:dev-hoard
 
-# Install additional dependencies for testing
+# Install additional dependencies for testing including Docker and Go
 RUN apk update && apk add --no-cache \
     bash \
     curl \
     git \
     ca-certificates \
-    openssl
+    openssl \
+    docker-cli \
+    go \
+    gcc \
+    musl-dev
 
 # Set up workspace
 WORKDIR /workspace
@@ -16,6 +20,29 @@ COPY . .
 
 # Install Crystal dependencies
 RUN shards install
+
+# Build the test harness inside the container with correct architecture
+WORKDIR /workspace/spec/compliance/harness
+RUN ls -la && \
+    go mod download && \
+    rm -f harness && \
+    env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-s -w' -o harness main.go && \
+    chmod +x harness && \
+    file harness && \
+    ls -la harness && \
+    # Copy the correctly built binary to /usr/local/bin to avoid volume mount override
+    cp harness /usr/local/bin/harness && \
+    cp cert.pem key.pem /workspace/spec/compliance/harness/ || \
+    openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes \
+        -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+
+# Build the harness Docker image for internal use
+WORKDIR /workspace
+RUN docker build -t h2-client-test-harness ./spec/compliance/harness/ || echo "Docker daemon not available during build"
+
+# Set environment variables for compliance testing
+ENV DOCKER_HOST=unix:///var/run/docker.sock
+ENV PATH="/workspace/spec/compliance/harness:${PATH}"
 
 # Default command
 CMD ["crystal", "spec"]

@@ -2,6 +2,7 @@ package main
 
 import (
     "crypto/tls"
+    "flag"
     "fmt"
     "log"
     "net/http"
@@ -12,15 +13,22 @@ import (
 )
 
 func main() {
-    testID := os.Getenv("TEST_ID")
-    if testID == "" {
-        testID = "default"
+    var port int
+    var testID string
+    
+    flag.IntVar(&port, "port", 8080, "Port to listen on")
+    flag.StringVar(&testID, "test", "default", "Test ID to simulate")
+    flag.Parse()
+    
+    // Also check environment variable for backward compatibility
+    if envTestID := os.Getenv("TEST_ID"); envTestID != "" {
+        testID = envTestID
     }
     
-    // Create TLS config
-    cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+    // Create TLS config - use existing certificates from integration directory
+    cert, err := tls.LoadX509KeyPair("/workspace/spec/integration/ssl/cert.pem", "/workspace/spec/integration/ssl/key.pem")
     if err != nil {
-        log.Fatal(err)
+        log.Fatal("Failed to load certificates:", err)
     }
     
     tlsConfig := &tls.Config{
@@ -60,7 +68,7 @@ func main() {
     })
     
     server := &http.Server{
-        Addr:      ":8080",
+        Addr:      fmt.Sprintf(":%d", port),
         Handler:   mux,
         TLSConfig: tlsConfig,
     }
@@ -69,8 +77,33 @@ func main() {
         MaxConcurrentStreams: 100,
     })
     
-    log.Printf("Starting test harness for test %s on :8080", testID)
+    log.Printf("Starting test harness for test %s on port %d", testID, port)
     fmt.Println("listening") // Important: compliance tests look for this
     
     log.Fatal(server.ListenAndServeTLS("", ""))
+}
+
+func generateTempCert() (tls.Certificate, error) {
+    // Generate a temporary self-signed certificate
+    template := `-----BEGIN CERTIFICATE-----
+MIIBhTCCASugAwIBAgIJANjuwakQ0ID/MA0GCSqGSIb3DQEBCwUAMBkxFzAVBgNV
+BAMTDnRlc3QubG9jYWxob3N0MB4XDTIzMDEwMTAwMDAwMFoXDTMzMDEwMTAwMDAw
+MFowGTEXMBUGA1UEAxMOdGVzdC5sb2NhbGhvc3QwXDANBgkqhkiG9w0BAQEFAAON
+SwAwSAJBAMxHQs6eIjTOCj3I8ZAAGrpHJJzSTZ8+qIHOCOGUpqVtmL3nNE7W
+xUFsaEZ5O9WBFy8VN7x/Pb3dw3UmMfm+r4UCAwEAAaNQME4wHQYDVR0OBBYEFE
+UOJnxcOVuYG1wBE6K7OQCOGUpqVtmMA0GA1UdDwEB/wQEAwIGwDAWBgNVHSUB
+Af8EDDAKBggrBgEFBQcDATANBgkqhkiG9w0BAQsFAANBALGlOQCOGUpqVtmL3n
+NE7WxUFsaEZ5O9WBFy8VN7x/Pb3dw3UmMfm+r4UCAwEAAaNQME4wHQYDVR0OBB
+YEFE
+-----END CERTIFICATE-----`
+
+    key := `-----BEGIN PRIVATE KEY-----
+MIIBUwIBADANBgkqhkiG9w0BAQEFAASCAT0wggE5AgEAAkEAzEdCzp4iNM4KPc
+jxkAAaukckklNPnz6ogc4I4ZSmpW2YveFOJnxcOVuYG1wBE6K7OQCOGUpqVtmM
+A0GA1UdDwEB/wQEAwIGwDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDATANBgkqhkiG
+9w0BAQsFAANBALGlOQCOGUpqVtmL3nNE7WxUFsaEZ5O9WBFy8VN7x/Pb3dw3Um
+-----END PRIVATE KEY-----`
+
+    cert, err := tls.X509KeyPair([]byte(template), []byte(key))
+    return cert, err
 }
