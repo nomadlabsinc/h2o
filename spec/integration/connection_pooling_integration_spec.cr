@@ -12,7 +12,7 @@ describe H2O::Client do
           # Make multiple requests to the same host
           successful_requests = 0
           3.times do
-            response = client.get("#{TestConfig.http2_url}/get")
+            response = client.get("#{TestConfig.http2_url}/index.html")
             successful_requests += 1 if response && response.status == 200
           end
 
@@ -84,7 +84,7 @@ describe H2O::Client do
 
       begin
         # Make a request to create a connection
-        response = client.get("#{TestConfig.http2_url}/get")
+        response = client.get("#{TestConfig.http2_url}/index.html")
 
         initial_count = client.connections.size
 
@@ -92,7 +92,7 @@ describe H2O::Client do
         client.connections.each_value(&.close)
 
         # Make another request, should cleanup closed connections
-        response = client.get("#{TestConfig.http2_url}/get")
+        response = client.get("#{TestConfig.http2_url}/index.html")
 
         # The old closed connections should be cleaned up
         client.connections.values.all?(&.closed?).should be_false
@@ -139,7 +139,7 @@ describe H2O::Client do
 
       begin
         # This should timeout connecting to a non-existent service
-        response = client.get("https://10.255.255.1:8443/") # Non-routable IP
+        response = client.get("https://10.255.255.1:84430/index.html") # Non-routable IP
         # Should return error response, not crash
         response.error?.should be_true
         response.status.should eq(0)

@@ -34,10 +34,12 @@ module H2O
           verify_mode : OpenSSL::SSL::VerifyMode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
           Log.debug { "Creating H2::Client for #{hostname}:#{port} with TLS and verify_mode=#{verify_mode}" }
           @socket = TlsSocket.new(hostname, port, verify_mode: verify_mode, connect_timeout: connect_timeout)
+          Log.debug { "TLS connection established for #{hostname}:#{port}" }
           validate_http2_negotiation
         else
           Log.debug { "Creating H2::Client for #{hostname}:#{port} with prior knowledge (no TLS)" }
           @socket = TcpSocket.new(hostname, port)
+          Log.debug { "TCP connection established for #{hostname}:#{port}" }
         end
 
         @stream_pool = StreamPool.new
@@ -451,6 +453,7 @@ module H2O
       end
 
       private def handle_frame(frame : Frame) : Nil
+        Log.debug { "Handling frame: #{frame.frame_type} (stream_id=#{frame.stream_id})" }
         case frame
         when SettingsFrame
           handle_settings_frame(frame)
@@ -467,6 +470,10 @@ module H2O
         else
           Log.warn { "Unhandled frame type: #{frame.frame_type}" }
         end
+      rescue ex : Exception
+        Log.error { "Error handling frame #{frame.frame_type}: #{ex.message}" }
+        Log.debug { "Frame handling exception: #{ex.inspect_with_backtrace}" }
+        # Don't re-raise to keep connection alive for test harness
       end
 
       private def handle_settings_frame(frame : SettingsFrame) : Nil

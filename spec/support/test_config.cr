@@ -4,11 +4,11 @@
 module TestConfig
   # HTTP/2 test server (nginx)
   def self.http2_host
-    ENV["TEST_HTTP2_HOST"]? || "nginx-h2"
+    ENV["TEST_HTTP2_HOST"]? || "nghttpd"
   end
 
   def self.http2_port
-    ENV["TEST_HTTP2_PORT"]? || "443"
+    ENV["TEST_HTTP2_PORT"]? || "4430"
   end
 
   def self.http2_url(path = "")
@@ -17,7 +17,7 @@ module TestConfig
 
   # HTTP/1.1 test server (httpbin)
   def self.http1_host
-    ENV["TEST_HTTP1_HOST"]? || "httpbin-h2"
+    ENV["TEST_HTTP1_HOST"]? || "httpbin"
   end
 
   def self.http1_port
