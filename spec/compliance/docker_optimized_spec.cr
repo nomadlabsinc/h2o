@@ -7,7 +7,8 @@ require "channel"
 # Uses system-installed harness binary with parallel test execution
 
 # All 146 test case IDs from h2spec compliance suite
-H2SPEC_TEST_CASES = [
+module DockerOptimizedTests
+  H2SPEC_TEST_CASES = [
     # Generic tests (23 tests)
     "generic/1/1", "generic/2/1", "generic/3.1/1", "generic/3.1/2", "generic/3.1/3",
     "generic/3.2/1", "generic/3.2/2", "generic/3.2/3", "generic/3.3/1", "generic/3.3/2",
@@ -129,10 +130,11 @@ H2SPEC_TEST_CASES = [
     "final/6", "final/7", "final/8", "final/9", "final/10",
     "final/11", "final/12", "final/13"
 ]
+end
 
 # Test categories for organized reporting - comprehensive breakdown of all 146 tests
 H2SPEC_TEST_CATEGORIES = {
-  "Generic Tests" => H2SPEC_TEST_CASES.select(&.starts_with?("generic/")),
+  "Generic Tests" => DockerOptimizedTests::H2SPEC_TEST_CASES.select(&.starts_with?("generic/")),
   "HPACK Tests" => H2SPEC_TEST_CASES.select(&.starts_with?("hpack/")),
   "Connection Management (3.5)" => H2SPEC_TEST_CASES.select(&.starts_with?("3.5/")),
   "Frame Format (4.1)" => H2SPEC_TEST_CASES.select(&.starts_with?("4.1/")),
@@ -272,14 +274,14 @@ end
 describe "H2O Docker-Optimized HTTP/2 Compliance Tests" do
   it "passes H2SPEC compliance tests efficiently in Docker" do
     puts "\n🚀 H2O HTTP/2 Compliance Tests (Docker-Optimized)"
-    puts "Total test cases: #{H2SPEC_TEST_CASES.size}"
+    puts "Total test cases: #{DockerOptimizedTests::H2SPEC_TEST_CASES.size}"
     puts "Running with parallelism inside Docker container"
     puts "=" * 80
     
     overall_start = Time.monotonic
     
     # Run all 146 tests with controlled parallelism optimized for 4 CPU cores
-    results = DockerOptimizedTestRunner.run_parallel_tests(H2SPEC_TEST_CASES, concurrency: 4)
+    results = DockerOptimizedTestRunner.run_parallel_tests(DockerOptimizedTests::H2SPEC_TEST_CASES, concurrency: 4)
     
     # Sort results by test_id for consistent reporting
     results.sort_by!(&.test_id)

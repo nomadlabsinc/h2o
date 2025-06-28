@@ -1,0 +1,1324 @@
+{
+  "timestamp": "2025-06-27T23:57:09Z",
+  "total_tests": 146,
+  "passed": 0,
+  "failed": 146,
+  "success_rate": 0.0,
+  "duration_seconds": 358.834284916,
+  "results": [
+    {
+      "test_id": "3.5/1",
+      "description": "Sends invalid connection preface",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.092067791
+    },
+    {
+      "test_id": "3.5/2",
+      "description": "Sends no connection preface",
+      "expected": "Timeout",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.976174792
+    },
+    {
+      "test_id": "4.1/1",
+      "description": "Sends a frame with an unknown type",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.966084042
+    },
+    {
+      "test_id": "4.1/2",
+      "description": "Sends a frame with a length that exceeds the max",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.085064792
+    },
+    {
+      "test_id": "4.1/3",
+      "description": "Sends a frame with invalid pad length",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.083489041
+    },
+    {
+      "test_id": "4.2/1",
+      "description": "Sends a DATA frame with 2^14 octets in length",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.083807417
+    },
+    {
+      "test_id": "4.2/2",
+      "description": "Sends a DATA frame that exceeds SETTINGS_MAX_FRAME_SIZE",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.083485625
+    },
+    {
+      "test_id": "4.2/3",
+      "description": "Sends a HEADERS frame that exceeds SETTINGS_MAX_FRAME_SIZE",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.078687875
+    },
+    {
+      "test_id": "5.1/1",
+      "description": "Sends a DATA frame to a stream in IDLE state",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.088778541
+    },
+    {
+      "test_id": "5.1/2",
+      "description": "Sends a RST_STREAM frame to a stream in IDLE state",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 1.077088083
+    },
+    {
+      "test_id": "5.1/3",
+      "description": "Sends a WINDOW_UPDATE frame to a stream in IDLE state",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.065997625
+    },
+    {
+      "test_id": "5.1/4",
+      "description": "Sends a CONTINUATION frame without HEADERS",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.935340209
+    },
+    {
+      "test_id": "5.1/5",
+      "description": "Sends a DATA frame to a stream in HALF_CLOSED (remote) state",
+      "expected": "StreamError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.043091083
+    },
+    {
+      "test_id": "5.1/6",
+      "description": "Sends a HEADERS frame to a stream in HALF_CLOSED (remote) state",
+      "expected": "StreamError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.069731708
+    },
+    {
+      "test_id": "5.1/7",
+      "description": "Sends a CONTINUATION frame to a stream in HALF_CLOSED (remote) state",
+      "expected": "StreamError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 0.9829175
+    },
+    {
+      "test_id": "5.1/8",
+      "description": "Sends a DATA frame after END_STREAM flag",
+      "expected": "StreamError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 1.074978125
+    },
+    {
+      "test_id": "5.1/9",
+      "description": "Sends a HEADERS frame after END_STREAM flag",
+      "expected": "StreamError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 1.078618
+    },
+    {
+      "test_id": "5.1/10",
+      "description": "Sends a CONTINUATION frame after END_STREAM flag",
+      "expected": "StreamError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 0.94685375
+    },
+    {
+      "test_id": "5.1/11",
+      "description": "Sends a DATA frame to a stream in CLOSED state",
+      "expected": "ConnectionError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.031801292
+    },
+    {
+      "test_id": "5.1/12",
+      "description": "Sends a HEADERS frame to a stream in CLOSED state",
+      "expected": "ConnectionError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.043949208
+    },
+    {
+      "test_id": "5.1/13",
+      "description": "Sends a CONTINUATION frame to a stream in CLOSED state",
+      "expected": "ConnectionError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 0.991924125
+    },
+    {
+      "test_id": "5.1.1/1",
+      "description": "Sends a stream identifier that is numerically smaller than previous",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.061882375
+    },
+    {
+      "test_id": "5.1.1/2",
+      "description": "Sends a stream with an even-numbered identifier",
+      "expected": "ConnectionError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.102675667
+    },
+    {
+      "test_id": "5.1.2/1",
+      "description": "Sends HEADERS frames that exceed SETTINGS_MAX_CONCURRENT_STREAMS",
+      "expected": "StreamError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.043478958
+    },
+    {
+      "test_id": "5.3.1/1",
+      "description": "Sends a HEADERS frame that depends on itself",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.047415167
+    },
+    {
+      "test_id": "5.3.1/2",
+      "description": "Sends a PRIORITY frame that depends on itself",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.066153416
+    },
+    {
+      "test_id": "5.4.1/1",
+      "description": "Sends an invalid PING frame for connection close",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.9172685830000002
+    },
+    {
+      "test_id": "5.4.1/2",
+      "description": "Sends an invalid SETTINGS frame for connection close",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.920990291
+    },
+    {
+      "test_id": "6.1/1",
+      "description": "Sends a DATA frame with 0x00 stream identifier",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.978821125
+    },
+    {
+      "test_id": "6.1/2",
+      "description": "Sends multiple DATA frames with 0x00 stream identifier",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.059094625
+    },
+    {
+      "test_id": "6.1/3",
+      "description": "Sends a DATA frame with invalid pad length",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.981264917
+    },
+    {
+      "test_id": "6.2/1",
+      "description": "Sends a HEADERS frame with 0x00 stream identifier",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.083078458
+    },
+    {
+      "test_id": "6.2/2",
+      "description": "Sends a HEADERS frame with invalid pad length",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.092527
+    },
+    {
+      "test_id": "6.2/3",
+      "description": "Sends a HEADERS frame with exclusive dependency on stream 0",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.960022791
+    },
+    {
+      "test_id": "6.2/4",
+      "description": "Sends a HEADERS frame with a truncated header block",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.970519458
+    },
+    {
+      "test_id": "6.3/1",
+      "description": "Sends a PRIORITY frame with 0x00 stream identifier",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.975752584
+    },
+    {
+      "test_id": "6.3/2",
+      "description": "Sends a PRIORITY frame with a length other than 5 octets",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.966754875
+    },
+    {
+      "test_id": "6.4/1",
+      "description": "Sends a RST_STREAM frame with 0x00 stream identifier",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.968963333
+    },
+    {
+      "test_id": "6.4/2",
+      "description": "Sends a RST_STREAM frame on a stream in IDLE state",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 1.0976925
+    },
+    {
+      "test_id": "6.4/3",
+      "description": "Sends a RST_STREAM frame with a length other than 4 octets",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.93788075
+    },
+    {
+      "test_id": "6.5/1",
+      "description": "Sends a SETTINGS frame with ACK flag and non-empty payload",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.943215375
+    },
+    {
+      "test_id": "6.5/2",
+      "description": "Sends a SETTINGS frame with a stream identifier other than 0x00",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.975604584
+    },
+    {
+      "test_id": "6.5/3",
+      "description": "Sends a SETTINGS frame with a length not a multiple of 6",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.9229515839999998
+    },
+    {
+      "test_id": "6.5.2/1",
+      "description": "Sends SETTINGS_ENABLE_PUSH with value other than 0 or 1",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.155568916
+    },
+    {
+      "test_id": "6.5.2/2",
+      "description": "Sends SETTINGS_INITIAL_WINDOW_SIZE with value above 2^31-1",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.0802789170000002
+    },
+    {
+      "test_id": "6.5.2/3",
+      "description": "Sends SETTINGS_MAX_FRAME_SIZE with value below 16384",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.07533025
+    },
+    {
+      "test_id": "6.5.2/4",
+      "description": "Sends SETTINGS_MAX_FRAME_SIZE with value above 2^24-1",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.097338375
+    },
+    {
+      "test_id": "6.5.2/5",
+      "description": "Sends unknown SETTINGS identifier",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.085671042
+    },
+    {
+      "test_id": "6.5.3/2",
+      "description": "Sends a SETTINGS frame and expects ACK",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.081422
+    },
+    {
+      "test_id": "6.7/1",
+      "description": "Sends a PING frame with stream identifier other than 0x00",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.10328175
+    },
+    {
+      "test_id": "6.7/2",
+      "description": "Sends a PING frame with a length other than 8",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.109665208
+    },
+    {
+      "test_id": "6.7/3",
+      "description": "Sends a PING frame with ACK flag",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.975991209
+    },
+    {
+      "test_id": "6.7/4",
+      "description": "Sends a PING frame and expects PING ACK",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.9203762920000003
+    },
+    {
+      "test_id": "6.8/1",
+      "description": "Sends a GOAWAY frame with stream identifier other than 0x00",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.978639375
+    },
+    {
+      "test_id": "6.9/1",
+      "description": "Sends a WINDOW_UPDATE frame with a flow control window increment of 0",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.023336
+    },
+    {
+      "test_id": "6.9/2",
+      "description": "Sends a WINDOW_UPDATE frame with a length other than 4 octets",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.064084291
+    },
+    {
+      "test_id": "6.9/3",
+      "description": "Sends a WINDOW_UPDATE frame with invalid stream identifier",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.969965041
+    },
+    {
+      "test_id": "6.9.1/1",
+      "description": "Sends multiple WINDOW_UPDATE frames to overflow window",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.093012625
+    },
+    {
+      "test_id": "6.9.1/2",
+      "description": "Sends multiple WINDOW_UPDATE frames to overflow connection window",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.096213333
+    },
+    {
+      "test_id": "6.9.1/3",
+      "description": "Sends WINDOW_UPDATE frame with max window increment",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.0967065
+    },
+    {
+      "test_id": "6.9.2/3",
+      "description": "Changes SETTINGS_INITIAL_WINDOW_SIZE and sends WINDOW_UPDATE",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.10437125
+    },
+    {
+      "test_id": "6.10/2",
+      "description": "Sends a CONTINUATION frame without preceding HEADERS",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.08881075
+    },
+    {
+      "test_id": "6.10/3",
+      "description": "Sends a CONTINUATION frame after HEADERS with END_HEADERS",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.080560875
+    },
+    {
+      "test_id": "6.10/4",
+      "description": "Sends a CONTINUATION frame with different stream identifier",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.007860125
+    },
+    {
+      "test_id": "6.10/5",
+      "description": "Sends multiple CONTINUATION frames",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.962259375
+    },
+    {
+      "test_id": "6.10/6",
+      "description": "Sends invalid frame between HEADERS and CONTINUATION",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.9666967079999997
+    },
+    {
+      "test_id": "8.1/1",
+      "description": "Sends a second HEADERS frame without END_STREAM",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.091833
+    },
+    {
+      "test_id": "8.1.2/1",
+      "description": "Sends a HEADERS frame with uppercase header field names",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.087561375
+    },
+    {
+      "test_id": "8.1.2.1/1",
+      "description": "Sends a HEADERS frame with a pseudo-header after regular header",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.069338458
+    },
+    {
+      "test_id": "8.1.2.1/2",
+      "description": "Sends a HEADERS frame with a duplicated pseudo-header",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.060489292
+    },
+    {
+      "test_id": "8.1.2.1/3",
+      "description": "Sends a HEADERS frame with an invalid pseudo-header",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.037243583
+    },
+    {
+      "test_id": "8.1.2.1/4",
+      "description": "Sends a HEADERS frame with a response-specific pseudo-header",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.03225975
+    },
+    {
+      "test_id": "8.1.2.2/1",
+      "description": "Sends a HEADERS frame with connection-specific header field",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.035507209
+    },
+    {
+      "test_id": "8.1.2.2/2",
+      "description": "Sends a HEADERS frame with TE header field (not trailers)",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.0333425
+    },
+    {
+      "test_id": "8.1.2.3/1",
+      "description": "Sends a HEADERS frame without :method pseudo-header",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.0441295
+    },
+    {
+      "test_id": "8.1.2.3/2",
+      "description": "Sends a HEADERS frame without :scheme pseudo-header",
+      "expected": "ConnectionError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.051755042
+    },
+    {
+      "test_id": "8.1.2.3/3",
+      "description": "Sends a HEADERS frame without :path pseudo-header",
+      "expected": "ConnectionError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.087670292
+    },
+    {
+      "test_id": "8.1.2.3/4",
+      "description": "Sends a HEADERS frame with empty :path pseudo-header",
+      "expected": "ConnectionError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.03074825
+    },
+    {
+      "test_id": "8.1.2.3/5",
+      "description": "Sends a HEADERS frame without :authority pseudo-header",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.077150333
+    },
+    {
+      "test_id": "8.1.2.3/6",
+      "description": "Sends a HEADERS frame with duplicate :method pseudo-header",
+      "expected": "ConnectionError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.066185625
+    },
+    {
+      "test_id": "8.1.2.3/7",
+      "description": "Sends a HEADERS frame with invalid :method pseudo-header",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.083312459
+    },
+    {
+      "test_id": "8.1.2.6/1",
+      "description": "Sends a HEADERS frame with malformed content-length",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.086451458
+    },
+    {
+      "test_id": "8.1.2.6/2",
+      "description": "Sends a HEADERS frame with multiple content-length",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.06868675
+    },
+    {
+      "test_id": "8.2/1",
+      "description": "Sends a PUSH_PROMISE frame",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.06013675
+    },
+    {
+      "test_id": "hpack/2.3/1",
+      "description": "Sends a HEADERS frame with invalid header block",
+      "expected": "ConnectionError",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.102978792
+    },
+    {
+      "test_id": "hpack/2.3.3/1",
+      "description": "Sends a HEADERS frame with indexed header not in table",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.045960166
+    },
+    {
+      "test_id": "hpack/2.3.3/2",
+      "description": "Sends a HEADERS frame with static table index out of range",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.085448
+    },
+    {
+      "test_id": "hpack/4.1/1",
+      "description": "Sends a HEADERS frame with valid dynamic table update",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.070966125
+    },
+    {
+      "test_id": "hpack/4.2/1",
+      "description": "Sends dynamic table update that exceeds max size",
+      "expected": "ConnectionError",
+      "actual": "Success",
+      "passed": false,
+      "error": null,
+      "duration": 1.098692
+    },
+    {
+      "test_id": "hpack/5.2/1",
+      "description": "Sends a HEADERS frame with invalid string length",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.059756959
+    },
+    {
+      "test_id": "hpack/5.2/2",
+      "description": "Sends a HEADERS frame with invalid Huffman encoding",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.048740667
+    },
+    {
+      "test_id": "hpack/5.2/3",
+      "description": "Sends a HEADERS frame with invalid EOS padding",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.093423042
+    },
+    {
+      "test_id": "hpack/6.1/1",
+      "description": "Sends a HEADERS frame with indexed representation",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.0790129999999998
+    },
+    {
+      "test_id": "hpack/6.2/1",
+      "description": "Sends a HEADERS frame with literal representation",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.089164041
+    },
+    {
+      "test_id": "hpack/6.2.2/1",
+      "description": "Sends a HEADERS frame with literal never indexed",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.041495667
+    },
+    {
+      "test_id": "hpack/6.2.3/1",
+      "description": "Sends a HEADERS frame with literal incremental indexing",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.0780745
+    },
+    {
+      "test_id": "hpack/6.3/1",
+      "description": "Sends a HEADERS frame causing dynamic table eviction",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.105710625
+    },
+    {
+      "test_id": "hpack/misc/1",
+      "description": "Sends multiple HEADERS frames with HPACK state",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.077024709
+    },
+    {
+      "test_id": "generic/1/1",
+      "description": "Sends a valid client preface",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.076996875
+    },
+    {
+      "test_id": "generic/2/1",
+      "description": "Sends a valid HEADERS frame",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.107263417
+    },
+    {
+      "test_id": "generic/3.1/1",
+      "description": "Sends a valid DATA frame",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.072659
+    },
+    {
+      "test_id": "generic/3.1/2",
+      "description": "Sends a DATA frame with padding",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.075433208
+    },
+    {
+      "test_id": "generic/3.1/3",
+      "description": "Sends multiple DATA frames",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.087393875
+    },
+    {
+      "test_id": "generic/3.2/1",
+      "description": "Sends a valid HEADERS frame",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.07893575
+    },
+    {
+      "test_id": "generic/3.2/2",
+      "description": "Sends a HEADERS frame with padding",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.069695458
+    },
+    {
+      "test_id": "generic/3.2/3",
+      "description": "Sends a HEADERS frame with priority",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.084232583
+    },
+    {
+      "test_id": "generic/3.3/1",
+      "description": "Sends a valid PRIORITY frame",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.051407584
+    },
+    {
+      "test_id": "generic/3.3/2",
+      "description": "Sends a PRIORITY frame with exclusive flag",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.089719209
+    },
+    {
+      "test_id": "generic/3.3/3",
+      "description": "Sends multiple PRIORITY frames",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.098308417
+    },
+    {
+      "test_id": "generic/3.3/4",
+      "description": "Sends PRIORITY frames building dependency tree",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.067015834
+    },
+    {
+      "test_id": "generic/3.3/5",
+      "description": "Sends PRIORITY frame for closed stream",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.071159833
+    },
+    {
+      "test_id": "generic/3.4/1",
+      "description": "Sends a valid RST_STREAM frame",
+      "expected": "StreamError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 1.075131292
+    },
+    {
+      "test_id": "generic/3.5/1",
+      "description": "Sends a valid SETTINGS frame",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.071883667
+    },
+    {
+      "test_id": "generic/3.7/1",
+      "description": "Sends a valid PING frame",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.036470459
+    },
+    {
+      "test_id": "generic/3.8/1",
+      "description": "Sends a valid GOAWAY frame",
+      "expected": "GoAway",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.962290334
+    },
+    {
+      "test_id": "generic/3.9/1",
+      "description": "Sends a valid WINDOW_UPDATE frame",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.05439975
+    },
+    {
+      "test_id": "generic/3.10/1",
+      "description": "Sends valid HEADERS with CONTINUATION",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.08290025
+    },
+    {
+      "test_id": "generic/4/1",
+      "description": "Sends unknown frame type",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.100642708
+    },
+    {
+      "test_id": "generic/4/2",
+      "description": "Sends frame with unknown flags",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.064214125
+    },
+    {
+      "test_id": "generic/5/1",
+      "description": "Sends valid frames in sequence",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.074036334
+    },
+    {
+      "test_id": "generic/misc/1",
+      "description": "Sends multiple requests on different streams",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.109199792
+    },
+    {
+      "test_id": "http2/4.3/1",
+      "description": "Sends a frame with reserved bits set",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.07314025
+    },
+    {
+      "test_id": "http2/5.5/1",
+      "description": "Sends frames after GOAWAY",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.963651417
+    },
+    {
+      "test_id": "http2/7/1",
+      "description": "Sends frame with error code",
+      "expected": "StreamError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 1.113002
+    },
+    {
+      "test_id": "http2/8.1.2.4/1",
+      "description": "Sends response pseudo-headers in request",
+      "expected": "ConnectionError",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.058335583
+    },
+    {
+      "test_id": "http2/8.1.2.5/1",
+      "description": "Sends a HEADERS frame with valid cookie crumbling",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.092281333
+    },
+    {
+      "test_id": "extra/1",
+      "description": "Rapid stream creation and closure",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.092231958
+    },
+    {
+      "test_id": "extra/2",
+      "description": "Interleaved frames on multiple streams",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.093908833
+    },
+    {
+      "test_id": "extra/3",
+      "description": "Maximum header list size",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.096936375
+    },
+    {
+      "test_id": "extra/4",
+      "description": "Stream priority chains",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.049110708
+    },
+    {
+      "test_id": "extra/5",
+      "description": "Flow control edge cases",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.044557875
+    },
+    {
+      "test_id": "final/1",
+      "description": "Complete request/response exchange",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.089513541
+    },
+    {
+      "test_id": "final/2",
+      "description": "Multiple concurrent streams",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.101125959
+    },
+    {
+      "test_id": "complete/1",
+      "description": "Full protocol feature test",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.076981917
+    },
+    {
+      "test_id": "complete/2",
+      "description": "Error recovery test",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.0859905
+    },
+    {
+      "test_id": "complete/3",
+      "description": "Flow control compliance",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.991379084
+    },
+    {
+      "test_id": "complete/4",
+      "description": "HPACK state management",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.091797167
+    },
+    {
+      "test_id": "complete/5",
+      "description": "Stream state transitions",
+      "expected": "Success",
+      "actual": "ServerError:0",
+      "passed": false,
+      "error": null,
+      "duration": 1.07998525
+    },
+    {
+      "test_id": "complete/6",
+      "description": "Priority tree manipulation",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.098439458
+    },
+    {
+      "test_id": "complete/7",
+      "description": "Settings negotiation",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.083893584
+    },
+    {
+      "test_id": "complete/8",
+      "description": "Ping/pong handling",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 1.10303325
+    },
+    {
+      "test_id": "complete/9",
+      "description": "Graceful shutdown",
+      "expected": "GoAway",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.076968875
+    },
+    {
+      "test_id": "complete/10",
+      "description": "Header validation",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 2.972339375
+    },
+    {
+      "test_id": "complete/11",
+      "description": "Frame size limits",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.101487292
+    },
+    {
+      "test_id": "complete/12",
+      "description": "Connection preface",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.043772875
+    },
+    {
+      "test_id": "complete/13",
+      "description": "Final compliance check",
+      "expected": "Success",
+      "actual": "ServerError:408",
+      "passed": false,
+      "error": null,
+      "duration": 3.025871
+    }
+  ]
+}
