@@ -43,3 +43,6 @@ coverage/
 tmp/
 temp/
 ./h2o
+
+# Test harness (now included in repo for CI)
+# h2-client-test-harness/
