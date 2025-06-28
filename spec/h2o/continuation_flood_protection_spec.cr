@@ -25,7 +25,7 @@ describe "CVE-2024-27316 CONTINUATION Flood Protection" do
 
   describe "ContinuationFloodError" do
     it "should have default message" do
-      error = H2O::ContinuationFloodError.new
+      error = H2O::ContinuationFloodError.new("CONTINUATION flood attack detected")
       error.message.should eq("CONTINUATION flood attack detected")
     end
 

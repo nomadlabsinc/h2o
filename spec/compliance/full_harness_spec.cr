@@ -7,7 +7,8 @@ require "socket"
 # Runs all 146 h2spec test cases using the h2-client-test-harness
 
 # All 146 test case IDs from h2-client-test-harness
-H2SPEC_TEST_CASES = [
+module FullHarnessTests
+  H2SPEC_TEST_CASES = [
     # Generic tests (23 tests)
     "generic/1/1", "generic/2/1", "generic/3.1/1", "generic/3.1/2", "generic/3.1/3",
     "generic/3.2/1", "generic/3.2/2", "generic/3.2/3", "generic/3.3/1", "generic/3.3/2",
@@ -129,6 +130,7 @@ H2SPEC_TEST_CASES = [
     "final/6", "final/7", "final/8", "final/9", "final/10",
     "final/11", "final/12", "final/13"
   ]
+end
 
 # Test result tracking
 struct TestResult
@@ -242,14 +244,14 @@ describe "H2O Complete HTTP/2 Compliance" do
   # Run all tests and generate report
   it "passes h2spec compliance tests" do
     puts "\nRunning H2O HTTP/2 Compliance Tests"
-    puts "Total test cases: #{H2SPEC_TEST_CASES.size}"
+    puts "Total test cases: #{FullHarnessTests::H2SPEC_TEST_CASES.size}"
     puts "=" * 60
     
     results = [] of TestResult
     
     # Run each test
-    H2SPEC_TEST_CASES.each_with_index do |test_id, index|
-      print "\r[#{index + 1}/#{H2SPEC_TEST_CASES.size}] Running #{test_id.ljust(15)}"
+    FullHarnessTests::H2SPEC_TEST_CASES.each_with_index do |test_id, index|
+      print "\r[#{index + 1}/#{FullHarnessTests::H2SPEC_TEST_CASES.size}] Running #{test_id.ljust(15)}"
       result = ComplianceTestRunner.run_single_test(test_id)
       results << result
       
@@ -283,8 +285,7 @@ describe "H2O Complete HTTP/2 Compliance" do
       end
     end
     
-    # The test passes if we have a reasonable success rate
-    # Some tests may fail due to unimplemented features
-    (passed_count.to_f / results.size).should be >= 0.7  # 70% pass rate minimum
+    # The test passes only with perfect compliance
+    (passed_count.to_f / results.size).should eq 1.0  # 100% compliance required
   end
 end

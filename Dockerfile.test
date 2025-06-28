@@ -21,6 +21,12 @@ COPY . .
 # Install Crystal dependencies
 RUN shards install
 
+# Build ameba linter from shards and copy to system path
+RUN crystal build lib/ameba/src/cli.cr -o bin/ameba && \
+    chmod +x bin/ameba && \
+    cp bin/ameba /usr/local/bin/ameba && \
+    ls -la bin/ameba /usr/local/bin/ameba
+
 # Build the test harness inside the container with correct architecture
 WORKDIR /workspace/spec/compliance/harness
 RUN ls -la && \

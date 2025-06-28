@@ -17,7 +17,8 @@ module H2O
     stream_id: StreamId,
     accumulated_size: Int32,
     continuation_count: Int32,
-    buffer: IO::Memory)
+    buffer: IO::Memory,
+    start_time: Time)
 
   # Circuit breaker related aliases for performance and readability
   alias CircuitBreakerResult = Response
@@ -91,20 +92,6 @@ module H2O
     EnhanceYourCalm    = 0xb
     InadequateSecurity = 0xc
     Http11Required     = 0xd
-  end
-
-  # Custom exception for rapid reset attack detection
-  class RapidResetAttackError < Exception
-    def initialize(message : String = "Rapid reset attack detected")
-      super(message)
-    end
-  end
-
-  # Custom exceptions for CONTINUATION flood attack detection
-  class ContinuationFloodError < Exception
-    def initialize(message : String = "CONTINUATION flood attack detected")
-      super(message)
-    end
   end
 
   enum SettingIdentifier : UInt16

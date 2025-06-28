@@ -1,3 +1,5 @@
+require "./frame_validation"
+
 module H2O
   abstract class Frame
     MAX_FRAME_SIZE    = 16777215_u32
@@ -13,7 +15,7 @@ module H2O
       validate_stream_id
     end
 
-    def self.from_io(io : IO) : Frame
+    def self.from_io(io : IO, max_frame_size : UInt32 = MAX_FRAME_SIZE) : Frame
       BufferPool.with_header_buffer do |header_buffer|
         header = header_buffer[0, FRAME_HEADER_SIZE]
         io.read_fully(header)
@@ -23,10 +25,22 @@ module H2O
         flags = header[4]
         stream_id = ((header[5].to_u32 << 24) | (header[6].to_u32 << 16) | (header[7].to_u32 << 8) | header[8].to_u32) & 0x7fffffff_u32
 
+        # STRICT VALIDATION: Fail fast on protocol violations
+
+        # 1. Validate frame size BEFORE reading payload
+        FrameValidation.validate_frame_size(length, max_frame_size)
+
+        # 2. Validate stream ID constraints per frame type
+        FrameValidation.validate_stream_id_for_frame_type(frame_type, stream_id)
+
         payload = BufferPool.get_frame_buffer(length.to_i32)[0, length]
         io.read_fully(payload) if length > 0
 
         frame = create_frame(frame_type, length, flags, stream_id, payload)
+
+        # 3. Apply comprehensive frame validation
+        FrameValidation.validate_frame_comprehensive(frame)
+
         # Note: payload buffer will be returned by frame when it's finalized
         frame
       end
@@ -119,7 +133,8 @@ module H2O
       when .push_promise?
         PushPromiseFrame.from_payload(length, flags, stream_id, payload)
       else
-        raise FrameError.new("Unknown frame type: #{frame_type}")
+        # RFC 7540 Section 4.1: Unknown frame types must be ignored
+        UnknownFrame.new(length, frame_type, flags, stream_id, payload)
       end
     end
 

@@ -80,14 +80,14 @@ module ParallelComplianceTestRunner
     
     container_id = docker_output.to_s.strip
     
-    # ULTRA-OPTIMIZED: Reduced wait time to 0.5s (down from 0.8s)
+    # Wait for container startup
     sleep 0.5.seconds
     
     error_msg = nil
     passed = false
     
     begin
-      # ULTRA-OPTIMIZED: Even shorter timeouts (1.5s connect, 1.5s request)
+      # Fast timeouts for local testing
       client = H2O::H2::Client.new("localhost", port, connect_timeout: 1.5.seconds, request_timeout: 1.5.seconds, verify_ssl: false)
       
       # Make request
@@ -267,8 +267,8 @@ describe "H2O Parallel HTTP/2 Compliance Tests" do
     puts "\n🎯 Results saved to spec/compliance/parallel_results.json"
     puts "📝 Updated spec/compliance/test_results.md"
     
-    # Test passes if we have high success rate
-    (passed_count.to_f / results.size).should be >= 0.95  # 95% minimum for parallel version
+    # Test passes only with perfect compliance
+    (passed_count.to_f / results.size).should eq 1.0  # 100% compliance required
   end
 end
 

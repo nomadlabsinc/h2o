@@ -42,7 +42,7 @@ module H2O
     end
 
     # Read and process frames in batches
-    def read_batch(io : IO) : Array(Frame)
+    def read_batch(io : IO, max_frame_size : UInt32 = Frame::MAX_FRAME_SIZE) : Array(Frame)
       @frames.clear
 
       # Read up to BATCH_SIZE frames
@@ -59,6 +59,11 @@ module H2O
           flags = header[4]
           stream_id = ((header[5].to_u32 << 24) | (header[6].to_u32 << 16) |
                        (header[7].to_u32 << 8) | header[8].to_u32) & 0x7fffffff_u32
+
+          # Validate frame size
+          if length > max_frame_size
+            raise FrameError.new("Frame size #{length} exceeds maximum allowed size #{max_frame_size}")
+          end
 
           # Read payload if needed
           payload = if length > 0

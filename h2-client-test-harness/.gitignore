@@ -1,0 +1,11 @@
+# Log files
+*.log
+
+# PID files
+*.pid
+
+# TLS certificates
+*.pem
+
+# Binaries
+h2-client-test-harness
