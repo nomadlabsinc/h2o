@@ -1,3 +1,6 @@
+require "./flow_control_validation"
+require "./header_list_validation"
+
 module H2O
   class Stream
     property id : StreamId
@@ -71,13 +74,39 @@ module H2O
 
     def send_data(data_frame : DataFrame) : Nil
       validate_can_send_data
-      validate_flow_control(data_frame.data.size)
-      @remote_window_size -= data_frame.data.size
+
+      # Strict flow control validation
+      data_size = data_frame.data.size
+      if data_size > 0 # Empty DATA frames don't consume flow control
+        FlowControlValidation.validate_data_frame_flow_control(data_size, @remote_window_size, @id)
+        @remote_window_size -= data_size
+      end
+
+      # Validate flow control state after update
+      FlowControlValidation.validate_flow_control_state(@local_window_size, @remote_window_size, @id)
+
       transition_on_send_data(data_frame.end_stream?)
     end
 
     def receive_headers(headers_frame : HeadersFrame, decoded_headers : Headers? = nil) : Nil
-      validate_can_receive_headers
+      # Strict state validation following Rust h2 and Go net/http2 patterns
+      case @state
+      when .idle?
+        # Valid - transition to open/half-closed based on end_stream flag
+      when .open?
+        # Valid - can receive headers in open state
+      when .half_closed_local?
+        # Valid - can receive response headers when we've sent all our data
+      when .half_closed_remote?
+        # Invalid - remote has already closed their side
+        raise StreamError.new("Cannot receive HEADERS in state #{@state}", @id, ErrorCode::StreamClosed)
+      when .closed?
+        # Invalid - stream is completely closed
+        raise StreamError.new("Cannot receive HEADERS in state #{@state}", @id, ErrorCode::StreamClosed)
+      else
+        raise StreamError.new("Invalid state #{@state} for receiving HEADERS", @id, ErrorCode::ProtocolError)
+      end
+
       @last_activity = Time.utc
 
       # Create response if it doesn't exist
@@ -87,6 +116,9 @@ module H2O
 
       # Process decoded headers if provided
       if decoded_headers && (response = @response)
+        # Comprehensive header list validation for HTTP/2 responses
+        HeaderListValidation.validate_http2_header_list(decoded_headers, false) # false = response
+
         # Set status from :status pseudo-header
         if status = decoded_headers[":status"]?
           response.status = status.to_i32
@@ -114,11 +146,30 @@ module H2O
     end
 
     def receive_data(data_frame : DataFrame) : Nil
-      validate_can_receive_data
-      @last_activity = Time.utc
+      # Strict state validation following Rust h2 and Go net/http2 patterns
+      unless can_receive_data?
+        case @state
+        when .half_closed_remote?, .closed?
+          raise StreamError.new("Cannot receive DATA in state #{@state}", @id, ErrorCode::StreamClosed)
+        when .idle?
+          raise ConnectionError.new("DATA frame on idle stream #{@id}", ErrorCode::ProtocolError)
+        else
+          raise StreamError.new("Invalid state #{@state} for receiving DATA", @id, ErrorCode::ProtocolError)
+        end
+      end
 
+      # Strict flow control validation for received data
+      data_size = data_frame.data.size
+      if data_size > 0 # Empty DATA frames don't consume flow control
+        FlowControlValidation.validate_data_frame_flow_control(data_size, @local_window_size, @id)
+        @local_window_size -= data_size
+      end
+
+      @last_activity = Time.utc
       @incoming_data.write(data_frame.data)
-      @local_window_size -= data_frame.data.size
+
+      # Validate flow control state after consuming data
+      FlowControlValidation.validate_flow_control_state(@local_window_size, @remote_window_size, @id)
 
       transition_on_receive_data(data_frame.end_stream?)
 
@@ -135,7 +186,16 @@ module H2O
     end
 
     def receive_window_update(window_frame : WindowUpdateFrame) : Nil
-      @remote_window_size += window_frame.window_size_increment.to_i32
+      increment = window_frame.window_size_increment
+
+      # Strict WINDOW_UPDATE validation
+      FlowControlValidation.validate_window_update_increment(increment)
+      FlowControlValidation.validate_window_size_after_update(@remote_window_size, increment, @id)
+
+      @remote_window_size += increment.to_i32
+
+      # Validate final flow control state
+      FlowControlValidation.validate_flow_control_state(@local_window_size, @remote_window_size, @id)
     end
 
     def await_response(timeout : Time::Span = 5.seconds) : Response?
@@ -167,8 +227,17 @@ module H2O
     end
 
     def create_window_update(increment : Int32) : WindowUpdateFrame
+      # Validate increment before creating frame
+      increment_u32 = increment.to_u32
+      FlowControlValidation.validate_window_update_increment(increment_u32)
+      FlowControlValidation.validate_window_size_after_update(@local_window_size, increment_u32, @id)
+
       @local_window_size += increment
-      WindowUpdateFrame.new(@id, increment.to_u32)
+
+      # Validate final state
+      FlowControlValidation.validate_flow_control_state(@local_window_size, @remote_window_size, @id)
+
+      WindowUpdateFrame.new(@id, increment_u32)
     end
 
     def rapid_reset? : Bool
@@ -209,12 +278,6 @@ module H2O
     private def validate_can_receive_data : Nil
       unless can_receive_data?
         raise StreamError.new("Cannot receive DATA in state #{@state}", @id)
-      end
-    end
-
-    private def validate_flow_control(data_size : Int32) : Nil
-      if data_size > @remote_window_size
-        raise FlowControlError.new("Data size exceeds available window: #{data_size} > #{@remote_window_size}")
       end
     end
 

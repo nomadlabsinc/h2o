@@ -1,3 +1,6 @@
+require "./strict_validation"
+require "../header_list_validation"
+
 module H2O::HPACK
   class Decoder
     property dynamic_table : DynamicTable
@@ -10,24 +13,28 @@ module H2O::HPACK
     end
 
     def decode(data : Bytes) : Headers
-      # Pre-validation: Check compression ratio
-      if data.size > 0
-        compression_ratio = data.size.to_f64 / @security_limits.max_decompressed_size.to_f64
-        if compression_ratio > @security_limits.compression_ratio_limit
-          raise HpackBombError.new("Suspicious compression ratio: #{compression_ratio}")
-        end
+      # Strict validation: Check input size limits
+      if data.size > @security_limits.max_decompressed_size
+        raise CompressionError.new("Compressed data too large: #{data.size} bytes")
       end
 
       headers = Headers.new
       io = IO::Memory.new(data)
       @total_decompressed_size = 0
+      header_count = 0
 
       while io.pos < io.size
+        # Prevent excessive header count during decoding
+        if header_count >= StrictValidation::MAX_HEADER_COUNT
+          raise CompressionError.new("Too many headers during decoding: #{header_count}")
+        end
+
         decode_header(io, headers)
+        header_count += 1
       end
 
-      # Final validation
-      validate_final_headers(headers)
+      # Strict final validation
+      validate_final_headers_strict(headers, data.size)
       headers
     end
 
@@ -86,16 +93,14 @@ module H2O::HPACK
     private def decode_dynamic_table_size_update(io : IO, first_byte : UInt8) : Nil
       size_raw = decode_integer(io, first_byte & 0x1f, 5)
 
+      # Strict validation of dynamic table size
+      StrictValidation.validate_dynamic_table_size(size_raw, @security_limits.max_dynamic_table_size.to_u32)
+
       # Convert UInt32 to Int32 with bounds checking
       if size_raw > Int32::MAX
         raise CompressionError.new("Dynamic table size too large: #{size_raw}")
       end
       size = size_raw.to_i32
-
-      # Validate against security limits
-      if size > @security_limits.max_dynamic_table_size
-        raise HpackBombError.new("Dynamic table size exceeds security limit: #{size} > #{@security_limits.max_dynamic_table_size}")
-      end
 
       @dynamic_table.resize(size)
     end
@@ -138,11 +143,8 @@ module H2O::HPACK
       end
       length = length_raw.to_i32
 
-      # Validate against security limits
-      if length > @security_limits.max_string_length
-        Log.debug { "String length exceeds security limit: #{length} > #{@security_limits.max_string_length}" }
-        raise HpackBombError.new("String length exceeds security limit: #{length} > #{@security_limits.max_string_length}")
-      end
+      # Strict validation of string length
+      StrictValidation.validate_string_length(length_raw, @security_limits.max_string_length)
 
       if length <= BufferPool::LARGE_BUFFER_SIZE
         BufferPool.with_header_buffer do |buffer|
@@ -212,9 +214,13 @@ module H2O::HPACK
     end
 
     private def add_header_safely(headers : Headers, name : String, value : String) : Nil
+      # Strict validation of header name and value
+      StrictValidation.validate_header_name(name)
+      StrictValidation.validate_header_value(value)
+
       # Check header count limit
       if headers.size >= @security_limits.max_header_count
-        raise HpackBombError.new("Header count exceeds limit: #{headers.size} >= #{@security_limits.max_header_count}")
+        raise CompressionError.new("Header count exceeds limit: #{headers.size} >= #{@security_limits.max_header_count}")
       end
 
       # Calculate header size (name + value + 32 bytes overhead per RFC 7541)
@@ -223,7 +229,7 @@ module H2O::HPACK
 
       # Check total decompressed size
       if @total_decompressed_size > @security_limits.max_decompressed_size
-        raise HpackBombError.new("Total decompressed size exceeds limit: #{@total_decompressed_size} > #{@security_limits.max_decompressed_size}")
+        raise CompressionError.new("Total decompressed size exceeds limit: #{@total_decompressed_size} > #{@security_limits.max_decompressed_size}")
       end
 
       headers[name] = value
@@ -232,12 +238,31 @@ module H2O::HPACK
     private def validate_final_headers(headers : Headers) : Nil
       # Final validation of total header count
       if headers.size > @security_limits.max_header_count
-        raise HpackBombError.new("Final header count exceeds limit: #{headers.size}")
+        raise CompressionError.new("Final header count exceeds limit: #{headers.size}")
       end
 
       # Final validation of total decompressed size
       if @total_decompressed_size > @security_limits.max_decompressed_size
-        raise HpackBombError.new("Final decompressed size exceeds limit: #{@total_decompressed_size}")
+        raise CompressionError.new("Final decompressed size exceeds limit: #{@total_decompressed_size}")
+      end
+    end
+
+    # Enhanced strict validation following Go net/http2 and Rust h2 patterns
+    private def validate_final_headers_strict(headers : Headers, compressed_size : Int32) : Nil
+      # Use strict validation module
+      StrictValidation.validate_header_list(headers, @security_limits.max_decompressed_size)
+
+      # Enhanced header list size validation
+      HeaderListValidation.validate_header_list_size(headers, @security_limits.max_decompressed_size)
+
+      # Check compression ratio for HPACK bomb detection
+      StrictValidation.validate_compression_ratio(compressed_size, @total_decompressed_size, @security_limits.compression_ratio_limit)
+
+      # Validate each header name/value pair for compliance
+      headers.each do |name, value|
+        StrictValidation.validate_header_name(name)
+        StrictValidation.validate_header_value(value)
+        HeaderListValidation.validate_individual_header_limits(name, value)
       end
     end
   end
