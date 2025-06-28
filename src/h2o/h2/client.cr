@@ -2,6 +2,9 @@ require "../tls"
 require "../tcp_socket"
 require "../preface"
 require "../frames/frame_batch_processor"
+require "../frames/continuation_validation"
+require "../flow_control_validation"
+require "../header_list_validation"
 
 module H2O
   module H2
@@ -86,7 +89,12 @@ module H2O
           if response = stream.await_response(@request_timeout)
             response
           else
-            Response.error(408, "Request timeout", "HTTP/2")
+            # Check if connection was closed during request
+            if @closed
+              Response.error(0, "Connection closed during request", "HTTP/2")
+            else
+              Response.error(408, "Request timeout", "HTTP/2")
+            end
           end
         rescue ex : TimeoutError | ConnectionError
           Log.error { "H2 request failed: #{ex.message}" }
@@ -322,11 +330,42 @@ module H2O
       end
 
       private def setup_connection_internal : Nil
-        # Send preface and initial settings - fibers are already started
+        # RFC 7540 Section 3.5: Client connection preface
+        # The client connection preface starts with the string PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n
+        # followed by a SETTINGS frame
         Preface.send_preface(@socket.to_io)
 
+        # Send initial SETTINGS frame as part of the connection preface
         initial_settings = Preface.create_initial_settings
         send_frame(initial_settings)
+
+        # Now validate server's connection preface (SETTINGS frame)
+        unless validate_server_preface
+          raise ConnectionError.new("Invalid server connection preface")
+        end
+      end
+
+      private def validate_server_preface : Bool
+        # The server's preface consists of a SETTINGS frame
+        # We need to check if the first frame we receive is a valid SETTINGS frame
+        # Note: The server doesn't send the "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" string
+
+        # Read the first frame from the server
+        # Use default max frame size for initial SETTINGS frame
+        frame = Frame.from_io(@socket.to_io, Frame::MAX_FRAME_SIZE)
+
+        # It must be a SETTINGS frame
+        if frame.is_a?(SettingsFrame) && frame.stream_id == 0
+          # Process the settings frame
+          handle_settings_frame(frame)
+          true
+        else
+          Log.error { "Expected SETTINGS frame as server preface, got #{frame.class}" }
+          false
+        end
+      rescue ex
+        Log.error { "Failed to read server preface: #{ex.message}" }
+        false
       end
 
       private def start_fibers : Nil
@@ -348,7 +387,7 @@ module H2O
 
             if @enable_batch_processing
               # Batch processing mode
-              frames = @batch_processor.read_batch(io)
+              frames = @batch_processor.read_batch(io, @remote_settings.max_frame_size)
 
               # Send all frames unless closed
               unless @closed
@@ -358,7 +397,7 @@ module H2O
               end
             else
               # Single frame processing mode (fallback)
-              frame = Frame.from_io(io)
+              frame = Frame.from_io(io, @remote_settings.max_frame_size)
 
               # Check if we should still send the frame
               unless @closed
@@ -374,9 +413,31 @@ module H2O
           rescue ex : FrameError
             Log.error { "Frame error: #{ex.message}" }
             send_goaway(ErrorCode::ProtocolError)
+            @closed = true
+            break
+          rescue ex : FrameSizeError
+            Log.error { "Frame size error: #{ex.message}" }
+            send_goaway(ex.error_code)
+            @closed = true
+            break
+          rescue ex : ConnectionError
+            Log.error { "Connection error in reader: #{ex.message}" }
+            send_goaway(ex.error_code)
+            @closed = true
+            break
+          rescue ex : CompressionError
+            Log.error { "Compression error in reader: #{ex.message}" }
+            send_goaway(ErrorCode::CompressionError)
+            @closed = true
             break
           rescue Channel::ClosedError
             Log.debug { "Reader channel closed, exiting loop" }
+            break
+          rescue ex : Exception
+            Log.error { "Unexpected error in reader loop: #{ex.class} - #{ex.message}" }
+            Log.debug { "Reader exception backtrace: #{ex.inspect_with_backtrace}" }
+            send_goaway(ErrorCode::InternalError)
+            @closed = true
             break
           end
         end
@@ -454,26 +515,53 @@ module H2O
 
       private def handle_frame(frame : Frame) : Nil
         Log.debug { "Handling frame: #{frame.frame_type} (stream_id=#{frame.stream_id})" }
-        case frame
-        when SettingsFrame
-          handle_settings_frame(frame)
-        when PingFrame
-          handle_ping_frame(frame)
-        when GoawayFrame
-          handle_goaway_frame(frame)
-        when WindowUpdateFrame
-          handle_window_update_frame(frame)
-        when HeadersFrame, DataFrame, RstStreamFrame
-          handle_stream_frame(frame)
-        when ContinuationFrame
-          handle_continuation_frame(frame)
-        else
-          Log.warn { "Unhandled frame type: #{frame.frame_type}" }
+
+        begin
+          case frame
+          when SettingsFrame
+            handle_settings_frame(frame)
+          when PingFrame
+            handle_ping_frame(frame)
+          when GoawayFrame
+            handle_goaway_frame(frame)
+          when WindowUpdateFrame
+            handle_window_update_frame(frame)
+          when HeadersFrame, DataFrame, RstStreamFrame
+            handle_stream_frame(frame)
+          when ContinuationFrame
+            handle_continuation_frame(frame)
+          when UnknownFrame
+            # RFC 7540 Section 4.1: Unknown frame types must be ignored
+            Log.debug { "Ignoring unknown frame type: #{frame.frame_type.value}" }
+          else
+            Log.warn { "Unhandled frame type: #{frame.frame_type}" }
+          end
+        rescue ex : ConnectionError
+          # Connection-level errors: Send GOAWAY and close connection
+          Log.error { "Connection error: #{ex.message}" }
+          send_goaway(ex.error_code)
+          @closed = true
+          raise ex
+        rescue ex : StreamError
+          # Stream-level errors: Send RST_STREAM for the specific stream
+          Log.error { "Stream error on stream #{ex.stream_id}: #{ex.message}" }
+          send_rst_stream(ex.stream_id, ex.error_code)
+          @stream_pool.remove_stream(ex.stream_id)
+          # Don't re-raise - connection continues
+        rescue ex : FrameError
+          # Frame errors are typically connection-level
+          Log.error { "Frame error: #{ex.message}" }
+          send_goaway(ErrorCode::ProtocolError)
+          @closed = true
+          raise ConnectionError.new(ex.message || "Frame error", ErrorCode::ProtocolError)
+        rescue ex : Exception
+          # Unexpected errors - treat as connection errors for safety
+          Log.error { "Unexpected error handling frame #{frame.frame_type}: #{ex.message}" }
+          Log.debug { "Frame handling exception: #{ex.inspect_with_backtrace}" }
+          send_goaway(ErrorCode::InternalError)
+          @closed = true
+          raise ConnectionError.new("Internal error: #{ex.message || "unknown"}", ErrorCode::InternalError)
         end
-      rescue ex : Exception
-        Log.error { "Error handling frame #{frame.frame_type}: #{ex.message}" }
-        Log.debug { "Frame handling exception: #{ex.inspect_with_backtrace}" }
-        # Don't re-raise to keep connection alive for test harness
       end
 
       private def handle_settings_frame(frame : SettingsFrame) : Nil
@@ -482,6 +570,9 @@ module H2O
         end
 
         frame.settings.each do |identifier, value|
+          # Apply strict validation for each setting
+          validate_settings_value(identifier, value)
+
           case identifier
           when .header_table_size?
             @remote_settings.header_table_size = value
@@ -497,11 +588,50 @@ module H2O
             @remote_settings.max_frame_size = value
           when .max_header_list_size?
             @remote_settings.max_header_list_size = value
+          else
+            # RFC 7540 Section 6.5.2: Unknown settings are ignored
+            Log.debug { "Ignoring unknown setting: #{identifier.value} = #{value}" }
           end
         end
 
         ack_frame = Preface.create_settings_ack
         send_frame(ack_frame)
+      end
+
+      # Strict SETTINGS parameter validation following RFC 7540 Section 6.5.2
+      private def validate_settings_value(identifier : SettingIdentifier, value : UInt32) : Nil
+        case identifier
+        when .header_table_size?
+          # No specific limits in RFC 7540, but must be reasonable
+          if value > 0xffffffff_u32
+            send_goaway(ErrorCode::ProtocolError)
+            raise ProtocolError.new("SETTINGS_HEADER_TABLE_SIZE exceeds 32-bit limit: #{value}")
+          end
+        when .enable_push?
+          # RFC 7540 Section 6.5.2: ENABLE_PUSH must be 0 or 1
+          if value != 0 && value != 1
+            send_goaway(ErrorCode::ProtocolError)
+            raise ProtocolError.new("SETTINGS_ENABLE_PUSH must be 0 or 1, got #{value}")
+          end
+        when .max_concurrent_streams?
+          # RFC 7540 Section 6.5.2: No explicit limit, but should be reasonable
+          # No validation needed - all values are acceptable
+        when .initial_window_size?
+          # Strict validation using FlowControlValidation
+          FlowControlValidation.validate_initial_window_size_setting(value)
+        when .max_frame_size?
+          # RFC 7540 Section 6.5.2: Must be between 2^14 (16384) and 2^24-1 (16777215)
+          if value < 16384_u32 || value > 16777215_u32
+            send_goaway(ErrorCode::ProtocolError)
+            raise ProtocolError.new("SETTINGS_MAX_FRAME_SIZE out of range: #{value} (must be 16384-16777215)")
+          end
+        when .max_header_list_size?
+          # RFC 7540 Section 6.5.2: Advisory setting, no validation needed
+          # All values are acceptable
+        else
+          # RFC 7540 Section 6.5.2: Unknown settings must be ignored
+          # No validation needed for unknown settings
+        end
       end
 
       private def handle_ping_frame(frame : PingFrame) : Nil
@@ -519,11 +649,27 @@ module H2O
       end
 
       private def handle_window_update_frame(frame : WindowUpdateFrame) : Nil
+        increment = frame.window_size_increment
+
+        # Strict WINDOW_UPDATE validation
+        FlowControlValidation.validate_window_update_increment(increment)
+
         if frame.stream_id == 0
-          @connection_window_size += frame.window_size_increment.to_i32
+          # Connection-level window update
+          FlowControlValidation.validate_window_size_after_update(@connection_window_size, increment, 0_u32)
+          @connection_window_size += increment.to_i32
+
+          # Validate connection window state
+          FlowControlValidation.validate_connection_window_state(@connection_window_size, 0) # outstanding_data tracking would need additional implementation
         else
+          # Stream-level window update
           stream = @stream_pool.get_stream(frame.stream_id)
-          stream.receive_window_update(frame) if stream
+          if stream
+            stream.receive_window_update(frame)
+          else
+            # RFC 7540: WINDOW_UPDATE for non-existent stream is not an error
+            Log.debug { "WINDOW_UPDATE for non-existent stream #{frame.stream_id}" }
+          end
         end
       end
 
@@ -574,6 +720,11 @@ module H2O
         @closed = true
       end
 
+      private def send_rst_stream(stream_id : StreamId, error_code : ErrorCode) : Nil
+        rst_frame = RstStreamFrame.new(stream_id, error_code)
+        send_frame(rst_frame)
+      end
+
       private def build_request_headers(method : String, path : String, headers : Headers) : Headers
         request_headers = Headers.new
         request_headers[":method"] = method
@@ -591,33 +742,37 @@ module H2O
           # Pre-size hash if not already done to avoid resizing during iteration
           request_headers[name.downcase] = value
         end
+
+        # Validate complete request header list for HTTP/2 compliance
+        HeaderListValidation.validate_http2_header_list(request_headers, true) # true = request
+
         request_headers
       end
 
       private def handle_continuation_frame(frame : ContinuationFrame) : Nil
         stream_id = frame.stream_id
 
-        # Check if we have an ongoing header fragment for this stream
-        unless @header_fragments.has_key?(stream_id)
-          send_goaway(ErrorCode::ProtocolError)
-          raise ContinuationFloodError.new("CONTINUATION frame without preceding HEADERS frame")
-        end
+        # Strict CONTINUATION frame validation
+        ContinuationValidation.validate_continuation_flags(frame)
+        ContinuationValidation.validate_continuation_payload(frame)
+        ContinuationValidation.validate_continuation_sequence(stream_id, @header_fragments, frame)
 
         fragment_state = @header_fragments[stream_id]
 
-        # Validate CONTINUATION frame limits
+        # Enhanced validation with strict limits
         new_continuation_count = fragment_state[:continuation_count] + 1
-        if new_continuation_count > @continuation_limits.max_continuation_frames
+        new_size = fragment_state[:accumulated_size] + frame.header_block.size
+
+        # Use enhanced limits from ContinuationValidation
+        if new_continuation_count > ContinuationValidation::MAX_CONTINUATION_FRAMES
           @header_fragments.delete(stream_id)
           send_goaway(ErrorCode::EnhanceYourCalm)
           raise ContinuationFloodError.new("Too many CONTINUATION frames: #{new_continuation_count}")
         end
 
-        # Check accumulated size limits
-        new_size = fragment_state[:accumulated_size] + frame.header_block.size
-        if new_size > @continuation_limits.max_accumulated_size
+        if new_size > ContinuationValidation::MAX_FRAGMENTED_HEADER_SIZE
           @header_fragments.delete(stream_id)
-          send_goaway(ErrorCode::CompressionError)
+          send_goaway(ErrorCode::EnhanceYourCalm)
           raise ContinuationFloodError.new("CONTINUATION frames exceed size limit: #{new_size} bytes")
         end
 
@@ -630,12 +785,13 @@ module H2O
           accumulated_size:   new_size,
           continuation_count: new_continuation_count,
           buffer:             fragment_state[:buffer],
+          start_time:         fragment_state[:start_time],
         }
         @header_fragments[stream_id] = updated_fragment_state
 
         # If this is the final CONTINUATION frame, process the complete headers
         if frame.end_headers?
-          process_accumulated_headers(stream_id)
+          process_accumulated_headers_strict(stream_id)
         end
       end
 
@@ -671,6 +827,41 @@ module H2O
         end
       end
 
+      # Enhanced processing with strict validation
+      private def process_accumulated_headers_strict(stream_id : StreamId) : Nil
+        return unless fragment_state = @header_fragments.delete(stream_id)
+
+        total_size = fragment_state[:accumulated_size]
+        accumulated_data = fragment_state[:buffer].to_slice
+
+        # Strict validation of assembled headers
+        max_header_list_size = @remote_settings.max_header_list_size || 65536_u32
+        ContinuationValidation.validate_assembled_headers(total_size, accumulated_data, max_header_list_size.to_i32)
+
+        begin
+          # Decode with enhanced HPACK validation
+          decoded_headers = @hpack_decoder.decode(accumulated_data)
+
+          # Find the stream and deliver the headers
+          stream = @stream_pool.get_stream(stream_id)
+          if stream
+            # Create a synthetic HEADERS frame to maintain compatibility
+            synthetic_headers = HeadersFrame.new(
+              stream_id,
+              accumulated_data,
+              HeadersFrame::FLAG_END_HEADERS
+            )
+            stream.receive_headers(synthetic_headers, decoded_headers)
+          end
+        rescue ex : CompressionError
+          send_goaway(ErrorCode::CompressionError)
+          raise ContinuationFloodError.new("Header decompression failed: #{ex.message}")
+        rescue ex : Exception
+          send_goaway(ErrorCode::InternalError)
+          raise ContinuationFloodError.new("Unexpected error processing headers: #{ex.message}")
+        end
+      end
+
       private def start_header_fragment(stream_id : StreamId, initial_data : Bytes) : Nil
         # Clean up any existing fragment for this stream (should not happen in well-formed HTTP/2)
         @header_fragments.delete(stream_id)
@@ -690,6 +881,7 @@ module H2O
           accumulated_size:   initial_data.size,
           continuation_count: 0,
           buffer:             buffer,
+          start_time:         Time.utc,
         }
       end
     end
