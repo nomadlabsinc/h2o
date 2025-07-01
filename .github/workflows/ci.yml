@@ -90,11 +90,44 @@ jobs:
           spec/integration/minimal_integration_spec.cr \
           spec/integration/http1_fallback_spec.cr
 
+  h2spec-compliance-tests:
+    name: H2SPEC Compliance Tests (Node ${{ matrix.node }})
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node: [0, 1, 2, 3]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: docker compose build app
+
+    - name: Run H2SPEC compliance tests (Node ${{ matrix.node }}/4)
+      run: |
+        echo "🔍 Running H2SPEC compliance tests on node ${{ matrix.node }}"
+        docker compose run --rm \
+          -e CI_NODE_INDEX=${{ matrix.node }} \
+          -e CI_NODE_TOTAL=4 \
+          app crystal spec spec/compliance/h2spec_docker_suite.cr
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: h2spec-results-node-${{ matrix.node }}
+        path: h2spec_results_node${{ matrix.node }}.json
+
   validation-summary:
     name: Validation Summary
     runs-on: ubicloud-standard-4
     timeout-minutes: 3
-    needs: [unit-tests, strict-validation-tests, integration-tests, build-and-lint]
+    needs: [unit-tests, strict-validation-tests, integration-tests, h2spec-compliance-tests, build-and-lint]
 
     steps:
     - name: Checkout code
