@@ -34,6 +34,8 @@ module H2O
 
       property writer_mutex : Mutex
 
+      property reader_mutex : Mutex
+
       def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true, use_tls : Bool = true)
         if use_tls
           verify_mode : OpenSSL::SSL::VerifyMode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
@@ -73,6 +75,7 @@ module H2O
         @fibers_started = false
         @connection_setup = false
         @writer_mutex = Mutex.new
+        @reader_mutex = Mutex.new
 
         # Defer connection setup until first request for performance
       end
@@ -143,22 +146,24 @@ module H2O
       end
 
       def close : Nil
-        return if @closed || @closing
+        @writer_mutex.synchronize do
+          return if @closed || @closing
 
-        # Mark as closing to prevent concurrent close attempts
-        @closing = true
+          # Mark as closing to prevent concurrent close attempts
+          @closing = true
 
-        # Set closed flag to stop new operations
-        @closed = true
+          # Set closed flag to stop new operations
+          @closed = true
 
-        # Close channels immediately to force fibers to exit
-        close_channels_immediately
+          # Close channels immediately to force fibers to exit
+          close_channels_immediately
 
-        # Wait for fibers to actually terminate
-        wait_for_fiber_termination
+          # Wait for fibers to actually terminate
+          wait_for_fiber_termination
 
-        # Finally close the socket
-        close_socket_safely
+          # Finally close the socket
+          close_socket_safely
+        end
       end
 
       private def close_channels_immediately : Nil
@@ -189,16 +194,18 @@ module H2O
       end
 
       private def close_socket_safely : Nil
-        return if @socket.closed?
+        @reader_mutex.synchronize do
+          return if @socket.closed?
 
-        begin
-          @socket.close
-        rescue ex : Exception
-          Log.debug { "Error during socket close: #{ex.message}" }
+          begin
+            @socket.close
+          rescue ex : Exception
+            Log.debug { "Error during socket close: #{ex.message}" }
+          end
+
+          # Additional safety delay to allow OpenSSL cleanup
+          sleep 10.milliseconds
         end
-
-        # Additional safety delay to allow OpenSSL cleanup
-        sleep 10.milliseconds
       rescue ex : Exception
         Log.debug { "Unexpected error in close_socket_safely: #{ex.message}" }
       end
@@ -381,67 +388,69 @@ module H2O
         loop do
           break if @closed
 
-          begin
-            # Use non-blocking approach with timeout
-            io = @socket.to_io
-            if io.responds_to?(:read_timeout=)
-              io.read_timeout = 100.milliseconds
-            end
+          @reader_mutex.synchronize do
+            begin
+              # Use non-blocking approach with timeout
+              io = @socket.to_io
+              if io.responds_to?(:read_timeout=)
+                io.read_timeout = 100.milliseconds
+              end
 
-            if @enable_batch_processing
-              # Batch processing mode
-              frames = @batch_processor.read_batch(io, @remote_settings.max_frame_size)
+              if @enable_batch_processing
+                # Batch processing mode
+                frames = @batch_processor.read_batch(io, @remote_settings.max_frame_size)
 
-              # Send all frames unless closed
-              unless @closed
-                frames.each do |frame|
-                  @incoming_frames.send(frame) unless @closed
+                # Send all frames unless closed
+                unless @closed
+                  frames.each do |frame|
+                    @incoming_frames.send(frame) unless @closed
+                  end
+                end
+              else
+                # Single frame processing mode (fallback)
+                frame = Frame.from_io(io, @remote_settings.max_frame_size)
+
+                # Check if we should still send the frame
+                unless @closed
+                  @incoming_frames.send(frame)
                 end
               end
-            else
-              # Single frame processing mode (fallback)
-              frame = Frame.from_io(io, @remote_settings.max_frame_size)
-
-              # Check if we should still send the frame
-              unless @closed
-                @incoming_frames.send(frame)
-              end
+            rescue IO::TimeoutError
+              # Timeout is expected, just continue loop to check @closed
+              next
+            rescue ex : IO::Error
+              Log.error { "Reader error: #{ex.message}" }
+              break
+            rescue ex : FrameError
+              Log.error { "Frame error: #{ex.message}" }
+              send_goaway(ErrorCode::ProtocolError)
+              @closed = true
+              break
+            rescue ex : FrameSizeError
+              Log.error { "Frame size error: #{ex.message}" }
+              send_goaway(ex.error_code)
+              @closed = true
+              break
+            rescue ex : ConnectionError
+              Log.error { "Connection error in reader: #{ex.message}" }
+              send_goaway(ex.error_code)
+              @closed = true
+              break
+            rescue ex : CompressionError
+              Log.error { "Compression error in reader: #{ex.message}" }
+              send_goaway(ErrorCode::CompressionError)
+              @closed = true
+              break
+            rescue Channel::ClosedError
+              Log.debug { "Reader channel closed, exiting loop" }
+              break
+            rescue ex : Exception
+              Log.error { "Unexpected error in reader loop: #{ex.class} - #{ex.message}" }
+              Log.debug { "Reader exception backtrace: #{ex.inspect_with_backtrace}" }
+              send_goaway(ErrorCode::InternalError)
+              @closed = true
+              break
             end
-          rescue IO::TimeoutError
-            # Timeout is expected, just continue loop to check @closed
-            next
-          rescue ex : IO::Error
-            Log.error { "Reader error: #{ex.message}" }
-            break
-          rescue ex : FrameError
-            Log.error { "Frame error: #{ex.message}" }
-            send_goaway(ErrorCode::ProtocolError)
-            @closed = true
-            break
-          rescue ex : FrameSizeError
-            Log.error { "Frame size error: #{ex.message}" }
-            send_goaway(ex.error_code)
-            @closed = true
-            break
-          rescue ex : ConnectionError
-            Log.error { "Connection error in reader: #{ex.message}" }
-            send_goaway(ex.error_code)
-            @closed = true
-            break
-          rescue ex : CompressionError
-            Log.error { "Compression error in reader: #{ex.message}" }
-            send_goaway(ErrorCode::CompressionError)
-            @closed = true
-            break
-          rescue Channel::ClosedError
-            Log.debug { "Reader channel closed, exiting loop" }
-            break
-          rescue ex : Exception
-            Log.error { "Unexpected error in reader loop: #{ex.class} - #{ex.message}" }
-            Log.debug { "Reader exception backtrace: #{ex.inspect_with_backtrace}" }
-            send_goaway(ErrorCode::InternalError)
-            @closed = true
-            break
           end
         end
       end
