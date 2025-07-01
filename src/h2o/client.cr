@@ -123,7 +123,7 @@ module H2O
     def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
       # Check if client is closed
       raise ConnectionError.new("Client has been closed") if @closed
-      
+
       # Determine if circuit breaker should be used
       use_circuit_breaker = should_use_circuit_breaker?(bypass_circuit_breaker, circuit_breaker)
 

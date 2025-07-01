@@ -13,7 +13,8 @@ RUN apt-get update && \
     gcc \
     musl-tools \
     nghttp2 \
-    nghttp2-server
+    nghttp2-server \
+    file
 
 # Set up workspace
 WORKDIR /workspace

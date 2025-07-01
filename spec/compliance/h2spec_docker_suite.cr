@@ -13,7 +13,7 @@ module H2SpecDockerSuite
   
   # Check if harness binary exists
   def self.harness_available? : Bool
-    File.exists?("/usr/local/bin/harness") && File.executable?("/usr/local/bin/harness")
+    File.exists?("/usr/local/bin/harness") && File.info("/usr/local/bin/harness").permissions.owner_execute?
   end
   
   # All 146 H2SPEC test cases

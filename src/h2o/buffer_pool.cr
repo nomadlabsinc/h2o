@@ -45,7 +45,7 @@ module H2O
       # Pooling is disabled - just track stats if enabled
       stats = H2O.buffer_pool_stats?
       stats.track_return if stats
-      
+
       # Let buffer be garbage collected
     end
 
@@ -58,7 +58,7 @@ module H2O
       # Pooling is disabled - just track stats if enabled
       stats = H2O.buffer_pool_stats?
       stats.track_return if stats
-      
+
       # Let buffer be garbage collected
     end
 
@@ -72,7 +72,7 @@ module H2O
       # Pooling is disabled - just track stats if enabled
       stats = H2O.buffer_pool_stats?
       stats.track_return if stats
-      
+
       # Let buffer be garbage collected
     end
 
@@ -86,7 +86,7 @@ module H2O
       # Pooling is disabled - just track stats if enabled
       stats = H2O.buffer_pool_stats?
       stats.track_return if stats
-      
+
       # Let buffer be garbage collected
     end
 

@@ -92,25 +92,23 @@ module H2O
         # after the TLS handshake, not deferred until the first request
         send_initial_preface
       end
-      
+
       private def send_initial_preface : Nil
-        begin
-          # Send the HTTP/2 connection preface immediately to comply with strict servers
-          Preface.send_preface(@socket.to_io)
-          
-          # Also send initial SETTINGS frame as part of the connection preface
-          initial_settings = Preface.create_initial_settings
-          
-          # Write settings frame directly without going through channels
-          frame_bytes = initial_settings.to_bytes
-          @socket.to_io.write(frame_bytes)
-          @socket.to_io.flush
-          
-          Log.debug { "Sent HTTP/2 connection preface and initial SETTINGS" }
-        rescue ex : IO::Error
-          # Socket might be closed already - this is OK for tests
-          Log.debug { "Failed to send initial preface: #{ex.message}" }
-        end
+        # Send the HTTP/2 connection preface immediately to comply with strict servers
+        Preface.send_preface(@socket.to_io)
+
+        # Also send initial SETTINGS frame as part of the connection preface
+        initial_settings = Preface.create_initial_settings
+
+        # Write settings frame directly without going through channels
+        frame_bytes = initial_settings.to_bytes
+        @socket.to_io.write(frame_bytes)
+        @socket.to_io.flush
+
+        Log.debug { "Sent HTTP/2 connection preface and initial SETTINGS" }
+      rescue ex : IO::Error
+        # Socket might be closed already - this is OK for tests
+        Log.debug { "Failed to send initial preface: #{ex.message}" }
       end
 
       def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response
@@ -379,7 +377,7 @@ module H2O
       private def setup_connection_internal : Nil
         # The connection preface has already been sent in send_initial_preface
         # Now we just need to validate the server's response
-        
+
         # Wait for and validate server's connection preface (SETTINGS frame)
         unless validate_server_preface
           raise ConnectionError.new("Invalid server connection preface")

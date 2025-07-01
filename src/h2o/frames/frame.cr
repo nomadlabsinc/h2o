@@ -39,14 +39,14 @@ module H2O
                     pooled_buffer = BufferPool.get_frame_buffer(length.to_i32)
                     payload_slice = pooled_buffer[0, length]
                     io.read_fully(payload_slice)
-                    
+
                     # Copy data to a right-sized buffer
                     actual_payload = Bytes.new(length)
                     actual_payload.copy_from(payload_slice)
-                    
+
                     # Return the pooled buffer immediately
                     BufferPool.return_frame_buffer(pooled_buffer)
-                    
+
                     actual_payload
                   else
                     Bytes.empty

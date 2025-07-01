@@ -18,7 +18,7 @@ module H2O
       @mutex = Mutex.new
       @closed = false
       @tcp_socket = nil
-      
+
       # Use timeout for initial TCP connection
       tcp_socket = begin
         channel = Channel(TCPSocket?).new(1)
@@ -46,7 +46,7 @@ module H2O
           channel.close rescue nil
         end
       end
-      
+
       # Store TCP socket reference for proper cleanup
       @tcp_socket = tcp_socket
 
@@ -140,7 +140,7 @@ module H2O
             Log.debug { "Error closing TCP socket: #{ex.message}" }
           end
         end
-        
+
         # Small delay to allow OpenSSL cleanup
         sleep 1.millisecond
       end
@@ -159,7 +159,7 @@ module H2O
         socket
       end
     end
-    
+
     # Ensure cleanup on GC
     def finalize
       close rescue nil
