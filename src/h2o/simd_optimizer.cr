@@ -9,6 +9,7 @@ module H2O
     struct FastFrameParser
       # Parse frame header with optimized bit manipulation
       def self.parse_header(header : Bytes) : NamedTuple(length: UInt32, type: UInt8, flags: UInt8, stream_id: UInt32)
+        raise ArgumentError.new("Invalid buffer size: expected 9 bytes, got #{header.size}") if header.size != 9
         # Use unsafe operations for maximum speed - we know the buffer size
         # Unroll the bit operations for better CPU pipeline utilization
 
@@ -33,6 +34,7 @@ module H2O
 
       # Optimized frame header writing with unrolled bit operations
       def self.write_header(header : Bytes, length : UInt32, type : UInt8, flags : UInt8, stream_id : UInt32) : Nil
+        raise ArgumentError.new("Invalid buffer size: expected 9 bytes, got #{header.size}") if header.size != 9
         # Unroll the bit operations for better performance
         header.unsafe_put(0, ((length >> 16) & 0xff).to_u8)
         header.unsafe_put(1, ((length >> 8) & 0xff).to_u8)
@@ -70,24 +72,22 @@ module H2O
         return true if a.size == 0
 
         size = a.size
+        offset = 0
 
         # Process 8 bytes at a time for better performance on 64-bit systems
-        full_words = size // 8
-        remainder = size % 8
-
-        # Compare 64-bit words
-        full_words.times do |i|
-          offset = i * 8
-          # Use unsafe operations for speed
-          a_word = a.unsafe_slice_of(UInt64)[i]
-          b_word = b.unsafe_slice_of(UInt64)[i]
+        while size >= 8
+          a_word = read_uint64(a, offset)
+          b_word = read_uint64(b, offset)
           return false if a_word != b_word
+          offset += 8
+          size -= 8
         end
 
         # Compare remaining bytes
-        remainder.times do |i|
-          offset = full_words * 8 + i
+        while size > 0
           return false if a.unsafe_fetch(offset) != b.unsafe_fetch(offset)
+          offset += 1
+          size -= 1
         end
 
         true
@@ -95,6 +95,9 @@ module H2O
 
       # Fast memory copy optimized for frame sizes
       def self.fast_copy(src : Bytes, dst : Bytes, size : Int32) : Nil
+        raise ArgumentError.new("Source buffer is too small") if src.size < size
+        raise ArgumentError.new("Destination buffer is too small") if dst.size < size
+
         # For small sizes, use direct byte copying
         if size <= 16
           size.times do |i|
@@ -103,42 +106,42 @@ module H2O
           return
         end
 
-        # For larger sizes, copy 8 bytes at a time
-        full_words = size // 8
-        remainder = size % 8
+        offset = 0
+        remaining = size
 
-        # Copy 64-bit words
-        full_words.times do |i|
-          src_word = src.unsafe_slice_of(UInt64)[i]
-          dst.unsafe_slice_of(UInt64)[i] = src_word
+        # For larger sizes, copy 8 bytes at a time
+        while remaining >= 8
+          word = read_uint64(src, offset)
+          write_uint64(dst, offset, word)
+          offset += 8
+          remaining -= 8
         end
 
         # Copy remaining bytes
-        if remainder > 0
-          remainder.times do |i|
-            offset = full_words * 8 + i
-            dst.unsafe_put(offset, src.unsafe_fetch(offset))
-          end
+        while remaining > 0
+          dst.unsafe_put(offset, src.unsafe_fetch(offset))
+          offset += 1
+          remaining -= 1
         end
       end
 
       # Fast zero-fill for buffer initialization
       def self.fast_zero(buffer : Bytes) : Nil
         size = buffer.size
+        offset = 0
 
         # Zero 8 bytes at a time for better performance
-        full_words = size // 8
-        remainder = size % 8
-
-        # Zero 64-bit words
-        full_words.times do |i|
-          buffer.unsafe_slice_of(UInt64)[i] = 0_u64
+        while size >= 8
+          write_uint64(buffer, offset, 0_u64)
+          offset += 8
+          size -= 8
         end
 
         # Zero remaining bytes
-        remainder.times do |i|
-          offset = full_words * 8 + i
+        while size > 0
           buffer.unsafe_put(offset, 0_u8)
+          offset += 1
+          size -= 1
         end
       end
 
@@ -146,24 +149,48 @@ module H2O
       def self.fast_checksum(data : Bytes) : UInt32
         checksum = 0_u32
         size = data.size
+        offset = 0
 
         # Process 4 bytes at a time
-        full_words = size // 4
-        remainder = size % 4
-
-        full_words.times do |i|
-          word = data.unsafe_slice_of(UInt32)[i]
+        while size >= 4
+          word = read_uint32(data, offset)
           checksum = checksum &+ word
+          offset += 4
+          size -= 4
         end
 
         # Process remaining bytes
-        remainder.times do |i|
-          offset = full_words * 4 + i
+        while size > 0
           byte_val = data.unsafe_fetch(offset).to_u32
-          checksum = checksum &+ (byte_val << ((remainder - 1 - i) * 8))
+          checksum = checksum &+ (byte_val << ((size - 1) * 8))
+          offset += 1
+          size -= 1
         end
 
         checksum
+      end
+
+      private def self.read_uint64(buffer : Bytes, offset : Int32) : UInt64
+        value = 0_u64
+        8.times do |i|
+          value = (value << 8) | buffer.unsafe_fetch(offset + i)
+        end
+        value
+      end
+
+      private def self.write_uint64(buffer : Bytes, offset : Int32, value : UInt64) : Nil
+        io = IO::Memory.new
+        io.write_bytes(value, IO::ByteFormat::BigEndian)
+        bytes = io.to_slice
+        buffer[offset, 8].copy_from(bytes)
+      end
+
+      private def self.read_uint32(buffer : Bytes, offset : Int32) : UInt32
+        value = 0_u32
+        4.times do |i|
+          value = (value << 8) | buffer.unsafe_fetch(offset + i)
+        end
+        value
       end
     end
 
