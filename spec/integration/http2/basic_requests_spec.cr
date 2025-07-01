@@ -8,21 +8,22 @@ describe "HTTP/2 Basic Requests" do
       client = HTTP2TestHelpers.create_test_client
 
       response = HTTP2TestHelpers.retry_request do
-        client.get(HTTP2TestHelpers.localhost_url("/"))
+        client.get(HTTP2TestHelpers.http2_url("/"))
       end
 
       HTTP2TestHelpers.assert_valid_http2_response(response)
-      HTTP2TestHelpers.assert_response_contains(response, "HTTP/2 test server")
+      HTTP2TestHelpers.assert_response_contains(response, "h2o HTTP/2 Test")
 
-      # Headers validation
-      response.headers.has_key?("content-type").should be_true
+      # Headers validation - nghttpd always sends server header
+      response.headers.has_key?("server").should be_true
+      response.headers["server"].should contain("nghttpd")
     end
 
     it "handles HTTP/2 GET requests with query parameters" do
       client = HTTP2TestHelpers.create_test_client
 
       response = HTTP2TestHelpers.retry_request do
-        client.get(HTTP2TestHelpers.localhost_url("/?param=value&test=123"))
+        client.get(HTTP2TestHelpers.http2_url("/?param=value&test=123"))
       end
 
       HTTP2TestHelpers.assert_valid_http2_response(response)
@@ -35,11 +36,12 @@ describe "HTTP/2 Basic Requests" do
       test_data = {message: "Hello HTTP/2"}.to_json
 
       response = HTTP2TestHelpers.retry_request do
-        client.post(HTTP2TestHelpers.http2_only_url("/"), test_data, {"Content-Type" => "application/json"})
+        client.post(HTTP2TestHelpers.http2_url("/"), test_data, {"Content-Type" => "application/json"})
       end
 
       HTTP2TestHelpers.assert_valid_http2_response(response)
-      HTTP2TestHelpers.assert_response_contains(response, "HTTP/2")
+      # nghttpd returns the same HTML page for all requests
+      HTTP2TestHelpers.assert_response_contains(response, "h2o HTTP/2 Test")
     end
 
     it "handles HTTP/2 POST requests with form data" do
@@ -47,7 +49,7 @@ describe "HTTP/2 Basic Requests" do
       form_data = "name=test&value=123"
 
       response = HTTP2TestHelpers.retry_request do
-        client.post(HTTP2TestHelpers.localhost_url("/"), form_data, {"Content-Type" => "application/x-www-form-urlencoded"})
+        client.post(HTTP2TestHelpers.http2_url("/"), form_data, {"Content-Type" => "application/x-www-form-urlencoded"})
       end
 
       HTTP2TestHelpers.assert_valid_http2_response(response)

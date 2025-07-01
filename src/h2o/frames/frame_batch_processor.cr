@@ -72,9 +72,19 @@ module H2O
 
           # Read payload if needed
           payload = if length > 0
-                      payload_buf = BufferPool.get_frame_buffer(length.to_i32)[0, length]
+                      # Get buffer from pool
+                      pooled_buffer = BufferPool.get_frame_buffer(length.to_i32)
+                      payload_buf = pooled_buffer[0, length]
                       io.read_fully(payload_buf)
-                      payload_buf
+                      
+                      # Copy data to a right-sized buffer
+                      actual_payload = Bytes.new(length)
+                      actual_payload.copy_from(payload_buf)
+                      
+                      # Return the pooled buffer
+                      BufferPool.return_frame_buffer(pooled_buffer)
+                      
+                      actual_payload
                     else
                       Bytes.empty
                     end

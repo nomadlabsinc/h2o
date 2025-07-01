@@ -1,6 +1,6 @@
-FROM robnomad/crystal:dev-hoard
+FROM robnomad/crystal:dev-ubuntu-hoard
 
-# Install additional dependencies for testing including Docker and Go
+# Install additional dependencies for testing including Docker, Go, and nghttpd
 RUN apt-get update && \
     apt-get install -y \
     bash \
@@ -11,7 +11,9 @@ RUN apt-get update && \
     docker.io \
     golang \
     gcc \
-    musl-tools
+    musl-tools \
+    nghttp2 \
+    nghttp2-server
 
 # Set up workspace
 WORKDIR /workspace

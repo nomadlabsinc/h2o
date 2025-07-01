@@ -3,6 +3,7 @@ require "../src/h2o"
 require "./support/http11_server"
 require "./support/test_urls"
 require "./support/test_config"
+require "./support/nghttpd_helper"
 
 {% if env("CI") %}
   require "./support/ci_test_helper"

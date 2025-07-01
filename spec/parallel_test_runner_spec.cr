@@ -2,6 +2,7 @@
 require "spec"
 require "fiber"
 require "channel"
+require "../src/h2o"
 
 # Global shared resources for maximum efficiency
 class TestResourcePool

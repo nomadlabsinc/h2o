@@ -365,28 +365,13 @@ module H2O
     @@pool_size = Atomic(Int32).new(0)
 
     def self.get_stream(id : StreamId) : Stream
-      select
-      when stream = @@available_streams.receive?
-        if stream
-          stream.reset_for_reuse(id)
-          stream
-        else
-          Stream.new(id)
-        end
-      else
-        Stream.new(id)
-      end
+      # Disabled pooling to avoid memory issues
+      Stream.new(id)
     end
 
     def self.return_stream(stream : Stream) : Nil
-      return unless stream.can_be_pooled?
-
-      select
-      when @@available_streams.send(stream)
-        # Successfully returned to pool
-      else
-        # Pool is full, let stream be garbage collected
-      end
+      # Disabled pooling to avoid memory issues
+      # Let stream be garbage collected
     end
 
     def self.pool_stats : {size: Int32, capacity: Int32}

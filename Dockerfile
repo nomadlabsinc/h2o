@@ -11,13 +11,15 @@ RUN shards install --production
 # Copy source code
 COPY src/ ./src/
 
-# Build the application
-RUN crystal build src/h2o.cr --release --static --no-debug -o h2o
+# Build the application without static linking for Ubuntu
+RUN crystal build src/h2o.cr --release --no-debug -o h2o
 
-# Runtime stage
-FROM alpine:latest
+# Runtime stage - Use Ubuntu instead of Alpine
+FROM ubuntu:22.04
 
-RUN apk --no-cache add ca-certificates
+RUN apt-get update && \
+    apt-get install -y ca-certificates libssl3 libevent-2.1-7 libgc1 libpcre3 && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -25,8 +27,8 @@ WORKDIR /app
 COPY --from=builder /app/h2o ./
 
 # Create non-root user
-RUN addgroup -g 1000 appgroup && \
-    adduser -u 1000 -G appgroup -s /bin/sh -D appuser
+RUN groupadd -g 1000 appgroup && \
+    useradd -u 1000 -g appgroup -m -s /bin/bash appuser
 
 USER appuser
 

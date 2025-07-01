@@ -5,8 +5,8 @@ module H2O
     getter closed : Bool
     getter io : TCPSocket
 
-    def initialize(@host : String, @port : Int32)
-      @io = TCPSocket.new(@host, @port)
+    def initialize(@host : String, @port : Int32, connect_timeout : Time::Span = 5.seconds)
+      @io = connect_with_timeout(@host, @port, connect_timeout)
       @closed = false
     end
 
@@ -53,6 +53,33 @@ module H2O
 
     private def check_closed! : Nil
       raise IO::Error.new("Socket is closed") if @closed
+    end
+
+    private def connect_with_timeout(host : String, port : Int32, timeout : Time::Span) : TCPSocket
+      channel = Channel(TCPSocket?).new(1)
+      fiber = spawn do
+        begin
+          socket = TCPSocket.new(host, port)
+          channel.send(socket)
+        rescue ex
+          channel.send(nil)
+        end
+      end
+
+      begin
+        select
+        when socket = channel.receive
+          raise IO::Error.new("Failed to connect to #{host}:#{port}") unless socket
+          socket
+        when timeout(timeout)
+          # Close the channel to prevent fiber leak
+          channel.close
+          raise IO::TimeoutError.new("Connection timeout to #{host}:#{port}")
+        end
+      ensure
+        # Ensure channel is closed
+        channel.close rescue nil
+      end
     end
   end
 end

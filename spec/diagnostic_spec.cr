@@ -3,6 +3,7 @@ require "./spec_helper"
 describe "H2O Client Diagnostic Tests" do
   it "creates client with very short timeouts" do
     # Test basic client creation with strict timeouts
+    client = nil
     begin
       client = H2O::H2::Client.new("localhost", 9999,
                                    connect_timeout: 100.milliseconds,
@@ -13,11 +14,13 @@ describe "H2O Client Diagnostic Tests" do
       headers = H2O::Headers{"host" => "localhost:9999"}
       response = client.request("GET", "/", headers)
       
-      # Should not reach here
-      response.status.should eq(0) # Error response
-    rescue ex : H2O::ConnectionError
-      # Expected - connection should fail quickly
-      puts "✓ Connection failed as expected: #{ex.message}"
+      # Should get error response with status 0
+      response.status.should eq(0)
+      response.error.should_not be_nil
+      puts "✓ Connection failed as expected: #{response.error}"
+    rescue ex : IO::Error
+      # Expected - connection should fail during TLS setup
+      puts "✓ Connection failed as expected during setup: #{ex.message}"
     rescue ex : Exception
       # Unexpected error type
       puts "✗ Unexpected error: #{ex.class} - #{ex.message}"
