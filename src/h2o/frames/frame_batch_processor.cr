@@ -55,7 +55,12 @@ module H2O
           # Parse the header
           length = (header[0].to_u32 << 16) | (header[1].to_u32 << 8) | header[2].to_u32
           type_value = header[3]
-          frame_type = type_value < FRAME_TYPE_TABLE.size ? FRAME_TYPE_TABLE.unsafe_fetch(type_value) : FrameType.new(type_value)
+          frame_type = begin
+            FrameType.from_value(type_value)
+          rescue ex : Exception
+            raise FrameError.new("Unknown frame type: #{type_value}") if ex.message.try(&.includes?("Unknown enum"))
+            raise ex
+          end
           flags = header[4]
           stream_id = ((header[5].to_u32 << 24) | (header[6].to_u32 << 16) |
                        (header[7].to_u32 << 8) | header[8].to_u32) & 0x7fffffff_u32
@@ -84,37 +89,6 @@ module H2O
       end
 
       @frames
-    end
-
-    # Optimized frame header parsing with lookup table
-    private def parse_frame_at_offset(io : IO, offset : Int32) : Frame
-      header = @batch_buffer[offset, Frame::FRAME_HEADER_SIZE]
-
-      # Fast bit manipulation for frame header parsing
-      length = (header.unsafe_fetch(0).to_u32 << 16) |
-               (header.unsafe_fetch(1).to_u32 << 8) |
-               header.unsafe_fetch(2).to_u32
-
-      # Use lookup table for frame type
-      type_value = header.unsafe_fetch(3)
-      frame_type = type_value < FRAME_TYPE_TABLE.size ? FRAME_TYPE_TABLE.unsafe_fetch(type_value) : FrameType.new(type_value)
-
-      flags = header.unsafe_fetch(4)
-
-      # Fast stream ID extraction
-      stream_id = (header.unsafe_fetch(5).to_u32 << 24) |
-                  (header.unsafe_fetch(6).to_u32 << 16) |
-                  (header.unsafe_fetch(7).to_u32 << 8) |
-                  header.unsafe_fetch(8).to_u32
-      stream_id &= 0x7fffffff_u32
-
-      # Get appropriately sized buffer for payload
-      payload_size = get_buffer_size_hint(frame_type, length)
-      payload = BufferPool.get_frame_buffer(payload_size.to_i32)[0, length]
-      io.read_fully(payload) if length > 0
-
-      # Create frame using optimized factory method
-      create_frame_optimized(frame_type, length, flags, stream_id, payload)
     end
 
     # Get optimal buffer size for frame type
