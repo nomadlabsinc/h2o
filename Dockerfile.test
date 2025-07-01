@@ -1,16 +1,17 @@
 FROM robnomad/crystal:dev-hoard
 
 # Install additional dependencies for testing including Docker and Go
-RUN apk update && apk add --no-cache \
+RUN apt-get update && \
+    apt-get install -y \
     bash \
     curl \
     git \
     ca-certificates \
     openssl \
-    docker-cli \
-    go \
+    docker.io \
+    golang \
     gcc \
-    musl-dev
+    musl-tools
 
 # Set up workspace
 WORKDIR /workspace

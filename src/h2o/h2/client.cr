@@ -32,6 +32,8 @@ module H2O
       property enable_batch_processing : Bool
       property request_timeout : Time::Span
 
+      property writer_mutex : Mutex
+
       def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true, use_tls : Bool = true)
         if use_tls
           verify_mode : OpenSSL::SSL::VerifyMode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
@@ -70,6 +72,7 @@ module H2O
         @dispatcher_fiber = nil
         @fibers_started = false
         @connection_setup = false
+        @writer_mutex = Mutex.new
 
         # Defer connection setup until first request for performance
       end
@@ -467,23 +470,25 @@ module H2O
                 end
               end
 
-              begin
-                if frames_to_write.size == 1
-                  # Single frame - write directly
-                  @socket.to_io.write(frames_to_write.first.to_bytes)
-                else
-                  # Multiple frames - batch write
-                  write_buffer.clear
-                  frames_to_write.each do |queued_frame|
-                    write_buffer.write(queued_frame.to_bytes)
-                  end
+              @writer_mutex.synchronize do
+                begin
+                  if frames_to_write.size == 1
+                    # Single frame - write directly
+                    @socket.to_io.write(frames_to_write.first.to_bytes)
+                  else
+                    # Multiple frames - batch write
+                    write_buffer.clear
+                    frames_to_write.each do |queued_frame|
+                      write_buffer.write(queued_frame.to_bytes)
+                    end
 
-                  @socket.to_io.write(write_buffer.to_slice)
+                    @socket.to_io.write(write_buffer.to_slice)
+                  end
+                  @socket.to_io.flush
+                rescue ex : IO::Error
+                  Log.error { "Writer error: #{ex.message}" }
+                  break
                 end
-                @socket.to_io.flush
-              rescue ex : IO::Error
-                Log.error { "Writer error: #{ex.message}" }
-                break
               end
             when timeout(1.second)
               break if @closed
