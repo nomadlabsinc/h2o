@@ -12,11 +12,8 @@ module H2O
     LARGE_BUFFER_SIZE  = 64 * 1024
     FRAME_BUFFER_SIZE  = 16 * 1024 * 1024
 
-    # Enhanced pools with multiple size categories
-    @@header_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
-    @@frame_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
-    @@small_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
-    @@medium_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
+    # Pooling is disabled - these channels are no longer used
+    # Keeping the structure for API compatibility only
 
     # Enhanced buffer allocation with size optimization
     def self.get_buffer(requested_size : Int32) : Bytes

@@ -56,8 +56,8 @@ module H2O
         context.verify_mode = verify_mode
         context.alpn_protocol = "h2"
 
-        # Check for cached SNI
-        sni_name = H2O.tls_cache.get_sni(hostname) || hostname
+        # Direct SNI assignment - no global cache to avoid malloc corruption
+        sni_name = hostname
 
         # Enable session caching if supported
         # Note: Crystal's OpenSSL bindings may have limited session support
@@ -65,8 +65,8 @@ module H2O
 
         @socket = OpenSSL::SSL::Socket::Client.new(tcp_socket, context, hostname: sni_name)
 
-        # Cache the SNI resolution
-        H2O.tls_cache.set_sni(hostname, sni_name) if sni_name == hostname
+        # SNI caching disabled to avoid malloc corruption
+        # H2O.tls_cache.set_sni(hostname, sni_name) if sni_name == hostname
       rescue ex
         # Ensure TCP socket is closed on SSL failure
         tcp_socket.close rescue nil

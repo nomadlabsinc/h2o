@@ -186,7 +186,8 @@ module H2O
         @stats.record_write(@total_size, Time.monotonic - start_time)
         @stats.batches_flushed += 1
 
-        @buffers.clear
+        # Create new array instead of clearing to avoid reuse
+        @buffers = Array(Bytes).new
         @total_size = 0
       end
     end

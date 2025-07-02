@@ -361,7 +361,7 @@ module H2O
   class StreamObjectPool
     DEFAULT_POOL_SIZE = 50
 
-    @@available_streams = Channel(Stream).new(DEFAULT_POOL_SIZE)
+    # Pooling is disabled - these are no longer used
     @@pool_size = Atomic(Int32).new(0)
 
     def self.get_stream(id : StreamId) : Stream
