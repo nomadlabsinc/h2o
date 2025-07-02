@@ -1,1324 +1,1324 @@
 {
-  "timestamp": "2025-06-27T23:57:09Z",
+  "timestamp": "2025-07-01T20:48:17Z",
   "total_tests": 146,
   "passed": 0,
   "failed": 146,
   "success_rate": 0.0,
-  "duration_seconds": 358.834284916,
+  "duration_seconds": 544.097625329,
   "results": [
     {
       "test_id": "3.5/1",
       "description": "Sends invalid connection preface",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:30490",
       "passed": false,
       "error": null,
-      "duration": 3.092067791
+      "duration": 1.827594417
     },
     {
       "test_id": "3.5/2",
       "description": "Sends no connection preface",
       "expected": "Timeout",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:47570",
       "passed": false,
       "error": null,
-      "duration": 2.976174792
+      "duration": 1.89835996
     },
     {
       "test_id": "4.1/1",
       "description": "Sends a frame with an unknown type",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:35249",
       "passed": false,
       "error": null,
-      "duration": 2.966084042
+      "duration": 2.219250459
     },
     {
       "test_id": "4.1/2",
       "description": "Sends a frame with a length that exceeds the max",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:33329",
       "passed": false,
       "error": null,
-      "duration": 3.085064792
+      "duration": 2.5920293340000002
     },
     {
       "test_id": "4.1/3",
       "description": "Sends a frame with invalid pad length",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:41827",
       "passed": false,
       "error": null,
-      "duration": 3.083489041
+      "duration": 2.255440543
     },
     {
       "test_id": "4.2/1",
       "description": "Sends a DATA frame with 2^14 octets in length",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:36459",
       "passed": false,
       "error": null,
-      "duration": 3.083807417
+      "duration": 2.5575585419999998
     },
     {
       "test_id": "4.2/2",
       "description": "Sends a DATA frame that exceeds SETTINGS_MAX_FRAME_SIZE",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:44810",
       "passed": false,
       "error": null,
-      "duration": 3.083485625
+      "duration": 2.576237126
     },
     {
       "test_id": "4.2/3",
       "description": "Sends a HEADERS frame that exceeds SETTINGS_MAX_FRAME_SIZE",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:38125",
       "passed": false,
       "error": null,
-      "duration": 3.078687875
+      "duration": 2.103385251
     },
     {
       "test_id": "5.1/1",
       "description": "Sends a DATA frame to a stream in IDLE state",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:48853",
       "passed": false,
       "error": null,
-      "duration": 3.088778541
+      "duration": 2.557268335
     },
     {
       "test_id": "5.1/2",
       "description": "Sends a RST_STREAM frame to a stream in IDLE state",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:41450",
       "passed": false,
       "error": null,
-      "duration": 1.077088083
+      "duration": 2.97738271
     },
     {
       "test_id": "5.1/3",
       "description": "Sends a WINDOW_UPDATE frame to a stream in IDLE state",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:42324",
       "passed": false,
       "error": null,
-      "duration": 3.065997625
+      "duration": 2.238706543
     },
     {
       "test_id": "5.1/4",
       "description": "Sends a CONTINUATION frame without HEADERS",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:32905",
       "passed": false,
       "error": null,
-      "duration": 2.935340209
+      "duration": 2.508127959
     },
     {
       "test_id": "5.1/5",
       "description": "Sends a DATA frame to a stream in HALF_CLOSED (remote) state",
       "expected": "StreamError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:38545",
       "passed": false,
       "error": null,
-      "duration": 1.043091083
+      "duration": 2.491419459
     },
     {
       "test_id": "5.1/6",
       "description": "Sends a HEADERS frame to a stream in HALF_CLOSED (remote) state",
       "expected": "StreamError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:31710",
       "passed": false,
       "error": null,
-      "duration": 1.069731708
+      "duration": 1.74730146
     },
     {
       "test_id": "5.1/7",
       "description": "Sends a CONTINUATION frame to a stream in HALF_CLOSED (remote) state",
       "expected": "StreamError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:41418",
       "passed": false,
       "error": null,
-      "duration": 0.9829175
+      "duration": 2.128865126
     },
     {
       "test_id": "5.1/8",
       "description": "Sends a DATA frame after END_STREAM flag",
       "expected": "StreamError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:44559",
       "passed": false,
       "error": null,
-      "duration": 1.074978125
+      "duration": 2.347536251
     },
     {
       "test_id": "5.1/9",
       "description": "Sends a HEADERS frame after END_STREAM flag",
       "expected": "StreamError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:31360",
       "passed": false,
       "error": null,
-      "duration": 1.078618
+      "duration": 2.494951834
     },
     {
       "test_id": "5.1/10",
       "description": "Sends a CONTINUATION frame after END_STREAM flag",
       "expected": "StreamError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:42549",
       "passed": false,
       "error": null,
-      "duration": 0.94685375
+      "duration": 2.243302085
     },
     {
       "test_id": "5.1/11",
       "description": "Sends a DATA frame to a stream in CLOSED state",
       "expected": "ConnectionError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:39757",
       "passed": false,
       "error": null,
-      "duration": 1.031801292
+      "duration": 2.163459667
     },
     {
       "test_id": "5.1/12",
       "description": "Sends a HEADERS frame to a stream in CLOSED state",
       "expected": "ConnectionError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:40350",
       "passed": false,
       "error": null,
-      "duration": 1.043949208
+      "duration": 2.031986084
     },
     {
       "test_id": "5.1/13",
       "description": "Sends a CONTINUATION frame to a stream in CLOSED state",
       "expected": "ConnectionError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:37943",
       "passed": false,
       "error": null,
-      "duration": 0.991924125
+      "duration": 2.199548459
     },
     {
       "test_id": "5.1.1/1",
       "description": "Sends a stream identifier that is numerically smaller than previous",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:37945",
       "passed": false,
       "error": null,
-      "duration": 3.061882375
+      "duration": 2.061479792
     },
     {
       "test_id": "5.1.1/2",
       "description": "Sends a stream with an even-numbered identifier",
       "expected": "ConnectionError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:32110",
       "passed": false,
       "error": null,
-      "duration": 1.102675667
+      "duration": 2.234834377
     },
     {
       "test_id": "5.1.2/1",
       "description": "Sends HEADERS frames that exceed SETTINGS_MAX_CONCURRENT_STREAMS",
       "expected": "StreamError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:40576",
       "passed": false,
       "error": null,
-      "duration": 3.043478958
+      "duration": 1.770480209
     },
     {
       "test_id": "5.3.1/1",
       "description": "Sends a HEADERS frame that depends on itself",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:33255",
       "passed": false,
       "error": null,
-      "duration": 3.047415167
+      "duration": 2.345790876
     },
     {
       "test_id": "5.3.1/2",
       "description": "Sends a PRIORITY frame that depends on itself",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:38881",
       "passed": false,
       "error": null,
-      "duration": 3.066153416
+      "duration": 2.51811521
     },
     {
       "test_id": "5.4.1/1",
       "description": "Sends an invalid PING frame for connection close",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:31097",
       "passed": false,
       "error": null,
-      "duration": 2.9172685830000002
+      "duration": 2.169969584
     },
     {
       "test_id": "5.4.1/2",
       "description": "Sends an invalid SETTINGS frame for connection close",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:33752",
       "passed": false,
       "error": null,
-      "duration": 2.920990291
+      "duration": 2.236401251
     },
     {
       "test_id": "6.1/1",
       "description": "Sends a DATA frame with 0x00 stream identifier",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:32023",
       "passed": false,
       "error": null,
-      "duration": 2.978821125
+      "duration": 2.5993287929999997
     },
     {
       "test_id": "6.1/2",
       "description": "Sends multiple DATA frames with 0x00 stream identifier",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49133",
       "passed": false,
       "error": null,
-      "duration": 3.059094625
+      "duration": 2.26454796
     },
     {
       "test_id": "6.1/3",
       "description": "Sends a DATA frame with invalid pad length",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:39503",
       "passed": false,
       "error": null,
-      "duration": 2.981264917
+      "duration": 2.238336917
     },
     {
       "test_id": "6.2/1",
       "description": "Sends a HEADERS frame with 0x00 stream identifier",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:40301",
       "passed": false,
       "error": null,
-      "duration": 3.083078458
+      "duration": 2.593142084
     },
     {
       "test_id": "6.2/2",
       "description": "Sends a HEADERS frame with invalid pad length",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:42504",
       "passed": false,
       "error": null,
-      "duration": 3.092527
+      "duration": 2.921019334
     },
     {
       "test_id": "6.2/3",
       "description": "Sends a HEADERS frame with exclusive dependency on stream 0",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:46733",
       "passed": false,
       "error": null,
-      "duration": 2.960022791
+      "duration": 2.5498702509999998
     },
     {
       "test_id": "6.2/4",
       "description": "Sends a HEADERS frame with a truncated header block",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:45610",
       "passed": false,
       "error": null,
-      "duration": 2.970519458
+      "duration": 2.581820834
     },
     {
       "test_id": "6.3/1",
       "description": "Sends a PRIORITY frame with 0x00 stream identifier",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:40792",
       "passed": false,
       "error": null,
-      "duration": 2.975752584
+      "duration": 3.320136293
     },
     {
       "test_id": "6.3/2",
       "description": "Sends a PRIORITY frame with a length other than 5 octets",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:47434",
       "passed": false,
       "error": null,
-      "duration": 2.966754875
+      "duration": 2.789089585
     },
     {
       "test_id": "6.4/1",
       "description": "Sends a RST_STREAM frame with 0x00 stream identifier",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:44366",
       "passed": false,
       "error": null,
-      "duration": 2.968963333
+      "duration": 3.427089835
     },
     {
       "test_id": "6.4/2",
       "description": "Sends a RST_STREAM frame on a stream in IDLE state",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49538",
       "passed": false,
       "error": null,
-      "duration": 1.0976925
+      "duration": 2.488136334
     },
     {
       "test_id": "6.4/3",
       "description": "Sends a RST_STREAM frame with a length other than 4 octets",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:36493",
       "passed": false,
       "error": null,
-      "duration": 2.93788075
+      "duration": 3.027913835
     },
     {
       "test_id": "6.5/1",
       "description": "Sends a SETTINGS frame with ACK flag and non-empty payload",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:41278",
       "passed": false,
       "error": null,
-      "duration": 2.943215375
+      "duration": 2.908966043
     },
     {
       "test_id": "6.5/2",
       "description": "Sends a SETTINGS frame with a stream identifier other than 0x00",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:36771",
       "passed": false,
       "error": null,
-      "duration": 2.975604584
+      "duration": 2.621391793
     },
     {
       "test_id": "6.5/3",
       "description": "Sends a SETTINGS frame with a length not a multiple of 6",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:35991",
       "passed": false,
       "error": null,
-      "duration": 2.9229515839999998
+      "duration": 2.811849918
     },
     {
       "test_id": "6.5.2/1",
       "description": "Sends SETTINGS_ENABLE_PUSH with value other than 0 or 1",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:42312",
       "passed": false,
       "error": null,
-      "duration": 3.155568916
+      "duration": 2.760870084
     },
     {
       "test_id": "6.5.2/2",
       "description": "Sends SETTINGS_INITIAL_WINDOW_SIZE with value above 2^31-1",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49269",
       "passed": false,
       "error": null,
-      "duration": 3.0802789170000002
+      "duration": 3.499089835
     },
     {
       "test_id": "6.5.2/3",
       "description": "Sends SETTINGS_MAX_FRAME_SIZE with value below 16384",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:34546",
       "passed": false,
       "error": null,
-      "duration": 3.07533025
+      "duration": 3.994267043
     },
     {
       "test_id": "6.5.2/4",
       "description": "Sends SETTINGS_MAX_FRAME_SIZE with value above 2^24-1",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:42892",
       "passed": false,
       "error": null,
-      "duration": 3.097338375
+      "duration": 3.61580521
     },
     {
       "test_id": "6.5.2/5",
       "description": "Sends unknown SETTINGS identifier",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:30995",
       "passed": false,
       "error": null,
-      "duration": 3.085671042
+      "duration": 2.104139668
     },
     {
       "test_id": "6.5.3/2",
       "description": "Sends a SETTINGS frame and expects ACK",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:38908",
       "passed": false,
       "error": null,
-      "duration": 3.081422
+      "duration": 2.985515334
     },
     {
       "test_id": "6.7/1",
       "description": "Sends a PING frame with stream identifier other than 0x00",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:45109",
       "passed": false,
       "error": null,
-      "duration": 3.10328175
+      "duration": 3.08736296
     },
     {
       "test_id": "6.7/2",
       "description": "Sends a PING frame with a length other than 8",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:37076",
       "passed": false,
       "error": null,
-      "duration": 3.109665208
+      "duration": 2.556969168
     },
     {
       "test_id": "6.7/3",
       "description": "Sends a PING frame with ACK flag",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49703",
       "passed": false,
       "error": null,
-      "duration": 2.975991209
+      "duration": 3.31017196
     },
     {
       "test_id": "6.7/4",
       "description": "Sends a PING frame and expects PING ACK",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:39536",
       "passed": false,
       "error": null,
-      "duration": 2.9203762920000003
+      "duration": 2.980541751
     },
     {
       "test_id": "6.8/1",
       "description": "Sends a GOAWAY frame with stream identifier other than 0x00",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:45515",
       "passed": false,
       "error": null,
-      "duration": 2.978639375
+      "duration": 2.42850771
     },
     {
       "test_id": "6.9/1",
       "description": "Sends a WINDOW_UPDATE frame with a flow control window increment of 0",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:30896",
       "passed": false,
       "error": null,
-      "duration": 3.023336
+      "duration": 2.534685793
     },
     {
       "test_id": "6.9/2",
       "description": "Sends a WINDOW_UPDATE frame with a length other than 4 octets",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:32217",
       "passed": false,
       "error": null,
-      "duration": 3.064084291
+      "duration": 2.600597626
     },
     {
       "test_id": "6.9/3",
       "description": "Sends a WINDOW_UPDATE frame with invalid stream identifier",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:33334",
       "passed": false,
       "error": null,
-      "duration": 2.969965041
+      "duration": 2.046695126
     },
     {
       "test_id": "6.9.1/1",
       "description": "Sends multiple WINDOW_UPDATE frames to overflow window",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:40882",
       "passed": false,
       "error": null,
-      "duration": 3.093012625
+      "duration": 2.205185876
     },
     {
       "test_id": "6.9.1/2",
       "description": "Sends multiple WINDOW_UPDATE frames to overflow connection window",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:40733",
       "passed": false,
       "error": null,
-      "duration": 3.096213333
+      "duration": 2.637250709
     },
     {
       "test_id": "6.9.1/3",
       "description": "Sends WINDOW_UPDATE frame with max window increment",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:35848",
       "passed": false,
       "error": null,
-      "duration": 3.0967065
+      "duration": 1.99706446
     },
     {
       "test_id": "6.9.2/3",
       "description": "Changes SETTINGS_INITIAL_WINDOW_SIZE and sends WINDOW_UPDATE",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:32514",
       "passed": false,
       "error": null,
-      "duration": 3.10437125
+      "duration": 2.294628376
     },
     {
       "test_id": "6.10/2",
       "description": "Sends a CONTINUATION frame without preceding HEADERS",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:38398",
       "passed": false,
       "error": null,
-      "duration": 3.08881075
+      "duration": 2.595897709
     },
     {
       "test_id": "6.10/3",
       "description": "Sends a CONTINUATION frame after HEADERS with END_HEADERS",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49103",
       "passed": false,
       "error": null,
-      "duration": 3.080560875
+      "duration": 2.222978584
     },
     {
       "test_id": "6.10/4",
       "description": "Sends a CONTINUATION frame with different stream identifier",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:46109",
       "passed": false,
       "error": null,
-      "duration": 3.007860125
+      "duration": 2.261262293
     },
     {
       "test_id": "6.10/5",
       "description": "Sends multiple CONTINUATION frames",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:37285",
       "passed": false,
       "error": null,
-      "duration": 2.962259375
+      "duration": 2.03882046
     },
     {
       "test_id": "6.10/6",
       "description": "Sends invalid frame between HEADERS and CONTINUATION",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:39816",
       "passed": false,
       "error": null,
-      "duration": 2.9666967079999997
+      "duration": 2.78240596
     },
     {
       "test_id": "8.1/1",
       "description": "Sends a second HEADERS frame without END_STREAM",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49698",
       "passed": false,
       "error": null,
-      "duration": 3.091833
+      "duration": 2.241258834
     },
     {
       "test_id": "8.1.2/1",
       "description": "Sends a HEADERS frame with uppercase header field names",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:37293",
       "passed": false,
       "error": null,
-      "duration": 1.087561375
+      "duration": 2.326917293
     },
     {
       "test_id": "8.1.2.1/1",
       "description": "Sends a HEADERS frame with a pseudo-header after regular header",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:38350",
       "passed": false,
       "error": null,
-      "duration": 1.069338458
+      "duration": 2.750536585
     },
     {
       "test_id": "8.1.2.1/2",
       "description": "Sends a HEADERS frame with a duplicated pseudo-header",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:37045",
       "passed": false,
       "error": null,
-      "duration": 1.060489292
+      "duration": 2.158137667
     },
     {
       "test_id": "8.1.2.1/3",
       "description": "Sends a HEADERS frame with an invalid pseudo-header",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:49863",
       "passed": false,
       "error": null,
-      "duration": 1.037243583
+      "duration": 1.830331084
     },
     {
       "test_id": "8.1.2.1/4",
       "description": "Sends a HEADERS frame with a response-specific pseudo-header",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:38419",
       "passed": false,
       "error": null,
-      "duration": 1.03225975
+      "duration": 2.342367626
     },
     {
       "test_id": "8.1.2.2/1",
       "description": "Sends a HEADERS frame with connection-specific header field",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:48571",
       "passed": false,
       "error": null,
-      "duration": 1.035507209
+      "duration": 2.444260542
     },
     {
       "test_id": "8.1.2.2/2",
       "description": "Sends a HEADERS frame with TE header field (not trailers)",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:41836",
       "passed": false,
       "error": null,
-      "duration": 1.0333425
+      "duration": 2.758461668
     },
     {
       "test_id": "8.1.2.3/1",
       "description": "Sends a HEADERS frame without :method pseudo-header",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:35492",
       "passed": false,
       "error": null,
-      "duration": 1.0441295
+      "duration": 2.421408501
     },
     {
       "test_id": "8.1.2.3/2",
       "description": "Sends a HEADERS frame without :scheme pseudo-header",
       "expected": "ConnectionError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:42422",
       "passed": false,
       "error": null,
-      "duration": 1.051755042
+      "duration": 1.764723584
     },
     {
       "test_id": "8.1.2.3/3",
       "description": "Sends a HEADERS frame without :path pseudo-header",
       "expected": "ConnectionError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:40876",
       "passed": false,
       "error": null,
-      "duration": 1.087670292
+      "duration": 2.068636876
     },
     {
       "test_id": "8.1.2.3/4",
       "description": "Sends a HEADERS frame with empty :path pseudo-header",
       "expected": "ConnectionError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:46482",
       "passed": false,
       "error": null,
-      "duration": 1.03074825
+      "duration": 2.131862792
     },
     {
       "test_id": "8.1.2.3/5",
       "description": "Sends a HEADERS frame without :authority pseudo-header",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:33650",
       "passed": false,
       "error": null,
-      "duration": 1.077150333
+      "duration": 1.91898921
     },
     {
       "test_id": "8.1.2.3/6",
       "description": "Sends a HEADERS frame with duplicate :method pseudo-header",
       "expected": "ConnectionError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:37862",
       "passed": false,
       "error": null,
-      "duration": 1.066185625
+      "duration": 2.2380525430000002
     },
     {
       "test_id": "8.1.2.3/7",
       "description": "Sends a HEADERS frame with invalid :method pseudo-header",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:38860",
       "passed": false,
       "error": null,
-      "duration": 1.083312459
+      "duration": 1.923890042
     },
     {
       "test_id": "8.1.2.6/1",
       "description": "Sends a HEADERS frame with malformed content-length",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:31354",
       "passed": false,
       "error": null,
-      "duration": 1.086451458
+      "duration": 1.9502712930000001
     },
     {
       "test_id": "8.1.2.6/2",
       "description": "Sends a HEADERS frame with multiple content-length",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:31780",
       "passed": false,
       "error": null,
-      "duration": 1.06868675
+      "duration": 2.321366251
     },
     {
       "test_id": "8.2/1",
       "description": "Sends a PUSH_PROMISE frame",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:35013",
       "passed": false,
       "error": null,
-      "duration": 3.06013675
+      "duration": 2.500082751
     },
     {
       "test_id": "hpack/2.3/1",
       "description": "Sends a HEADERS frame with invalid header block",
       "expected": "ConnectionError",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:48235",
       "passed": false,
       "error": null,
-      "duration": 1.102978792
+      "duration": 1.97292821
     },
     {
       "test_id": "hpack/2.3.3/1",
       "description": "Sends a HEADERS frame with indexed header not in table",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:32847",
       "passed": false,
       "error": null,
-      "duration": 3.045960166
+      "duration": 2.416492126
     },
     {
       "test_id": "hpack/2.3.3/2",
       "description": "Sends a HEADERS frame with static table index out of range",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49075",
       "passed": false,
       "error": null,
-      "duration": 3.085448
+      "duration": 2.510680793
     },
     {
       "test_id": "hpack/4.1/1",
       "description": "Sends a HEADERS frame with valid dynamic table update",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:42380",
       "passed": false,
       "error": null,
-      "duration": 3.070966125
+      "duration": 2.490641375
     },
     {
       "test_id": "hpack/4.2/1",
       "description": "Sends dynamic table update that exceeds max size",
       "expected": "ConnectionError",
-      "actual": "Success",
+      "actual": "IOError:Failed to connect to localhost:36284",
       "passed": false,
       "error": null,
-      "duration": 1.098692
+      "duration": 2.17111871
     },
     {
       "test_id": "hpack/5.2/1",
       "description": "Sends a HEADERS frame with invalid string length",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:31782",
       "passed": false,
       "error": null,
-      "duration": 3.059756959
+      "duration": 2.229094418
     },
     {
       "test_id": "hpack/5.2/2",
       "description": "Sends a HEADERS frame with invalid Huffman encoding",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:35179",
       "passed": false,
       "error": null,
-      "duration": 3.048740667
+      "duration": 1.728015042
     },
     {
       "test_id": "hpack/5.2/3",
       "description": "Sends a HEADERS frame with invalid EOS padding",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:38927",
       "passed": false,
       "error": null,
-      "duration": 3.093423042
+      "duration": 2.034565501
     },
     {
       "test_id": "hpack/6.1/1",
       "description": "Sends a HEADERS frame with indexed representation",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:42750",
       "passed": false,
       "error": null,
-      "duration": 3.0790129999999998
+      "duration": 2.623643918
     },
     {
       "test_id": "hpack/6.2/1",
       "description": "Sends a HEADERS frame with literal representation",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:41564",
       "passed": false,
       "error": null,
-      "duration": 3.089164041
+      "duration": 1.885887251
     },
     {
       "test_id": "hpack/6.2.2/1",
       "description": "Sends a HEADERS frame with literal never indexed",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:44939",
       "passed": false,
       "error": null,
-      "duration": 3.041495667
+      "duration": 2.008888334
     },
     {
       "test_id": "hpack/6.2.3/1",
       "description": "Sends a HEADERS frame with literal incremental indexing",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:33695",
       "passed": false,
       "error": null,
-      "duration": 3.0780745
+      "duration": 2.053719042
     },
     {
       "test_id": "hpack/6.3/1",
       "description": "Sends a HEADERS frame causing dynamic table eviction",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:43631",
       "passed": false,
       "error": null,
-      "duration": 1.105710625
+      "duration": 2.104322418
     },
     {
       "test_id": "hpack/misc/1",
       "description": "Sends multiple HEADERS frames with HPACK state",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:31043",
       "passed": false,
       "error": null,
-      "duration": 3.077024709
+      "duration": 2.400783792
     },
     {
       "test_id": "generic/1/1",
       "description": "Sends a valid client preface",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:30971",
       "passed": false,
       "error": null,
-      "duration": 3.076996875
+      "duration": 2.676684876
     },
     {
       "test_id": "generic/2/1",
       "description": "Sends a valid HEADERS frame",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:41719",
       "passed": false,
       "error": null,
-      "duration": 1.107263417
+      "duration": 2.448339959
     },
     {
       "test_id": "generic/3.1/1",
       "description": "Sends a valid DATA frame",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:43618",
       "passed": false,
       "error": null,
-      "duration": 1.072659
+      "duration": 2.762352918
     },
     {
       "test_id": "generic/3.1/2",
       "description": "Sends a DATA frame with padding",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:37705",
       "passed": false,
       "error": null,
-      "duration": 1.075433208
+      "duration": 2.308494043
     },
     {
       "test_id": "generic/3.1/3",
       "description": "Sends multiple DATA frames",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:37113",
       "passed": false,
       "error": null,
-      "duration": 1.087393875
+      "duration": 3.065907127
     },
     {
       "test_id": "generic/3.2/1",
       "description": "Sends a valid HEADERS frame",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:30740",
       "passed": false,
       "error": null,
-      "duration": 1.07893575
+      "duration": 3.129430043
     },
     {
       "test_id": "generic/3.2/2",
       "description": "Sends a HEADERS frame with padding",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:39680",
       "passed": false,
       "error": null,
-      "duration": 1.069695458
+      "duration": 2.9819034589999998
     },
     {
       "test_id": "generic/3.2/3",
       "description": "Sends a HEADERS frame with priority",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:49493",
       "passed": false,
       "error": null,
-      "duration": 1.084232583
+      "duration": 2.427879501
     },
     {
       "test_id": "generic/3.3/1",
       "description": "Sends a valid PRIORITY frame",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:38522",
       "passed": false,
       "error": null,
-      "duration": 3.051407584
+      "duration": 4.017703127
     },
     {
       "test_id": "generic/3.3/2",
       "description": "Sends a PRIORITY frame with exclusive flag",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:48267",
       "passed": false,
       "error": null,
-      "duration": 3.089719209
+      "duration": 3.813717251
     },
     {
       "test_id": "generic/3.3/3",
       "description": "Sends multiple PRIORITY frames",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:31709",
       "passed": false,
       "error": null,
-      "duration": 3.098308417
+      "duration": 3.632829086
     },
     {
       "test_id": "generic/3.3/4",
       "description": "Sends PRIORITY frames building dependency tree",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:41906",
       "passed": false,
       "error": null,
-      "duration": 3.067015834
+      "duration": 3.428613251
     },
     {
       "test_id": "generic/3.3/5",
       "description": "Sends PRIORITY frame for closed stream",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:38527",
       "passed": false,
       "error": null,
-      "duration": 1.071159833
+      "duration": 4.35005496
     },
     {
       "test_id": "generic/3.4/1",
       "description": "Sends a valid RST_STREAM frame",
       "expected": "StreamError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:43989",
       "passed": false,
       "error": null,
-      "duration": 1.075131292
+      "duration": 3.6663788349999997
     },
     {
       "test_id": "generic/3.5/1",
       "description": "Sends a valid SETTINGS frame",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:43663",
       "passed": false,
       "error": null,
-      "duration": 3.071883667
+      "duration": 3.495351669
     },
     {
       "test_id": "generic/3.7/1",
       "description": "Sends a valid PING frame",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:34745",
       "passed": false,
       "error": null,
-      "duration": 3.036470459
+      "duration": 3.291293752
     },
     {
       "test_id": "generic/3.8/1",
       "description": "Sends a valid GOAWAY frame",
       "expected": "GoAway",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:48418",
       "passed": false,
       "error": null,
-      "duration": 2.962290334
+      "duration": 3.170581126
     },
     {
       "test_id": "generic/3.9/1",
       "description": "Sends a valid WINDOW_UPDATE frame",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:44087",
       "passed": false,
       "error": null,
-      "duration": 3.05439975
+      "duration": 3.250304585
     },
     {
       "test_id": "generic/3.10/1",
       "description": "Sends valid HEADERS with CONTINUATION",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:31252",
       "passed": false,
       "error": null,
-      "duration": 3.08290025
+      "duration": 2.703141709
     },
     {
       "test_id": "generic/4/1",
       "description": "Sends unknown frame type",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:42262",
       "passed": false,
       "error": null,
-      "duration": 1.100642708
+      "duration": 4.173011336
     },
     {
       "test_id": "generic/4/2",
       "description": "Sends frame with unknown flags",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:30923",
       "passed": false,
       "error": null,
-      "duration": 1.064214125
+      "duration": 3.192589335
     },
     {
       "test_id": "generic/5/1",
       "description": "Sends valid frames in sequence",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49425",
       "passed": false,
       "error": null,
-      "duration": 3.074036334
+      "duration": 3.58750246
     },
     {
       "test_id": "generic/misc/1",
       "description": "Sends multiple requests on different streams",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:34522",
       "passed": false,
       "error": null,
-      "duration": 1.109199792
+      "duration": 3.401128334
     },
     {
       "test_id": "http2/4.3/1",
       "description": "Sends a frame with reserved bits set",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:40726",
       "passed": false,
       "error": null,
-      "duration": 3.07314025
+      "duration": 3.823851877
     },
     {
       "test_id": "http2/5.5/1",
       "description": "Sends frames after GOAWAY",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49580",
       "passed": false,
       "error": null,
-      "duration": 2.963651417
+      "duration": 3.884760627
     },
     {
       "test_id": "http2/7/1",
       "description": "Sends frame with error code",
       "expected": "StreamError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:39515",
       "passed": false,
       "error": null,
-      "duration": 1.113002
+      "duration": 2.067595335
     },
     {
       "test_id": "http2/8.1.2.4/1",
       "description": "Sends response pseudo-headers in request",
       "expected": "ConnectionError",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:43697",
       "passed": false,
       "error": null,
-      "duration": 3.058335583
+      "duration": 2.856053252
     },
     {
       "test_id": "http2/8.1.2.5/1",
       "description": "Sends a HEADERS frame with valid cookie crumbling",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:33620",
       "passed": false,
       "error": null,
-      "duration": 3.092281333
+      "duration": 3.799231168
     },
     {
       "test_id": "extra/1",
       "description": "Rapid stream creation and closure",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:34082",
       "passed": false,
       "error": null,
-      "duration": 3.092231958
+      "duration": 2.547971126
     },
     {
       "test_id": "extra/2",
       "description": "Interleaved frames on multiple streams",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:46744",
       "passed": false,
       "error": null,
-      "duration": 3.093908833
+      "duration": 3.578371627
     },
     {
       "test_id": "extra/3",
       "description": "Maximum header list size",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49361",
       "passed": false,
       "error": null,
-      "duration": 3.096936375
+      "duration": 2.544231001
     },
     {
       "test_id": "extra/4",
       "description": "Stream priority chains",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:42026",
       "passed": false,
       "error": null,
-      "duration": 3.049110708
+      "duration": 2.193087501
     },
     {
       "test_id": "extra/5",
       "description": "Flow control edge cases",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49592",
       "passed": false,
       "error": null,
-      "duration": 3.044557875
+      "duration": 1.7801974170000001
     },
     {
       "test_id": "final/1",
       "description": "Complete request/response exchange",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:46328",
       "passed": false,
       "error": null,
-      "duration": 3.089513541
+      "duration": 1.712118667
     },
     {
       "test_id": "final/2",
       "description": "Multiple concurrent streams",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:48694",
       "passed": false,
       "error": null,
-      "duration": 1.101125959
+      "duration": 2.139099543
     },
     {
       "test_id": "complete/1",
       "description": "Full protocol feature test",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:41366",
       "passed": false,
       "error": null,
-      "duration": 3.076981917
+      "duration": 2.285740751
     },
     {
       "test_id": "complete/2",
       "description": "Error recovery test",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:44840",
       "passed": false,
       "error": null,
-      "duration": 3.0859905
+      "duration": 2.220517668
     },
     {
       "test_id": "complete/3",
       "description": "Flow control compliance",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:41129",
       "passed": false,
       "error": null,
-      "duration": 2.991379084
+      "duration": 2.616187085
     },
     {
       "test_id": "complete/4",
       "description": "HPACK state management",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:49140",
       "passed": false,
       "error": null,
-      "duration": 3.091797167
+      "duration": 2.031903251
     },
     {
       "test_id": "complete/5",
       "description": "Stream state transitions",
       "expected": "Success",
-      "actual": "ServerError:0",
+      "actual": "IOError:Failed to connect to localhost:39368",
       "passed": false,
       "error": null,
-      "duration": 1.07998525
+      "duration": 1.890830126
     },
     {
       "test_id": "complete/6",
       "description": "Priority tree manipulation",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:39672",
       "passed": false,
       "error": null,
-      "duration": 3.098439458
+      "duration": 1.946130168
     },
     {
       "test_id": "complete/7",
       "description": "Settings negotiation",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:36620",
       "passed": false,
       "error": null,
-      "duration": 3.083893584
+      "duration": 2.009349293
     },
     {
       "test_id": "complete/8",
       "description": "Ping/pong handling",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:41499",
       "passed": false,
       "error": null,
-      "duration": 1.10303325
+      "duration": 2.096720125
     },
     {
       "test_id": "complete/9",
       "description": "Graceful shutdown",
       "expected": "GoAway",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:31815",
       "passed": false,
       "error": null,
-      "duration": 3.076968875
+      "duration": 2.221725335
     },
     {
       "test_id": "complete/10",
       "description": "Header validation",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:34068",
       "passed": false,
       "error": null,
-      "duration": 2.972339375
+      "duration": 1.929237335
     },
     {
       "test_id": "complete/11",
       "description": "Frame size limits",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:48953",
       "passed": false,
       "error": null,
-      "duration": 3.101487292
+      "duration": 2.121159376
     },
     {
       "test_id": "complete/12",
       "description": "Connection preface",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:46763",
       "passed": false,
       "error": null,
-      "duration": 3.043772875
+      "duration": 2.038056001
     },
     {
       "test_id": "complete/13",
       "description": "Final compliance check",
       "expected": "Success",
-      "actual": "ServerError:408",
+      "actual": "IOError:Failed to connect to localhost:36427",
       "passed": false,
       "error": null,
-      "duration": 3.025871
+      "duration": 1.792473875
     }
   ]
 }

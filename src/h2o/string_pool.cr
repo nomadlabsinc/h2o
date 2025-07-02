@@ -132,14 +132,15 @@ module H2O
     end
   end
 
-  # Global string pool instance
-  @@string_pool : StringPool? = nil
-
-  def self.string_pool : StringPool
-    @@string_pool ||= StringPool.new
-  end
-
-  def self.string_pool=(pool : StringPool) : StringPool
-    @@string_pool = pool
-  end
+  # REMOVED: Global string pool to prevent malloc corruption
+  # Each client should have its own string pool instance if needed
+  # @@string_pool : StringPool? = nil
+  #
+  # def self.string_pool : StringPool
+  #   @@string_pool ||= StringPool.new
+  # end
+  #
+  # def self.string_pool=(pool : StringPool) : StringPool
+  #   @@string_pool = pool
+  # end
 end

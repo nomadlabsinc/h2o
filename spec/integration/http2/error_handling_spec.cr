@@ -8,7 +8,7 @@ describe "HTTP/2 Error Handling and Edge Cases" do
       client = HTTP2TestHelpers.create_test_client(HTTP2TestHelpers.ultra_fast_timeout)
 
       response = HTTP2TestHelpers.retry_request do
-        client.get(HTTP2TestHelpers.localhost_url("/"))
+        client.get(HTTP2TestHelpers.http2_url("/"))
       end
 
       HTTP2TestHelpers.assert_valid_http2_response(response)
@@ -18,11 +18,13 @@ describe "HTTP/2 Error Handling and Edge Cases" do
       # Very short timeout to test timeout handling
       short_timeout_client = H2O::Client.new(timeout: 1.milliseconds, verify_ssl: false)
 
-      expect_raises(Exception) do
-        HTTP2TestHelpers.retry_request do
-          short_timeout_client.get(HTTP2TestHelpers.localhost_url("/"))
-        end
-      end
+      # The client returns error responses instead of raising exceptions
+      response = short_timeout_client.get(HTTP2TestHelpers.http2_url("/"))
+      
+      # Should get an error response with status 0
+      response.status.should eq(0)
+      # Client might return empty body for timeout errors
+      response.should_not be_nil
     end
   end
 
@@ -31,14 +33,13 @@ describe "HTTP/2 Error Handling and Edge Cases" do
       client = HTTP2TestHelpers.create_test_client
 
       # Test with non-existent host
-      expect_raises(Exception) do
-        HTTP2TestHelpers.retry_request do
-          client.get("https://nonexistent.invalid.host.example.com/index.html")
-        end
-      end
-
-      # Can be either status 0 (connection error) or 500 (circuit breaker error)
-      # Both are acceptable error conditions
+      # The client returns error responses instead of raising exceptions
+      response = client.get("https://nonexistent.invalid.host.example.com/index.html")
+      
+      # Should get an error response with status 0
+      response.status.should eq(0)
+      # Client returns empty body for connection errors
+      response.should_not be_nil
     end
   end
 
@@ -46,9 +47,9 @@ describe "HTTP/2 Error Handling and Edge Cases" do
     it "handles large response bodies" do
       client = HTTP2TestHelpers.create_test_client
 
-      # Test with a request that might return a larger response
+      # Test with nghttpd's default response
       response = HTTP2TestHelpers.retry_request do
-        client.get(HTTP2TestHelpers.localhost_url("/"))
+        client.get(HTTP2TestHelpers.http2_url("/"))
       end
 
       HTTP2TestHelpers.assert_valid_http2_response(response)
@@ -65,7 +66,7 @@ describe "HTTP/2 Error Handling and Edge Cases" do
 
       # Test with unusual but valid headers
       response = HTTP2TestHelpers.retry_request do
-        client.get(HTTP2TestHelpers.localhost_url("/"), {
+        client.get(HTTP2TestHelpers.http2_url("/"), {
           "X-Very-Long-Header-Name-That-Tests-Header-Length-Limits" => "value",
           "X-Empty-Value"                                           => "",
           "X-Unicode-Test"                                          => "🚀 HTTP/2 Test",

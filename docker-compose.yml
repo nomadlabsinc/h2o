@@ -16,7 +16,6 @@ services:
       - TEST_NGHTTPD_URL=https://nghttpd:4430
       - H2O_VERIFY_SSL=false
       - DOCKER_HOST=unix:///var/run/docker.sock
-    command: crystal spec
     privileged: true
 
   httpbin:

@@ -10,7 +10,7 @@ describe "HTTP/2 Performance and Reliability" do
       # Sequential requests should reuse connection
       5.times do |i|
         response = HTTP2TestHelpers.retry_request do
-          client.get(HTTP2TestHelpers.localhost_url("/?request=#{i}"))
+          client.get(HTTP2TestHelpers.http2_url("/?request=#{i}"))
         end
 
         HTTP2TestHelpers.assert_valid_http2_response(response)
@@ -21,11 +21,11 @@ describe "HTTP/2 Performance and Reliability" do
       client = HTTP2TestHelpers.create_test_client
 
       # Make multiple requests to verify connection reuse
-      responses = [] of typeof(client.get(HTTP2TestHelpers.localhost_url("/")))
+      responses = [] of typeof(client.get(HTTP2TestHelpers.http2_url("/")))
 
       3.times do |i|
         response = HTTP2TestHelpers.retry_request do
-          client.get(HTTP2TestHelpers.localhost_url("/connection-test?id=#{i}"))
+          client.get(HTTP2TestHelpers.http2_url("/?id=#{i}"))
         end
 
         HTTP2TestHelpers.assert_valid_http2_response(response)
@@ -42,32 +42,37 @@ describe "HTTP/2 Performance and Reliability" do
   describe "Concurrent Operations" do
     it "handles concurrent HTTP/2 requests" do
       client = HTTP2TestHelpers.create_test_client
-      successful_responses = [] of typeof(client.get(HTTP2TestHelpers.localhost_url("/")))
+      channel = Channel(H2O::Response?).new(5)
 
       # Create multiple concurrent requests
-      fibers = [] of Fiber
-
       5.times do |i|
-        fiber = spawn do
+        spawn do
           begin
             response = HTTP2TestHelpers.retry_request do
-              client.get(HTTP2TestHelpers.localhost_url("/?concurrent=#{i}"))
+              client.get(HTTP2TestHelpers.http2_url("/?concurrent=#{i}"))
             end
 
             if response && response.status == 200
-              successful_responses << response
+              channel.send(response)
+            else
+              channel.send(nil)
             end
           rescue ex
             puts "Concurrent request #{i} failed: #{ex.message}"
+            channel.send(nil)
           end
         end
-        fibers << fiber
       end
 
-      # Wait for all requests to complete with timeout
-      start_time = Time.utc
-      while fibers.any?(&.running?) && (Time.utc - start_time) < 10.seconds
-        sleep(10.milliseconds)
+      # Collect responses with timeout
+      successful_responses = [] of H2O::Response
+      5.times do
+        select
+        when response = channel.receive
+          successful_responses << response if response
+        when timeout(5.seconds)
+          break
+        end
       end
 
       # Should have at least 2 successful responses for concurrent testing
@@ -80,12 +85,12 @@ describe "HTTP/2 Performance and Reliability" do
     it "maintains HTTP/2 connection across requests" do
       client = HTTP2TestHelpers.create_test_client
 
-      # Make requests to different endpoints
-      endpoints = ["/", "/status/200", "/headers"]
+      # Make requests to different query params (nghttpd doesn't have multiple endpoints)
+      params = ["", "?test=1", "?foo=bar"]
 
-      endpoints.each do |endpoint|
+      params.each do |param|
         response = HTTP2TestHelpers.retry_request do
-          client.get(HTTP2TestHelpers.localhost_url(endpoint))
+          client.get(HTTP2TestHelpers.http2_url("/#{param}"))
         end
 
         HTTP2TestHelpers.assert_valid_http2_response(response)

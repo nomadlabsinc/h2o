@@ -2,9 +2,13 @@
 # This allows easy swapping of test servers without hardcoding hosts
 
 module TestConfig
-  # HTTP/2 test server (nginx)
+  # HTTP/2 test server (nghttpd)
   def self.http2_host
-    ENV["TEST_HTTP2_HOST"]? || "nghttpd"
+    # Priority order:
+    # 1. Explicit TEST_HTTP2_HOST env var
+    # 2. If TEST_NGHTTPD_URL is set (docker-compose), use "nghttpd"
+    # 3. Default to "localhost" for local nghttpd
+    ENV["TEST_HTTP2_HOST"]? || (ENV["TEST_NGHTTPD_URL"]? ? "nghttpd" : "localhost")
   end
 
   def self.http2_port

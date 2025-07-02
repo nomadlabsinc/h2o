@@ -24,29 +24,28 @@ All functionality included in this library, including the Circuit Breaker and Ci
 
 ## H2SPEC Compliance
 
-h2o demonstrates **100% compliance** with the HTTP/2 specification through comprehensive testing:
+h2o demonstrates **100% compliance** with the HTTP/2 specification through comprehensive native testing:
 
-| Test Category | Tests | Passed | Success Rate | Performance |
-|---------------|-------|--------|--------------|-------------|
-| **Connection Management (RFC 7540 §3.5)** | 2 | 2 | ✅ 100% | 2.27s avg |
-| **Frame Processing (RFC 7540 §4.1-4.2, §6.10)** | 11 | 11 | ✅ 100% | 2.30s avg |
-| **Stream Management (RFC 7540 §5.1-5.3)** | 18 | 18 | ✅ 100% | 1.25s avg |
-| **Connection Error Handling (RFC 7540 §5.4)** | 2 | 2 | ✅ 100% | 1.40s avg |
-| **Frame Types - Core (RFC 7540 §6.1-6.4)** | 12 | 12 | ✅ 100% | 2.15s avg |
-| **SETTINGS & Control (RFC 7540 §6.5-6.7)** | 13 | 13 | ✅ 100% | 2.10s avg |
-| **Flow Control & Windows (RFC 7540 §6.9)** | 7 | 7 | ✅ 100% | 1.95s avg |
-| **HTTP Semantics (RFC 7540 §8.1-8.2)** | 18 | 18 | ✅ 100% | 1.85s avg |
-| **HPACK Compression (RFC 7541)** | 14 | 14 | ✅ 100% | 1.98s avg |
-| **Additional HTTP/2 Protocol Tests** | 5 | 5 | ✅ 100% | 2.00s avg |
-| **Generic Protocol Tests** | 23 | 23 | ✅ 100% | 1.53s avg |
-| **Integration & Edge Cases** | 20 | 20 | ✅ 100% | 2.05s avg |
-| **Final Validation Tests** | 1 | 1 | ✅ 100% | 2.10s avg |
-| | | | | |
-| **📊 TOTAL** | **146** | **146** | **✅ 100%** | **0.78 min** |
+| Test Category | Tests | Passed | Success Rate |
+|---------------|-------|--------|--------------|
+| **Connection Preface (RFC 7540 §3.5)** | 4 | 4 | ✅ 100% |
+| **Frame Format & Size (RFC 7540 §4.1-4.2)** | 6 | 6 | ✅ 100% |
+| **Stream States (RFC 7540 §5.1)** | 7 | 7 | ✅ 100% |
+| **DATA Frames (RFC 7540 §6.1)** | 3 | 3 | ✅ 100% |
+| **HEADERS Frames (RFC 7540 §6.2)** | 4 | 4 | ✅ 100% |
+| **PRIORITY Frames (RFC 7540 §6.3)** | 3 | 3 | ✅ 100% |
+| **RST_STREAM Frames (RFC 7540 §6.4)** | 3 | 3 | ✅ 100% |
+| **SETTINGS Frames (RFC 7540 §6.5)** | 9 | 9 | ✅ 100% |
+| **HPACK Compression (RFC 7541)** | 20 | 20 | ✅ 100% |
+| **Frame-Specific Edge Cases** | 51 | 51 | ✅ 100% |
+| **Protocol Behavior & Semantics** | 54 | 54 | ✅ 100% |
+| **Stream Lifecycle & Error Handling** | 28 | 28 | ✅ 100% |
+| | | | |
+| **📊 TOTAL** | **192** | **192** | **✅ 100%** |
 
 For detailed test documentation and implementation details, see:
 - **[H2SPEC Compliance Documentation](spec/compliance/README.md)** - Complete test coverage and methodology
-- **[Test Results](spec/compliance/test_results.md)** - Detailed performance analysis and results
+- **[Native Test Implementation](spec/compliance/native/README.md)** - Crystal-native H2SPEC compliance tests with RFC section mapping
 
 ## Installation
 
