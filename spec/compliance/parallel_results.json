@@ -1,890 +1,890 @@
 {
-  "timestamp": "2025-06-27 23:05:47 UTC",
+  "timestamp": "2025-07-01 20:42:44 UTC",
   "total_tests": 146,
-  "passed": 146,
-  "failed": 0,
-  "success_rate": 100.0,
-  "duration_seconds": 47.47,
-  "average_per_test": 0.325,
-  "speedup_factor": 7.38,
+  "passed": 0,
+  "failed": 146,
+  "success_rate": 0.0,
+  "duration_seconds": 118.55,
+  "average_per_test": 0.812,
+  "speedup_factor": 2.95,
   "target_achieved": true,
   "concurrency_level": 8,
   "results": [
     {
       "test_id": "3.5/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.36
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47112",
+      "duration": 5.634
     },
     {
       "test_id": "3.5/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.247
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:46549",
+      "duration": 5.373
     },
     {
       "test_id": "4.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.214
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:42376",
+      "duration": 3.761
     },
     {
       "test_id": "4.1/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.336
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48271",
+      "duration": 4.394
     },
     {
       "test_id": "4.1/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.3
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47275",
+      "duration": 3.524
     },
     {
       "test_id": "4.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.312
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:52551",
+      "duration": 3.783
     },
     {
       "test_id": "4.2/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.312
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:51454",
+      "duration": 3.729
     },
     {
       "test_id": "4.2/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.3
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:53742",
+      "duration": 3.727
     },
     {
       "test_id": "5.1.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.322
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:51462",
+      "duration": 3.833
     },
     {
       "test_id": "5.1.1/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.856
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44124",
+      "duration": 2.971
     },
     {
       "test_id": "5.1.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.33
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:46112",
+      "duration": 2.933
     },
     {
       "test_id": "5.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.371
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44914",
+      "duration": 4.069
     },
     {
       "test_id": "5.1/10",
-      "passed": true,
-      "error": null,
-      "duration": 0.734
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:51550",
+      "duration": 4.777
     },
     {
       "test_id": "5.1/11",
-      "passed": true,
-      "error": null,
-      "duration": 0.851
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:42476",
+      "duration": 5.366
     },
     {
       "test_id": "5.1/12",
-      "passed": true,
-      "error": null,
-      "duration": 0.851
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44044",
+      "duration": 4.832
     },
     {
       "test_id": "5.1/13",
-      "passed": true,
-      "error": null,
-      "duration": 0.717
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:42368",
+      "duration": 4.412
     },
     {
       "test_id": "5.1/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.852
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:53008",
+      "duration": 3.939
     },
     {
       "test_id": "5.1/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.341
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:58113",
+      "duration": 3.625
     },
     {
       "test_id": "5.1/4",
-      "passed": true,
-      "error": null,
-      "duration": 2.201
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:51891",
+      "duration": 5.463
     },
     {
       "test_id": "5.1/5",
-      "passed": true,
-      "error": null,
-      "duration": 0.838
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:40805",
+      "duration": 3.394
     },
     {
       "test_id": "5.1/6",
-      "passed": true,
-      "error": null,
-      "duration": 0.836
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:58079",
+      "duration": 4.599
     },
     {
       "test_id": "5.1/7",
-      "passed": true,
-      "error": null,
-      "duration": 0.743
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59372",
+      "duration": 5.154
     },
     {
       "test_id": "5.1/8",
-      "passed": true,
-      "error": null,
-      "duration": 0.839
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:54137",
+      "duration": 3.61
     },
     {
       "test_id": "5.1/9",
-      "passed": true,
-      "error": null,
-      "duration": 0.844
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:52387",
+      "duration": 4.259
     },
     {
       "test_id": "5.3.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.346
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59185",
+      "duration": 2.315
     },
     {
       "test_id": "5.3.1/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.366
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:43244",
+      "duration": 5.557
     },
     {
       "test_id": "5.4.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.214
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57191",
+      "duration": 3.663
     },
     {
       "test_id": "5.4.1/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.255
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47776",
+      "duration": 3.341
     },
     {
       "test_id": "6.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.218
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45110",
+      "duration": 5.412
     },
     {
       "test_id": "6.1/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.363
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:52436",
+      "duration": 5.747
     },
     {
       "test_id": "6.1/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.228
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59985",
+      "duration": 4.416
     },
     {
       "test_id": "6.10/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.339
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47859",
+      "duration": 4.709
     },
     {
       "test_id": "6.10/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.384
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:50037",
+      "duration": 5.506
     },
     {
       "test_id": "6.10/4",
-      "passed": true,
-      "error": null,
-      "duration": 2.22
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:40734",
+      "duration": 4.751
     },
     {
       "test_id": "6.10/5",
-      "passed": true,
-      "error": null,
-      "duration": 2.258
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44447",
+      "duration": 5.418
     },
     {
       "test_id": "6.10/6",
-      "passed": true,
-      "error": null,
-      "duration": 2.221
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:58255",
+      "duration": 4.765
     },
     {
       "test_id": "6.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.354
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:53454",
+      "duration": 5.368
     },
     {
       "test_id": "6.2/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.36
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48790",
+      "duration": 5.076
     },
     {
       "test_id": "6.2/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.239
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45873",
+      "duration": 5.758
     },
     {
       "test_id": "6.2/4",
-      "passed": true,
-      "error": null,
-      "duration": 2.22
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45557",
+      "duration": 3.997
     },
     {
       "test_id": "6.3/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.217
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45130",
+      "duration": 5.165
     },
     {
       "test_id": "6.3/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.212
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:53036",
+      "duration": 5.646
     },
     {
       "test_id": "6.4/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.257
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:51667",
+      "duration": 4.562
     },
     {
       "test_id": "6.4/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.855
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:41942",
+      "duration": 6.445
     },
     {
       "test_id": "6.4/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.235
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:43603",
+      "duration": 5.458
     },
     {
       "test_id": "6.5.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.352
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59045",
+      "duration": 5.383
     },
     {
       "test_id": "6.5.2/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.333
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:56764",
+      "duration": 4.271
     },
     {
       "test_id": "6.5.2/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.361
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:58004",
+      "duration": 5.644
     },
     {
       "test_id": "6.5.2/4",
-      "passed": true,
-      "error": null,
-      "duration": 2.38
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:40392",
+      "duration": 4.23
     },
     {
       "test_id": "6.5.2/5",
-      "passed": true,
-      "error": null,
-      "duration": 2.333
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:56470",
+      "duration": 3.312
     },
     {
       "test_id": "6.5.3/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.404
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:42531",
+      "duration": 6.034
     },
     {
       "test_id": "6.5/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.247
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44477",
+      "duration": 5.98
     },
     {
       "test_id": "6.5/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.233
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:56666",
+      "duration": 5.16
     },
     {
       "test_id": "6.5/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.211
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59069",
+      "duration": 4.774
     },
     {
       "test_id": "6.7/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.343
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44737",
+      "duration": 4.659
     },
     {
       "test_id": "6.7/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.353
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:43864",
+      "duration": 5.46
     },
     {
       "test_id": "6.7/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.201
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57524",
+      "duration": 4.248
     },
     {
       "test_id": "6.7/4",
-      "passed": true,
-      "error": null,
-      "duration": 2.246
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:43182",
+      "duration": 3.592
     },
     {
       "test_id": "6.8/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.226
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44620",
+      "duration": 3.705
     },
     {
       "test_id": "6.9.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.345
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:55103",
+      "duration": 3.879
     },
     {
       "test_id": "6.9.1/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.342
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:50536",
+      "duration": 4.078
     },
     {
       "test_id": "6.9.1/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.325
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:42862",
+      "duration": 4.702
     },
     {
       "test_id": "6.9.2/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.353
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59961",
+      "duration": 2.958
     },
     {
       "test_id": "6.9/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.299
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:46147",
+      "duration": 4.68
     },
     {
       "test_id": "6.9/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.375
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45703",
+      "duration": 7.219
     },
     {
       "test_id": "6.9/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.233
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48073",
+      "duration": 2.096
     },
     {
       "test_id": "8.1.2.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.887
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57326",
+      "duration": 7.123
     },
     {
       "test_id": "8.1.2.1/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.864
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45902",
+      "duration": 5.757
     },
     {
       "test_id": "8.1.2.1/3",
-      "passed": true,
-      "error": null,
-      "duration": 0.878
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:53816",
+      "duration": 7.03
     },
     {
       "test_id": "8.1.2.1/4",
-      "passed": true,
-      "error": null,
-      "duration": 0.845
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:41929",
+      "duration": 5.709
     },
     {
       "test_id": "8.1.2.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.839
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44245",
+      "duration": 6.679
     },
     {
       "test_id": "8.1.2.2/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.854
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57160",
+      "duration": 7.511
     },
     {
       "test_id": "8.1.2.3/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.951
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57782",
+      "duration": 3.656
     },
     {
       "test_id": "8.1.2.3/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.877
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:50388",
+      "duration": 3.586
     },
     {
       "test_id": "8.1.2.3/3",
-      "passed": true,
-      "error": null,
-      "duration": 0.905
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:49907",
+      "duration": 4.711
     },
     {
       "test_id": "8.1.2.3/4",
-      "passed": true,
-      "error": null,
-      "duration": 0.943
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48508",
+      "duration": 4.638
     },
     {
       "test_id": "8.1.2.3/5",
-      "passed": true,
-      "error": null,
-      "duration": 0.869
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:52140",
+      "duration": 6.093
     },
     {
       "test_id": "8.1.2.3/6",
-      "passed": true,
-      "error": null,
-      "duration": 0.946
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45077",
+      "duration": 4.676
     },
     {
       "test_id": "8.1.2.3/7",
-      "passed": true,
-      "error": null,
-      "duration": 0.902
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:54284",
+      "duration": 6.255
     },
     {
       "test_id": "8.1.2.6/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.894
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:56564",
+      "duration": 5.881
     },
     {
       "test_id": "8.1.2.6/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.887
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48005",
+      "duration": 3.663
     },
     {
       "test_id": "8.1.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.868
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:56180",
+      "duration": 5.86
     },
     {
       "test_id": "8.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.398
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:53077",
+      "duration": 5.922
     },
     {
       "test_id": "8.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.388
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47129",
+      "duration": 6.029
     },
     {
       "test_id": "complete/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.369
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:53985",
+      "duration": 6.413
     },
     {
       "test_id": "complete/10",
-      "passed": true,
-      "error": null,
-      "duration": 2.262
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47160",
+      "duration": 4.006
     },
     {
       "test_id": "complete/11",
-      "passed": true,
-      "error": null,
-      "duration": 2.358
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47832",
+      "duration": 4.127
     },
     {
       "test_id": "complete/12",
-      "passed": true,
-      "error": null,
-      "duration": 2.389
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47721",
+      "duration": 4.608
     },
     {
       "test_id": "complete/13",
-      "passed": true,
-      "error": null,
-      "duration": 2.363
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57613",
+      "duration": 2.889
     },
     {
       "test_id": "complete/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.33
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:50414",
+      "duration": 6.283
     },
     {
       "test_id": "complete/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.242
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57583",
+      "duration": 6.679
     },
     {
       "test_id": "complete/4",
-      "passed": true,
-      "error": null,
-      "duration": 2.382
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47607",
+      "duration": 6.787
     },
     {
       "test_id": "complete/5",
-      "passed": true,
-      "error": null,
-      "duration": 0.843
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48274",
+      "duration": 4.962
     },
     {
       "test_id": "complete/6",
-      "passed": true,
-      "error": null,
-      "duration": 2.343
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:53041",
+      "duration": 2.268
     },
     {
       "test_id": "complete/7",
-      "passed": true,
-      "error": null,
-      "duration": 2.371
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59905",
+      "duration": 6.682
     },
     {
       "test_id": "complete/8",
-      "passed": true,
-      "error": null,
-      "duration": 0.852
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:54239",
+      "duration": 4.941
     },
     {
       "test_id": "complete/9",
-      "passed": true,
-      "error": null,
-      "duration": 2.345
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:55279",
+      "duration": 5.621
     },
     {
       "test_id": "extra/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.344
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:52988",
+      "duration": 3.204
     },
     {
       "test_id": "extra/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.384
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:41166",
+      "duration": 5.703
     },
     {
       "test_id": "extra/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.348
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57895",
+      "duration": 5.703
     },
     {
       "test_id": "extra/4",
-      "passed": true,
-      "error": null,
-      "duration": 2.317
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:54823",
+      "duration": 4.819
     },
     {
       "test_id": "extra/5",
-      "passed": true,
-      "error": null,
-      "duration": 2.351
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57147",
+      "duration": 1.928
     },
     {
       "test_id": "final/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.34
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44882",
+      "duration": 5.022
     },
     {
       "test_id": "final/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.855
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:41643",
+      "duration": 5.106
     },
     {
       "test_id": "generic/1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.347
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:46159",
+      "duration": 3.679
     },
     {
       "test_id": "generic/2/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.871
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:53209",
+      "duration": 4.217
     },
     {
       "test_id": "generic/3.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.866
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:46151",
+      "duration": 5.116
     },
     {
       "test_id": "generic/3.1/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.866
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47255",
+      "duration": 4.928
     },
     {
       "test_id": "generic/3.1/3",
-      "passed": true,
-      "error": null,
-      "duration": 0.871
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:56437",
+      "duration": 6.442
     },
     {
       "test_id": "generic/3.10/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.339
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:41490",
+      "duration": 5.686
     },
     {
       "test_id": "generic/3.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.847
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:41515",
+      "duration": 5.333
     },
     {
       "test_id": "generic/3.2/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.83
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59150",
+      "duration": 3.259
     },
     {
       "test_id": "generic/3.2/3",
-      "passed": true,
-      "error": null,
-      "duration": 0.808
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44692",
+      "duration": 4.338
     },
     {
       "test_id": "generic/3.3/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.291
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:54137",
+      "duration": 3.036
     },
     {
       "test_id": "generic/3.3/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.376
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:41319",
+      "duration": 4.234
     },
     {
       "test_id": "generic/3.3/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.347
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:42033",
+      "duration": 4.973
     },
     {
       "test_id": "generic/3.3/4",
-      "passed": true,
-      "error": null,
-      "duration": 2.327
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48347",
+      "duration": 4.121
     },
     {
       "test_id": "generic/3.3/5",
-      "passed": true,
-      "error": null,
-      "duration": 0.843
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48413",
+      "duration": 3.114
     },
     {
       "test_id": "generic/3.4/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.791
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57814",
+      "duration": 5.095
     },
     {
       "test_id": "generic/3.5/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.368
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:43229",
+      "duration": 5.28
     },
     {
       "test_id": "generic/3.7/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.334
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:46104",
+      "duration": 6.128
     },
     {
       "test_id": "generic/3.8/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.267
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59936",
+      "duration": 6.769
     },
     {
       "test_id": "generic/3.9/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.325
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:51341",
+      "duration": 6.925
     },
     {
       "test_id": "generic/4/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.892
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45682",
+      "duration": 6.067
     },
     {
       "test_id": "generic/4/2",
-      "passed": true,
-      "error": null,
-      "duration": 0.846
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57842",
+      "duration": 4.096
     },
     {
       "test_id": "generic/5/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.347
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57994",
+      "duration": 4.02
     },
     {
       "test_id": "generic/misc/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.853
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48756",
+      "duration": 6.253
     },
     {
       "test_id": "hpack/2.3.3/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.341
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47370",
+      "duration": 4.822
     },
     {
       "test_id": "hpack/2.3.3/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.368
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:41480",
+      "duration": 4.923
     },
     {
       "test_id": "hpack/2.3/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.841
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:50330",
+      "duration": 7.602
     },
     {
       "test_id": "hpack/4.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.364
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:58381",
+      "duration": 3.668
     },
     {
       "test_id": "hpack/4.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.82
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48974",
+      "duration": 2.776
     },
     {
       "test_id": "hpack/5.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.332
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:55864",
+      "duration": 4.708
     },
     {
       "test_id": "hpack/5.2/2",
-      "passed": true,
-      "error": null,
-      "duration": 2.342
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57592",
+      "duration": 4.084
     },
     {
       "test_id": "hpack/5.2/3",
-      "passed": true,
-      "error": null,
-      "duration": 2.304
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:58073",
+      "duration": 3.72
     },
     {
       "test_id": "hpack/6.1/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.329
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45520",
+      "duration": 3.991
     },
     {
       "test_id": "hpack/6.2.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.391
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:48772",
+      "duration": 5.116
     },
     {
       "test_id": "hpack/6.2.3/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.326
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:58703",
+      "duration": 2.861
     },
     {
       "test_id": "hpack/6.2/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.397
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:44314",
+      "duration": 3.171
     },
     {
       "test_id": "hpack/6.3/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.859
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:47598",
+      "duration": 4.653
     },
     {
       "test_id": "hpack/misc/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.363
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:45629",
+      "duration": 4.45
     },
     {
       "test_id": "http2/4.3/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.312
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:58699",
+      "duration": 4.814
     },
     {
       "test_id": "http2/5.5/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.218
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:57941",
+      "duration": 5.007
     },
     {
       "test_id": "http2/7/1",
-      "passed": true,
-      "error": null,
-      "duration": 0.824
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:49941",
+      "duration": 2.614
     },
     {
       "test_id": "http2/8.1.2.4/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.334
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:59692",
+      "duration": 3.675
     },
     {
       "test_id": "http2/8.1.2.5/1",
-      "passed": true,
-      "error": null,
-      "duration": 2.329
+      "passed": false,
+      "error": "IO::Error: Failed to connect to localhost:55580",
+      "duration": 3.568
     }
   ]
 }

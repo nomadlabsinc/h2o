@@ -77,6 +77,7 @@ module H2O
     # Enhanced connection management
     @connection_metadata : ConnectionMetadataHash
     @warmup_hosts : HostSet
+    @closed : Bool = false
 
     def initialize(@connection_pool_size : Int32 = 10,
                    @h2_prior_knowledge : Bool = false,
@@ -120,6 +121,9 @@ module H2O
     end
 
     def request(method : String, url : String, headers : Headers = Headers.new, body : String? = nil, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
+      # Check if client is closed
+      raise ConnectionError.new("Client has been closed") if @closed
+
       # Determine if circuit breaker should be used
       use_circuit_breaker = should_use_circuit_breaker?(bypass_circuit_breaker, circuit_breaker)
 
@@ -142,6 +146,7 @@ module H2O
     end
 
     def close : Nil
+      @closed = true
       @connections.each_value(&.close)
       @connections.clear
       @connection_metadata.clear
@@ -271,7 +276,7 @@ module H2O
       if connection = try_http2_connection(host, port)
         @protocol_cache.cache_protocol(host, port, ProtocolVersion::Http2)
         connection
-      elsif connection = try_http1_connection(host, port)
+      elsif !@h2_prior_knowledge && (connection = try_http1_connection(host, port))
         Log.debug { "Falling back to HTTP/1.1 for #{host}:#{port}" }
         @protocol_cache.cache_protocol(host, port, ProtocolVersion::Http11)
         connection

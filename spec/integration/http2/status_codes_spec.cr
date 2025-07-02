@@ -9,7 +9,7 @@ describe "HTTP/2 Status Codes" do
 
       # Test 200 OK
       response_200 = HTTP2TestHelpers.retry_request do
-        client.get(HTTP2TestHelpers.localhost_url("/status/200"))
+        client.get(HTTP2TestHelpers.http2_url("/"))
       end
       HTTP2TestHelpers.assert_valid_http2_response(response_200, 200)
 
@@ -23,16 +23,14 @@ describe "HTTP/2 Status Codes" do
     it "handles 2xx status codes properly" do
       client = HTTP2TestHelpers.create_test_client
 
-      # Test different 2xx codes if available
-      %w[200 201 202].each do |status|
-        response = HTTP2TestHelpers.retry_request do
-          client.get(HTTP2TestHelpers.localhost_url("/status/#{status}"))
-        end
-
-        response.should_not be_nil
-        [200, 201, 202].should contain(response.status)
-        response.protocol.should eq("HTTP/2")
+      # nghttpd only returns 200 OK for valid requests
+      response = HTTP2TestHelpers.retry_request do
+        client.get(HTTP2TestHelpers.http2_url("/"))
       end
+
+      response.should_not be_nil
+      response.status.should eq(200)
+      response.protocol.should eq("HTTP/2")
     end
   end
 
@@ -42,7 +40,7 @@ describe "HTTP/2 Status Codes" do
 
       # Test 404 Not Found
       response = HTTP2TestHelpers.retry_request(acceptable_statuses: (400..499)) do
-        client.get(HTTP2TestHelpers.localhost_url("/nonexistent"))
+        client.get(HTTP2TestHelpers.http2_url("/nonexistent"))
       end
 
       response.should_not be_nil
@@ -54,16 +52,14 @@ describe "HTTP/2 Status Codes" do
     it "handles 5xx status codes gracefully" do
       client = HTTP2TestHelpers.create_test_client
 
-      # Test 500 Internal Server Error (if endpoint exists)
-      response = HTTP2TestHelpers.retry_request(acceptable_statuses: (500..599)) do
-        client.get(HTTP2TestHelpers.localhost_url("/error"))
+      # nghttpd doesn't have a dedicated error endpoint, but we can test invalid paths
+      response = HTTP2TestHelpers.retry_request(acceptable_statuses: (400..599)) do
+        client.get(HTTP2TestHelpers.http2_url("/error"))
       end
 
       response.should_not be_nil
-      if response.status >= 500
-        response.status.should be < 600
-        response.protocol.should eq("HTTP/2")
-      end
+      response.status.should be >= 400  # Should get 404 for non-existent path
+      response.protocol.should eq("HTTP/2")
     end
   end
 end

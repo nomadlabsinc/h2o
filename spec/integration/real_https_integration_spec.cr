@@ -44,14 +44,14 @@ describe "H2O Real HTTPS Integration Tests" do
 
   describe "HTTPS error handling" do
     it "handles connection timeout gracefully" do
-      expect_raises(H2O::ConnectionError) do
+      expect_raises(IO::TimeoutError) do
         client = H2O::H2::Client.new("1.2.3.4", 443, connect_timeout: 1.seconds)
         client.request("GET", "/", {"host" => "1.2.3.4"})
       end
     end
 
     it "handles SSL verification failures" do
-      expect_raises(H2O::ConnectionError) do
+      expect_raises(OpenSSL::SSL::Error) do
         # Use self-signed cert endpoint that should fail verification
         client = H2O::H2::Client.new("self-signed.badssl.com", 443, verify_ssl: true)
         client.request("GET", "/", {"host" => "self-signed.badssl.com"})

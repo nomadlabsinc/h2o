@@ -53,7 +53,8 @@ module H2O
 
           # Return frames ordered by stream ID for better processing
           result = grouped.flat_map { |_, frames| frames }
-          @frames.clear
+          # Create new array instead of clearing to avoid reuse
+          @frames = Array(Frame).new
           @total_size = 0
           result
         end
@@ -61,7 +62,8 @@ module H2O
 
       def clear : Nil
         @mutex.synchronize do
-          @frames.clear
+          # Create new array instead of clearing to avoid reuse
+          @frames = Array(Frame).new
           @total_size = 0
         end
       end

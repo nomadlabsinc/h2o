@@ -1,0 +1,1176 @@
+{
+  "timestamp": "2025-07-01T20:50:17Z",
+  "total_tests": 146,
+  "passed": 69,
+  "failed": 77,
+  "results": [
+    {
+      "test_id": "3.5/1",
+      "description": "Valid connection preface",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:54659"
+    },
+    {
+      "test_id": "3.5/2",
+      "description": "Invalid connection preface",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:47672"
+    },
+    {
+      "test_id": "4.1/1",
+      "description": "Valid frame format",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:57438"
+    },
+    {
+      "test_id": "4.1/2",
+      "description": "Invalid frame type",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:56097"
+    },
+    {
+      "test_id": "4.1/3",
+      "description": "Invalid frame flags",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:52660"
+    },
+    {
+      "test_id": "4.2/1",
+      "description": "Maximum valid frame size",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:46594"
+    },
+    {
+      "test_id": "4.2/2",
+      "description": "DATA frame exceeds max size",
+      "expected": "FrameSizeError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:55952"
+    },
+    {
+      "test_id": "4.2/3",
+      "description": "HEADERS frame exceeds max size",
+      "expected": "FrameSizeError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:42366"
+    },
+    {
+      "test_id": "5.1/1",
+      "description": "DATA on stream in IDLE state",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:55176"
+    },
+    {
+      "test_id": "5.1/2",
+      "description": "HEADERS on stream in HALF_CLOSED state",
+      "expected": "StreamError",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:45396"
+    },
+    {
+      "test_id": "5.1/3",
+      "description": "DATA on stream in CLOSED state",
+      "expected": "StreamError",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:42553"
+    },
+    {
+      "test_id": "5.1/4",
+      "description": "RST_STREAM on IDLE stream",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:54073"
+    },
+    {
+      "test_id": "5.1/5",
+      "description": "Valid stream transitions",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:59143"
+    },
+    {
+      "test_id": "5.1/6",
+      "description": "WINDOW_UPDATE on IDLE stream",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:55291"
+    },
+    {
+      "test_id": "5.1/7",
+      "description": "CONTINUATION without HEADERS",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:43668"
+    },
+    {
+      "test_id": "5.1/8",
+      "description": "Trailers after END_STREAM",
+      "expected": "StreamError",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:55787"
+    },
+    {
+      "test_id": "5.1/9",
+      "description": "DATA before HEADERS",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:52040"
+    },
+    {
+      "test_id": "5.1/10",
+      "description": "Invalid stream dependency",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:57125"
+    },
+    {
+      "test_id": "5.1/11",
+      "description": "Stream ID reuse",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:50444"
+    },
+    {
+      "test_id": "5.1/12",
+      "description": "Even stream ID from server",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:58414"
+    },
+    {
+      "test_id": "5.1/13",
+      "description": "Stream ID not increasing",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:47520"
+    },
+    {
+      "test_id": "5.1.1/1",
+      "description": "Stream ID 0 for HEADERS",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:52356"
+    },
+    {
+      "test_id": "5.1.1/2",
+      "description": "Stream ID 0 for DATA",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:56771"
+    },
+    {
+      "test_id": "5.1.2/1",
+      "description": "Exceeds SETTINGS_MAX_CONCURRENT_STREAMS",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:56189"
+    },
+    {
+      "test_id": "5.3.1/1",
+      "description": "Stream depends on itself",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:46907"
+    },
+    {
+      "test_id": "5.3.1/2",
+      "description": "Circular dependency",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:54803"
+    },
+    {
+      "test_id": "5.4.1/1",
+      "description": "GOAWAY with error code",
+      "expected": "GoAway",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:52829"
+    },
+    {
+      "test_id": "5.4.1/2",
+      "description": "Connection error handling",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:52834"
+    },
+    {
+      "test_id": "6.1/1",
+      "description": "DATA with valid padding",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:59834"
+    },
+    {
+      "test_id": "6.1/2",
+      "description": "DATA padding exceeds payload",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:45740"
+    },
+    {
+      "test_id": "6.1/3",
+      "description": "DATA on stream 0",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:43121"
+    },
+    {
+      "test_id": "6.2/1",
+      "description": "HEADERS with valid headers",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:59514"
+    },
+    {
+      "test_id": "6.2/2",
+      "description": "HEADERS with invalid padding",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:50838"
+    },
+    {
+      "test_id": "6.2/3",
+      "description": "HEADERS on stream 0",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:49489"
+    },
+    {
+      "test_id": "6.2/4",
+      "description": "HEADERS with priority",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:45971"
+    },
+    {
+      "test_id": "6.3/1",
+      "description": "PRIORITY on stream 0",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:42162"
+    },
+    {
+      "test_id": "6.3/2",
+      "description": "PRIORITY with invalid dependency",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:50232"
+    },
+    {
+      "test_id": "6.4/1",
+      "description": "RST_STREAM on stream 0",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:56295"
+    },
+    {
+      "test_id": "6.4/2",
+      "description": "RST_STREAM on IDLE stream",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:43876"
+    },
+    {
+      "test_id": "6.4/3",
+      "description": "Valid RST_STREAM",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:46577"
+    },
+    {
+      "test_id": "6.5/1",
+      "description": "SETTINGS with ACK and payload",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:50462"
+    },
+    {
+      "test_id": "6.5/2",
+      "description": "SETTINGS on non-0 stream",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:56476"
+    },
+    {
+      "test_id": "6.5/3",
+      "description": "Valid SETTINGS",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:45859"
+    },
+    {
+      "test_id": "6.5.2/1",
+      "description": "ENABLE_PUSH with invalid value",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:43035"
+    },
+    {
+      "test_id": "6.5.2/2",
+      "description": "INITIAL_WINDOW_SIZE too large",
+      "expected": "FlowControlError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:55427"
+    },
+    {
+      "test_id": "6.5.2/3",
+      "description": "MAX_FRAME_SIZE too small",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:47176"
+    },
+    {
+      "test_id": "6.5.2/4",
+      "description": "MAX_FRAME_SIZE too large",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:55759"
+    },
+    {
+      "test_id": "6.5.2/5",
+      "description": "Unknown SETTINGS parameter",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:46859"
+    },
+    {
+      "test_id": "6.5.3/2",
+      "description": "SETTINGS ACK expected",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:46050"
+    },
+    {
+      "test_id": "6.7/1",
+      "description": "PING on non-0 stream",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:45144"
+    },
+    {
+      "test_id": "6.7/2",
+      "description": "PING with invalid length",
+      "expected": "FrameSizeError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:56787"
+    },
+    {
+      "test_id": "6.7/3",
+      "description": "Valid PING",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:50106"
+    },
+    {
+      "test_id": "6.7/4",
+      "description": "PING ACK expected",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:50689"
+    },
+    {
+      "test_id": "6.8/1",
+      "description": "GOAWAY on non-0 stream",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:40161"
+    },
+    {
+      "test_id": "6.9/1",
+      "description": "WINDOW_UPDATE with 0 increment",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:47759"
+    },
+    {
+      "test_id": "6.9/2",
+      "description": "WINDOW_UPDATE overflow",
+      "expected": "FlowControlError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:42851"
+    },
+    {
+      "test_id": "6.9/3",
+      "description": "Valid WINDOW_UPDATE",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:44652"
+    },
+    {
+      "test_id": "6.9.1/1",
+      "description": "DATA exceeds window",
+      "expected": "FlowControlError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:58830"
+    },
+    {
+      "test_id": "6.9.1/2",
+      "description": "Multiple DATA exceeds window",
+      "expected": "FlowControlError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:59969"
+    },
+    {
+      "test_id": "6.9.1/3",
+      "description": "Negative window",
+      "expected": "FlowControlError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:56999"
+    },
+    {
+      "test_id": "6.9.2/3",
+      "description": "Initial window size change",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:41992"
+    },
+    {
+      "test_id": "6.10/2",
+      "description": "CONTINUATION without HEADERS",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:54532"
+    },
+    {
+      "test_id": "6.10/3",
+      "description": "HEADERS with CONTINUATION",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:52660"
+    },
+    {
+      "test_id": "6.10/4",
+      "description": "Interleaved CONTINUATION",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:42061"
+    },
+    {
+      "test_id": "6.10/5",
+      "description": "CONTINUATION on different stream",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:41871"
+    },
+    {
+      "test_id": "6.10/6",
+      "description": "CONTINUATION after END_HEADERS",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:52224"
+    },
+    {
+      "test_id": "8.1/1",
+      "description": "Valid HTTP request",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:43762"
+    },
+    {
+      "test_id": "8.1.2/1",
+      "description": "Uppercase header names",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:57148"
+    },
+    {
+      "test_id": "8.1.2.1/1",
+      "description": "Missing :method",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:50580"
+    },
+    {
+      "test_id": "8.1.2.1/2",
+      "description": "Missing :scheme",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:56427"
+    },
+    {
+      "test_id": "8.1.2.1/3",
+      "description": "Missing :path",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:59621"
+    },
+    {
+      "test_id": "8.1.2.1/4",
+      "description": "Pseudo headers after regular",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:42180"
+    },
+    {
+      "test_id": "8.1.2.2/1",
+      "description": "Connection header present",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:50740"
+    },
+    {
+      "test_id": "8.1.2.2/2",
+      "description": "TE header invalid",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:48894"
+    },
+    {
+      "test_id": "8.1.2.3/1",
+      "description": "Invalid :method",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:49196"
+    },
+    {
+      "test_id": "8.1.2.3/2",
+      "description": "Invalid :scheme",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:50046"
+    },
+    {
+      "test_id": "8.1.2.3/3",
+      "description": "Invalid :path",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:51494"
+    },
+    {
+      "test_id": "8.1.2.3/4",
+      "description": "Missing authority",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:41197"
+    },
+    {
+      "test_id": "8.1.2.3/5",
+      "description": "Invalid authority",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:41294"
+    },
+    {
+      "test_id": "8.1.2.3/6",
+      "description": "Duplicate pseudo headers",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:43629"
+    },
+    {
+      "test_id": "8.1.2.3/7",
+      "description": "Empty :path",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:50787"
+    },
+    {
+      "test_id": "8.1.2.6/1",
+      "description": "Invalid content-length",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:43410"
+    },
+    {
+      "test_id": "8.1.2.6/2",
+      "description": "Multiple content-length",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:48176"
+    },
+    {
+      "test_id": "8.2/1",
+      "description": "Server push",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:42936"
+    },
+    {
+      "test_id": "hpack/2.3/1",
+      "description": "Static table access",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:59599"
+    },
+    {
+      "test_id": "hpack/2.3.3/1",
+      "description": "Invalid index",
+      "expected": "CompressionError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:49764"
+    },
+    {
+      "test_id": "hpack/2.3.3/2",
+      "description": "Index out of range",
+      "expected": "CompressionError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:59687"
+    },
+    {
+      "test_id": "hpack/4.1/1",
+      "description": "Dynamic table size update",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:50463"
+    },
+    {
+      "test_id": "hpack/4.2/1",
+      "description": "Table size exceeds max",
+      "expected": "CompressionError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:41414"
+    },
+    {
+      "test_id": "hpack/5.2/1",
+      "description": "String literal",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:56249"
+    },
+    {
+      "test_id": "hpack/5.2/2",
+      "description": "Huffman encoded string",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:45683"
+    },
+    {
+      "test_id": "hpack/5.2/3",
+      "description": "Invalid Huffman",
+      "expected": "CompressionError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:43802"
+    },
+    {
+      "test_id": "hpack/6.1/1",
+      "description": "Indexed header field",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:50062"
+    },
+    {
+      "test_id": "hpack/6.2/1",
+      "description": "Literal header field",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:47410"
+    },
+    {
+      "test_id": "hpack/6.2.2/1",
+      "description": "Literal never indexed",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:51176"
+    },
+    {
+      "test_id": "hpack/6.2.3/1",
+      "description": "Dynamic table update",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:48438"
+    },
+    {
+      "test_id": "hpack/6.3/1",
+      "description": "Dynamic table eviction",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:57121"
+    },
+    {
+      "test_id": "hpack/misc/1",
+      "description": "Header block fragments",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:43498"
+    },
+    {
+      "test_id": "generic/1/1",
+      "description": "Basic connectivity",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:41185"
+    },
+    {
+      "test_id": "generic/2/1",
+      "description": "Multiple streams",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:42998"
+    },
+    {
+      "test_id": "generic/3.1/1",
+      "description": "DATA frame",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:47558"
+    },
+    {
+      "test_id": "generic/3.1/2",
+      "description": "DATA with padding",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:45641"
+    },
+    {
+      "test_id": "generic/3.1/3",
+      "description": "DATA fragmented",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:53622"
+    },
+    {
+      "test_id": "generic/3.2/1",
+      "description": "HEADERS frame",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:43033"
+    },
+    {
+      "test_id": "generic/3.2/2",
+      "description": "HEADERS with priority",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:50190"
+    },
+    {
+      "test_id": "generic/3.2/3",
+      "description": "HEADERS with padding",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:51157"
+    },
+    {
+      "test_id": "generic/3.3/1",
+      "description": "PRIORITY frame",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:45846"
+    },
+    {
+      "test_id": "generic/3.3/2",
+      "description": "PRIORITY exclusive",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:51443"
+    },
+    {
+      "test_id": "generic/3.3/3",
+      "description": "PRIORITY chain",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:48567"
+    },
+    {
+      "test_id": "generic/3.3/4",
+      "description": "PRIORITY update",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:51794"
+    },
+    {
+      "test_id": "generic/3.3/5",
+      "description": "PRIORITY tree",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:51952"
+    },
+    {
+      "test_id": "generic/3.4/1",
+      "description": "RST_STREAM frame",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:55620"
+    },
+    {
+      "test_id": "generic/3.5/1",
+      "description": "SETTINGS frame",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:56831"
+    },
+    {
+      "test_id": "generic/3.7/1",
+      "description": "PING frame",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:50658"
+    },
+    {
+      "test_id": "generic/3.8/1",
+      "description": "GOAWAY frame",
+      "expected": "GoAway",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:44782"
+    },
+    {
+      "test_id": "generic/3.9/1",
+      "description": "WINDOW_UPDATE frame",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:57609"
+    },
+    {
+      "test_id": "generic/3.10/1",
+      "description": "CONTINUATION frame",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:40091"
+    },
+    {
+      "test_id": "generic/4/1",
+      "description": "Unknown frame type",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:57470"
+    },
+    {
+      "test_id": "generic/4/2",
+      "description": "Unknown frame flags",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:58615"
+    },
+    {
+      "test_id": "generic/5/1",
+      "description": "Extension frames",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:40810"
+    },
+    {
+      "test_id": "generic/misc/1",
+      "description": "Flow control",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:44724"
+    },
+    {
+      "test_id": "http2/4.3/1",
+      "description": "Malformed frame",
+      "expected": "ProtocolError",
+      "actual": "ConnectionClosed",
+      "passed": true,
+      "error": "Failed to connect to localhost:45793"
+    },
+    {
+      "test_id": "http2/5.5/1",
+      "description": "Closed connection",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:40300"
+    },
+    {
+      "test_id": "http2/7/1",
+      "description": "Error codes",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:57495"
+    },
+    {
+      "test_id": "http2/8.1.2.4/1",
+      "description": "Response headers",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:57023"
+    },
+    {
+      "test_id": "http2/8.1.2.5/1",
+      "description": "Cookie header",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:50042"
+    },
+    {
+      "test_id": "extra/1",
+      "description": "Edge case 1",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:55991"
+    },
+    {
+      "test_id": "extra/2",
+      "description": "Edge case 2",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:45591"
+    },
+    {
+      "test_id": "extra/3",
+      "description": "Edge case 3",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:41033"
+    },
+    {
+      "test_id": "extra/4",
+      "description": "Edge case 4",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:49052"
+    },
+    {
+      "test_id": "extra/5",
+      "description": "Edge case 5",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:42072"
+    },
+    {
+      "test_id": "final/1",
+      "description": "Final test 1",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:43730"
+    },
+    {
+      "test_id": "final/2",
+      "description": "Final test 2",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:55414"
+    },
+    {
+      "test_id": "complete/1",
+      "description": "Complete test 1",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:50194"
+    },
+    {
+      "test_id": "complete/2",
+      "description": "Complete test 2",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:44463"
+    },
+    {
+      "test_id": "complete/3",
+      "description": "Complete test 3",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:54338"
+    },
+    {
+      "test_id": "complete/4",
+      "description": "Complete test 4",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:42508"
+    },
+    {
+      "test_id": "complete/5",
+      "description": "Complete test 5",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:46206"
+    },
+    {
+      "test_id": "complete/6",
+      "description": "Complete test 6",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:51252"
+    },
+    {
+      "test_id": "complete/7",
+      "description": "Complete test 7",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:53308"
+    },
+    {
+      "test_id": "complete/8",
+      "description": "Complete test 8",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:50436"
+    },
+    {
+      "test_id": "complete/9",
+      "description": "Complete test 9",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:51805"
+    },
+    {
+      "test_id": "complete/10",
+      "description": "Complete test 10",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:51729"
+    },
+    {
+      "test_id": "complete/11",
+      "description": "Complete test 11",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:59801"
+    },
+    {
+      "test_id": "complete/12",
+      "description": "Complete test 12",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:48192"
+    },
+    {
+      "test_id": "complete/13",
+      "description": "Complete test 13",
+      "expected": "Success",
+      "actual": "ConnectionClosed",
+      "passed": false,
+      "error": "Failed to connect to localhost:41556"
+    }
+  ]
+}

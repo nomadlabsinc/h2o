@@ -4,6 +4,7 @@ require "./tls_cache"
 module H2O
   class TlsSocket
     @socket : OpenSSL::SSL::Socket::Client?
+    @tcp_socket : TCPSocket?
     @closed : Bool
     @hostname : String
     @port : Int32
@@ -15,43 +16,63 @@ module H2O
       @port = port
       @cache_key = "#{hostname}:#{port}"
       @mutex = Mutex.new
+      @closed = false
+      @tcp_socket = nil
+
       # Use timeout for initial TCP connection
       tcp_socket = begin
         channel = Channel(TCPSocket?).new(1)
-        spawn do
+        fiber = spawn do
           begin
             socket = TCPSocket.new(hostname, port)
             channel.send(socket)
-          rescue
+          rescue ex
             channel.send(nil)
           end
         end
 
-        select
-        when socket = channel.receive
-          raise IO::Error.new("Failed to connect to #{hostname}:#{port}") unless socket
-          socket
-        when timeout(connect_timeout)
-          raise IO::TimeoutError.new("Connection timeout to #{hostname}:#{port}")
+        begin
+          select
+          when socket = channel.receive
+            raise IO::Error.new("Failed to connect to #{hostname}:#{port}") unless socket
+            socket
+          when timeout(connect_timeout)
+            # Close the channel to prevent fiber leak
+            channel.close
+            raise IO::TimeoutError.new("Connection timeout to #{hostname}:#{port}")
+          end
+        ensure
+          # Ensure channel is closed and fiber terminates
+          channel.close rescue nil
         end
       end
 
+      # Store TCP socket reference for proper cleanup
+      @tcp_socket = tcp_socket
+
+      # Create SSL context with proper error handling
       context = OpenSSL::SSL::Context::Client.new
-      context.verify_mode = verify_mode
-      context.alpn_protocol = "h2"
+      begin
+        context.verify_mode = verify_mode
+        context.alpn_protocol = "h2"
 
-      # Check for cached SNI
-      sni_name = H2O.tls_cache.get_sni(hostname) || hostname
+        # Direct SNI assignment - no global cache to avoid malloc corruption
+        sni_name = hostname
 
-      # Enable session caching if supported
-      # Note: Crystal's OpenSSL bindings may have limited session support
-      # This is a placeholder for future enhancement
+        # Enable session caching if supported
+        # Note: Crystal's OpenSSL bindings may have limited session support
+        # This is a placeholder for future enhancement
 
-      @socket = OpenSSL::SSL::Socket::Client.new(tcp_socket, context, hostname: sni_name)
-      @closed = false
+        @socket = OpenSSL::SSL::Socket::Client.new(tcp_socket, context, hostname: sni_name)
 
-      # Cache the SNI resolution
-      H2O.tls_cache.set_sni(hostname, sni_name) if sni_name == hostname
+        # SNI caching disabled to avoid malloc corruption
+        # H2O.tls_cache.set_sni(hostname, sni_name) if sni_name == hostname
+      rescue ex
+        # Ensure TCP socket is closed on SSL failure
+        tcp_socket.close rescue nil
+        @tcp_socket = nil
+        raise ex
+      end
     end
 
     def alpn_protocol : String?
@@ -98,23 +119,30 @@ module H2O
     def close : Nil
       @mutex.synchronize do
         return if @closed
+        @closed = true
 
+        # Close SSL socket first
         if socket = @socket
+          @socket = nil
           begin
-            # Ensure we only close once by setting closed immediately
-            @closed = true
-            @socket = nil
-
-            # Use a more defensive approach to closing
-            if !socket.closed?
-              socket.close
-            end
+            socket.close unless socket.closed?
           rescue ex : Exception
             Log.debug { "Error closing SSL socket: #{ex.message}" }
           end
-        else
-          @closed = true
         end
+
+        # Then close TCP socket
+        if tcp_socket = @tcp_socket
+          @tcp_socket = nil
+          begin
+            tcp_socket.close unless tcp_socket.closed?
+          rescue ex : Exception
+            Log.debug { "Error closing TCP socket: #{ex.message}" }
+          end
+        end
+
+        # Small delay to allow OpenSSL cleanup
+        sleep 1.millisecond
       end
     end
 
@@ -130,6 +158,11 @@ module H2O
         raise IO::Error.new("Socket is closed") if @closed || !socket
         socket
       end
+    end
+
+    # Ensure cleanup on GC
+    def finalize
+      close rescue nil
     end
   end
 end

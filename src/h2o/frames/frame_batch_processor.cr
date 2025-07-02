@@ -32,18 +32,17 @@ module H2O
     }
 
     property batch_buffer : Bytes
-    property frames : Array(Frame)
     property read_buffer : IO::Memory
 
     def initialize
       @batch_buffer = Bytes.new(Frame::FRAME_HEADER_SIZE * BATCH_SIZE)
-      @frames = Array(Frame).new(BATCH_SIZE)
       @read_buffer = IO::Memory.new(65536) # 64KB read buffer
     end
 
     # Read and process frames in batches
     def read_batch(io : IO, max_frame_size : UInt32 = Frame::MAX_FRAME_SIZE) : Array(Frame)
-      @frames.clear
+      # Create a new array for each batch to avoid reuse
+      frames = Array(Frame).new(BATCH_SIZE)
 
       # Read up to BATCH_SIZE frames
       BATCH_SIZE.times do
@@ -72,7 +71,8 @@ module H2O
 
           # Read payload if needed
           payload = if length > 0
-                      payload_buf = BufferPool.get_frame_buffer(length.to_i32)[0, length]
+                      # Directly allocate a buffer of the exact size needed
+                      payload_buf = Bytes.new(length)
                       io.read_fully(payload_buf)
                       payload_buf
                     else
@@ -81,14 +81,14 @@ module H2O
 
           # Create and add frame
           frame = create_frame_optimized(frame_type, length, flags, stream_id, payload)
-          @frames << frame
+          frames << frame
         rescue IO::EOFError
           # End of stream, return what we have
           break
         end
       end
 
-      @frames
+      frames
     end
 
     # Get optimal buffer size for frame type

@@ -3,6 +3,7 @@ require "../src/h2o"
 require "./support/http11_server"
 require "./support/test_urls"
 require "./support/test_config"
+require "./support/nghttpd_helper"
 
 {% if env("CI") %}
   require "./support/ci_test_helper"
@@ -74,8 +75,8 @@ end
 # Helper for clearing global state between tests to prevent interference
 module GlobalStateHelper
   def self.clear_all_caches
-    # Clear the global TLS cache
-    H2O.tls_cache.clear
+    # Clear the global TLS cache (removed - no longer using global cache)
+    # H2O.tls_cache.clear
     # Clear buffer pool stats to prevent interference between tests
     H2O::BufferPool.reset_stats
   end

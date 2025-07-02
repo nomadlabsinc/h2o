@@ -31,8 +31,11 @@ module H2O
       property batch_processor : FrameBatchProcessor
       property enable_batch_processing : Bool
       property request_timeout : Time::Span
+      property connect_timeout : Time::Span
 
       property writer_mutex : Mutex
+
+      property reader_mutex : Mutex
 
       def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true, use_tls : Bool = true)
         if use_tls
@@ -43,7 +46,7 @@ module H2O
           validate_http2_negotiation
         else
           Log.debug { "Creating H2::Client for #{hostname}:#{port} with prior knowledge (no TLS)" }
-          @socket = TcpSocket.new(hostname, port)
+          @socket = TcpSocket.new(hostname, port, connect_timeout: connect_timeout)
           Log.debug { "TCP connection established for #{hostname}:#{port}" }
         end
 
@@ -66,6 +69,7 @@ module H2O
         @batch_processor = FrameBatchProcessor.new
         @enable_batch_processing = false # Disable batch processing for debugging
         @request_timeout = request_timeout
+        @connect_timeout = connect_timeout
 
         @reader_fiber = nil
         @writer_fiber = nil
@@ -73,8 +77,68 @@ module H2O
         @fibers_started = false
         @connection_setup = false
         @writer_mutex = Mutex.new
+        @reader_mutex = Mutex.new
 
-        # Defer connection setup until first request for performance
+        # Set socket timeouts to prevent hanging
+        socket = @socket
+        if socket.is_a?(TcpSocket)
+          socket.read_timeout = connect_timeout
+          socket.write_timeout = connect_timeout
+        end
+        # TlsSocket doesn't expose timeout methods directly
+        # Timeouts are handled at the IO operation level
+
+        # For HTTP/2 servers like nghttpd, we need to send the connection preface immediately
+        # after the TLS handshake, not deferred until the first request
+        send_initial_preface
+      end
+
+      # Test-only initializer for injecting a mock IO
+      {% if flag?(:test) %}
+        def initialize(@socket : IO, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds)
+          @stream_pool = StreamPool.new
+          @local_settings = Settings.new
+          @remote_settings = Settings.new
+          @hpack_encoder = HPACK::Encoder.new
+          @hpack_decoder = HPACK::Decoder.new(4096, HpackSecurityLimits.new)
+          @connection_window_size = 65535
+          @last_stream_id = 0_u32
+          @closed = false
+          @closing = false
+          @outgoing_frames = OutgoingFrameChannel.new(1000)
+          @incoming_frames = IncomingFrameChannel.new(1000)
+          @continuation_limits = ContinuationLimits.new
+          @header_fragments = Hash(StreamId, HeaderFragmentState).new
+          @batch_processor = FrameBatchProcessor.new
+          @enable_batch_processing = false
+          @request_timeout = request_timeout
+          @connect_timeout = connect_timeout
+          @reader_fiber = nil
+          @writer_fiber = nil
+          @dispatcher_fiber = nil
+          @fibers_started = false
+          @connection_setup = false
+          @writer_mutex = Mutex.new
+          @reader_mutex = Mutex.new
+        end
+      {% end %}
+
+      private def send_initial_preface : Nil
+        # Send the HTTP/2 connection preface immediately to comply with strict servers
+        Preface.send_preface(@socket.to_io)
+
+        # Also send initial SETTINGS frame as part of the connection preface
+        initial_settings = Preface.create_initial_settings
+
+        # Write settings frame directly without going through channels
+        frame_bytes = initial_settings.to_bytes
+        @socket.to_io.write(frame_bytes)
+        @socket.to_io.flush
+
+        Log.debug { "Sent HTTP/2 connection preface and initial SETTINGS" }
+      rescue ex : IO::Error
+        # Socket might be closed already - this is OK for tests
+        Log.debug { "Failed to send initial preface: #{ex.message}" }
       end
 
       def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response
@@ -143,22 +207,24 @@ module H2O
       end
 
       def close : Nil
-        return if @closed || @closing
+        @writer_mutex.synchronize do
+          return if @closed || @closing
 
-        # Mark as closing to prevent concurrent close attempts
-        @closing = true
+          # Mark as closing to prevent concurrent close attempts
+          @closing = true
 
-        # Set closed flag to stop new operations
-        @closed = true
+          # Set closed flag to stop new operations
+          @closed = true
 
-        # Close channels immediately to force fibers to exit
-        close_channels_immediately
+          # Close channels immediately to force fibers to exit
+          close_channels_immediately
 
-        # Wait for fibers to actually terminate
-        wait_for_fiber_termination
+          # Wait for fibers to actually terminate
+          wait_for_fiber_termination
 
-        # Finally close the socket
-        close_socket_safely
+          # Finally close the socket
+          close_socket_safely
+        end
       end
 
       private def close_channels_immediately : Nil
@@ -189,16 +255,18 @@ module H2O
       end
 
       private def close_socket_safely : Nil
-        return if @socket.closed?
+        @reader_mutex.synchronize do
+          return if @socket.closed?
 
-        begin
-          @socket.close
-        rescue ex : Exception
-          Log.debug { "Error during socket close: #{ex.message}" }
+          begin
+            @socket.close
+          rescue ex : Exception
+            Log.debug { "Error during socket close: #{ex.message}" }
+          end
+
+          # Additional safety delay to allow OpenSSL cleanup
+          sleep 10.milliseconds
         end
-
-        # Additional safety delay to allow OpenSSL cleanup
-        sleep 10.milliseconds
       rescue ex : Exception
         Log.debug { "Unexpected error in close_socket_safely: #{ex.message}" }
       end
@@ -316,9 +384,13 @@ module H2O
 
         # Also perform connection setup if not done yet
         unless @connection_setup
-          setup_connection_internal
+          Timeout.execute(@connect_timeout) do
+            setup_connection_internal
+          end
           @connection_setup = true
         end
+      rescue ex : TimeoutError
+        raise ConnectionError.new("Connection setup timed out")
       end
 
       private def fiber_still_running? : Bool
@@ -333,16 +405,10 @@ module H2O
       end
 
       private def setup_connection_internal : Nil
-        # RFC 7540 Section 3.5: Client connection preface
-        # The client connection preface starts with the string PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n
-        # followed by a SETTINGS frame
-        Preface.send_preface(@socket.to_io)
+        # The connection preface has already been sent in send_initial_preface
+        # Now we just need to validate the server's response
 
-        # Send initial SETTINGS frame as part of the connection preface
-        initial_settings = Preface.create_initial_settings
-        send_frame(initial_settings)
-
-        # Now validate server's connection preface (SETTINGS frame)
+        # Wait for and validate server's connection preface (SETTINGS frame)
         unless validate_server_preface
           raise ConnectionError.new("Invalid server connection preface")
         end
@@ -353,17 +419,21 @@ module H2O
         # We need to check if the first frame we receive is a valid SETTINGS frame
         # Note: The server doesn't send the "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" string
 
-        # Read the first frame from the server
+        # Read the first frame from the server with timeout
         # Use default max frame size for initial SETTINGS frame
-        frame = Frame.from_io(@socket.to_io, Frame::MAX_FRAME_SIZE)
+        frame_result = Timeout(Frame?).execute(@connect_timeout) do
+          Frame.from_io(@socket.to_io, Frame::MAX_FRAME_SIZE)
+        end
+
+        return false unless frame_result
 
         # It must be a SETTINGS frame
-        if frame.is_a?(SettingsFrame) && frame.stream_id == 0
+        if frame_result.is_a?(SettingsFrame) && frame_result.stream_id == 0
           # Process the settings frame
-          handle_settings_frame(frame)
+          handle_settings_frame(frame_result)
           true
         else
-          Log.error { "Expected SETTINGS frame as server preface, got #{frame.class}" }
+          Log.error { "Expected SETTINGS frame as server preface, got #{frame_result.class}" }
           false
         end
       rescue ex
@@ -381,67 +451,70 @@ module H2O
         loop do
           break if @closed
 
-          begin
-            # Use non-blocking approach with timeout
-            io = @socket.to_io
-            if io.responds_to?(:read_timeout=)
-              io.read_timeout = 100.milliseconds
-            end
+          @reader_mutex.synchronize do
+            begin
+              # Use non-blocking approach with timeout
+              io = @socket.to_io
+              if io.responds_to?(:read_timeout=)
+                io.read_timeout = 100.milliseconds
+              end
 
-            if @enable_batch_processing
-              # Batch processing mode
-              frames = @batch_processor.read_batch(io, @remote_settings.max_frame_size)
+              if @enable_batch_processing
+                # Batch processing mode
+                frames = @batch_processor.read_batch(io, @remote_settings.max_frame_size)
 
-              # Send all frames unless closed
-              unless @closed
-                frames.each do |frame|
-                  @incoming_frames.send(frame) unless @closed
+                # Send all frames unless closed
+                unless @closed
+                  frames.each do |frame|
+                    @incoming_frames.send(frame) unless @closed
+                  end
+                end
+              else
+                # Single frame processing mode (fallback)
+                frame = Frame.from_io(io, @remote_settings.max_frame_size)
+
+                # Check if we should still send the frame
+                unless @closed
+                  @incoming_frames.send(frame)
                 end
               end
-            else
-              # Single frame processing mode (fallback)
-              frame = Frame.from_io(io, @remote_settings.max_frame_size)
-
-              # Check if we should still send the frame
-              unless @closed
-                @incoming_frames.send(frame)
-              end
+            rescue IO::TimeoutError
+              # Timeout is expected, just continue loop to check @closed
+              next
+            rescue ex : IO::Error | OpenSSL::SSL::Error
+              Log.error { "Reader error: #{ex.message}" }
+              @closed = true
+              break
+            rescue ex : FrameError
+              Log.error { "Frame error: #{ex.message}" }
+              send_goaway(ErrorCode::ProtocolError)
+              @closed = true
+              break
+            rescue ex : FrameSizeError
+              Log.error { "Frame size error: #{ex.message}" }
+              send_goaway(ex.error_code)
+              @closed = true
+              break
+            rescue ex : ConnectionError
+              Log.error { "Connection error in reader: #{ex.message}" }
+              send_goaway(ex.error_code)
+              @closed = true
+              break
+            rescue ex : CompressionError
+              Log.error { "Compression error in reader: #{ex.message}" }
+              send_goaway(ErrorCode::CompressionError)
+              @closed = true
+              break
+            rescue Channel::ClosedError
+              Log.debug { "Reader channel closed, exiting loop" }
+              break
+            rescue ex : Exception
+              Log.error { "Unexpected error in reader loop: #{ex.class} - #{ex.message}" }
+              Log.debug { "Reader exception backtrace: #{ex.inspect_with_backtrace}" }
+              send_goaway(ErrorCode::InternalError)
+              @closed = true
+              break
             end
-          rescue IO::TimeoutError
-            # Timeout is expected, just continue loop to check @closed
-            next
-          rescue ex : IO::Error
-            Log.error { "Reader error: #{ex.message}" }
-            break
-          rescue ex : FrameError
-            Log.error { "Frame error: #{ex.message}" }
-            send_goaway(ErrorCode::ProtocolError)
-            @closed = true
-            break
-          rescue ex : FrameSizeError
-            Log.error { "Frame size error: #{ex.message}" }
-            send_goaway(ex.error_code)
-            @closed = true
-            break
-          rescue ex : ConnectionError
-            Log.error { "Connection error in reader: #{ex.message}" }
-            send_goaway(ex.error_code)
-            @closed = true
-            break
-          rescue ex : CompressionError
-            Log.error { "Compression error in reader: #{ex.message}" }
-            send_goaway(ErrorCode::CompressionError)
-            @closed = true
-            break
-          rescue Channel::ClosedError
-            Log.debug { "Reader channel closed, exiting loop" }
-            break
-          rescue ex : Exception
-            Log.error { "Unexpected error in reader loop: #{ex.class} - #{ex.message}" }
-            Log.debug { "Reader exception backtrace: #{ex.inspect_with_backtrace}" }
-            send_goaway(ErrorCode::InternalError)
-            @closed = true
-            break
           end
         end
       end
@@ -485,8 +558,9 @@ module H2O
                     @socket.to_io.write(write_buffer.to_slice)
                   end
                   @socket.to_io.flush
-                rescue ex : IO::Error
+                rescue ex : IO::Error | OpenSSL::SSL::Error
                   Log.error { "Writer error: #{ex.message}" }
+                  @closed = true
                   break
                 end
               end

@@ -33,15 +33,30 @@ module H2O
         # 2. Validate stream ID constraints per frame type
         FrameValidation.validate_stream_id_for_frame_type(frame_type, stream_id)
 
-        payload = BufferPool.get_frame_buffer(length.to_i32)[0, length]
-        io.read_fully(payload) if length > 0
+        # Read payload with proper buffer management
+        payload = if length > 0
+                    # Get buffer from pool
+                    pooled_buffer = BufferPool.get_frame_buffer(length.to_i32)
+                    payload_slice = pooled_buffer[0, length]
+                    io.read_fully(payload_slice)
+
+                    # Copy data to a right-sized buffer
+                    actual_payload = Bytes.new(length)
+                    actual_payload.copy_from(payload_slice)
+
+                    # Return the pooled buffer immediately
+                    BufferPool.return_frame_buffer(pooled_buffer)
+
+                    actual_payload
+                  else
+                    Bytes.empty
+                  end
 
         frame = create_frame(frame_type, length, flags, stream_id, payload)
 
         # 3. Apply comprehensive frame validation
         FrameValidation.validate_frame_comprehensive(frame)
 
-        # Note: payload buffer will be returned by frame when it's finalized
         frame
       end
     end

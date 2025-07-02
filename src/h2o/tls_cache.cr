@@ -308,14 +308,15 @@ module H2O
     end
   end
 
-  # Global TLS cache instance
-  @@tls_cache : TLSCache? = nil
-
-  def self.tls_cache : TLSCache
-    @@tls_cache ||= TLSCache.new
-  end
-
-  def self.tls_cache=(cache : TLSCache) : TLSCache
-    @@tls_cache = cache
-  end
+  # REMOVED: Global TLS cache to prevent malloc corruption
+  # Each client should have its own TLS cache instance
+  # @@tls_cache : TLSCache? = nil
+  #
+  # def self.tls_cache : TLSCache
+  #   @@tls_cache ||= TLSCache.new
+  # end
+  #
+  # def self.tls_cache=(cache : TLSCache) : TLSCache
+  #   @@tls_cache = cache
+  # end
 end

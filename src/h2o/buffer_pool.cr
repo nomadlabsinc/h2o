@@ -12,11 +12,8 @@ module H2O
     LARGE_BUFFER_SIZE  = 64 * 1024
     FRAME_BUFFER_SIZE  = 16 * 1024 * 1024
 
-    # Enhanced pools with multiple size categories
-    @@header_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
-    @@frame_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
-    @@small_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
-    @@medium_buffers = Channel(Bytes).new(DEFAULT_POOL_SIZE)
+    # Pooling is disabled - these channels are no longer used
+    # Keeping the structure for API compatibility only
 
     # Enhanced buffer allocation with size optimization
     def self.get_buffer(requested_size : Int32) : Bytes
@@ -37,97 +34,57 @@ module H2O
     end
 
     def self.get_header_buffer : Bytes
-      select
-      when buffer = @@header_buffers.receive?
-        buffer || Bytes.new(MAX_HEADER_BUFFER_SIZE)
-      else
-        Bytes.new(MAX_HEADER_BUFFER_SIZE)
-      end
+      # Disabled pooling to avoid memory issues
+      Bytes.new(MAX_HEADER_BUFFER_SIZE)
     end
 
     def self.return_header_buffer(buffer : Bytes) : Nil
-      return unless buffer.size == MAX_HEADER_BUFFER_SIZE
+      # Pooling is disabled - just track stats if enabled
       stats = H2O.buffer_pool_stats?
       stats.track_return if stats
 
-      select
-      when @@header_buffers.send(buffer)
-      else
-        # Pool is full, let buffer be garbage collected
-      end
+      # Let buffer be garbage collected
     end
 
     def self.get_frame_buffer(size : Int32 = MAX_FRAME_BUFFER_SIZE) : Bytes
-      if size <= MAX_FRAME_BUFFER_SIZE
-        select
-        when buffer = @@frame_buffers.receive?
-          if buffer && buffer.size >= size
-            return buffer[0, size]
-          else
-            Bytes.new(size)
-          end
-        else
-          Bytes.new(size)
-        end
-      else
-        Bytes.new(size)
-      end
+      # Disabled pooling to avoid memory issues
+      Bytes.new(size)
     end
 
     def self.return_frame_buffer(buffer : Bytes) : Nil
-      return unless buffer.size == MAX_FRAME_BUFFER_SIZE
+      # Pooling is disabled - just track stats if enabled
       stats = H2O.buffer_pool_stats?
       stats.track_return if stats
 
-      select
-      when @@frame_buffers.send(buffer)
-      else
-        # Pool is full, let buffer be garbage collected
-      end
+      # Let buffer be garbage collected
     end
 
     # New optimized small buffer pool
     def self.get_small_buffer : Bytes
-      select
-      when buffer = @@small_buffers.receive?
-        buffer || Bytes.new(SMALL_BUFFER_SIZE)
-      else
-        Bytes.new(SMALL_BUFFER_SIZE)
-      end
+      # Disabled pooling to avoid memory issues
+      Bytes.new(SMALL_BUFFER_SIZE)
     end
 
     def self.return_small_buffer(buffer : Bytes) : Nil
-      return unless buffer.size == SMALL_BUFFER_SIZE
+      # Pooling is disabled - just track stats if enabled
       stats = H2O.buffer_pool_stats?
       stats.track_return if stats
 
-      select
-      when @@small_buffers.send(buffer)
-      else
-        # Pool is full, let buffer be garbage collected
-      end
+      # Let buffer be garbage collected
     end
 
     # New optimized medium buffer pool
     def self.get_medium_buffer : Bytes
-      select
-      when buffer = @@medium_buffers.receive?
-        buffer || Bytes.new(MEDIUM_BUFFER_SIZE)
-      else
-        Bytes.new(MEDIUM_BUFFER_SIZE)
-      end
+      # Disabled pooling to avoid memory issues
+      Bytes.new(MEDIUM_BUFFER_SIZE)
     end
 
     def self.return_medium_buffer(buffer : Bytes) : Nil
-      return unless buffer.size == MEDIUM_BUFFER_SIZE
+      # Pooling is disabled - just track stats if enabled
       stats = H2O.buffer_pool_stats?
       stats.track_return if stats
 
-      select
-      when @@medium_buffers.send(buffer)
-      else
-        # Pool is full, let buffer be garbage collected
-      end
+      # Let buffer be garbage collected
     end
 
     # Generic return method for enhanced API
@@ -146,69 +103,19 @@ module H2O
 
     def self.with_header_buffer(& : Bytes -> T) : T forall T
       buffer = get_header_buffer
-      begin
-        yield buffer
-      ensure
-        return_header_buffer(buffer)
-      end
+      yield buffer
     end
 
     def self.with_frame_buffer(size : Int32 = MAX_FRAME_BUFFER_SIZE, & : Bytes -> T) : T forall T
-      if size <= MAX_FRAME_BUFFER_SIZE
-        use_pooled_frame_buffer(size) { |buffer| yield buffer }
-      else
-        use_large_frame_buffer(size) { |buffer| yield buffer }
-      end
-    end
-
-    private def self.use_pooled_frame_buffer(size : Int32, & : Bytes -> T) : T forall T
-      pooled_buffer = try_get_pooled_frame_buffer
-      if pooled_buffer
-        use_existing_frame_buffer(pooled_buffer, size) { |buffer| yield buffer }
-      else
-        use_new_frame_buffer(size) { |buffer| yield buffer }
-      end
-    end
-
-    private def self.try_get_pooled_frame_buffer : Bytes?
-      select
-      when pooled_buffer = @@frame_buffers.receive?
-        pooled_buffer
-      else
-        nil
-      end
-    end
-
-    private def self.use_existing_frame_buffer(pooled_buffer : Bytes, size : Int32, & : Bytes -> T) : T forall T
-      begin
-        yield pooled_buffer[0, size]
-      ensure
-        return_frame_buffer(pooled_buffer)
-      end
-    end
-
-    private def self.use_new_frame_buffer(size : Int32, & : Bytes -> T) : T forall T
-      buffer = Bytes.new(MAX_FRAME_BUFFER_SIZE)
-      begin
-        yield buffer[0, size]
-      ensure
-        return_frame_buffer(buffer)
-      end
-    end
-
-    private def self.use_large_frame_buffer(size : Int32, & : Bytes -> T) : T forall T
       buffer = Bytes.new(size)
       yield buffer
     end
 
+
     # Enhanced with_buffer for optimized sizes
     def self.with_buffer(size : Int32, & : Bytes -> T) : T forall T
       buffer = get_buffer(size)
-      begin
-        yield buffer
-      ensure
-        return_buffer(buffer)
-      end
+      yield buffer
     end
 
     # Performance statistics (only available when stats tracking is enabled)

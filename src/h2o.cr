@@ -9,13 +9,12 @@ require "./h2o/timeout"
 require "./h2o/types"
 require "./h2o/buffer_pool_stats"
 require "./h2o/buffer_pool"
-require "./h2o/object_pool"
+# require "./h2o/object_pool"  # DISABLED: Object pooling causes memory corruption
 require "./h2o/string_pool"
 require "./h2o/circuit_breaker"
 require "./h2o/tls_cache"
 require "./h2o/cert_validator"
 require "./h2o/io_optimizer"
-require "./h2o/simd_optimizer"
 require "./h2o/protocol_optimizer"
 require "./h2o/tls"
 require "./h2o/preface"
@@ -86,12 +85,17 @@ module H2O
   end
 
   @@config = Configuration.new
+  @@config_mutex = Mutex.new
 
   def self.configure(&block : Configuration -> Nil) : Nil
-    block.call(@@config)
+    @@config_mutex.synchronize do
+      block.call(@@config)
+    end
   end
 
   def self.config : Configuration
+    # Config reads don't need mutex since Configuration properties are simple values
+    # and Crystal ensures memory visibility across fibers
     @@config
   end
 end
