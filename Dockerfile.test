@@ -1,4 +1,4 @@
-FROM robnomad/crystal:dev-ubuntu-hoard
+FROM robnomad/crystal:ubuntu-hoard
 
 # Install additional dependencies for testing including Docker, Go, and nghttpd
 RUN apt-get update && \

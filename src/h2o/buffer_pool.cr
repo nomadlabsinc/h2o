@@ -106,48 +106,19 @@ module H2O
 
     def self.with_header_buffer(& : Bytes -> T) : T forall T
       buffer = get_header_buffer
-      begin
-        yield buffer
-      ensure
-        return_header_buffer(buffer)
-      end
+      yield buffer
     end
 
     def self.with_frame_buffer(size : Int32 = MAX_FRAME_BUFFER_SIZE, & : Bytes -> T) : T forall T
-      if size <= MAX_FRAME_BUFFER_SIZE
-        use_pooled_frame_buffer(size) { |buffer| yield buffer }
-      else
-        use_large_frame_buffer(size) { |buffer| yield buffer }
-      end
-    end
-
-    private def self.use_pooled_frame_buffer(size : Int32, & : Bytes -> T) : T forall T
-      # Pooling is disabled - always create new buffer
-      use_new_frame_buffer(size) { |buffer| yield buffer }
-    end
-
-    # These methods are no longer used since pooling is disabled
-    # Kept for potential future re-enablement
-
-    private def self.use_new_frame_buffer(size : Int32, & : Bytes -> T) : T forall T
-      buffer = Bytes.new(MAX_FRAME_BUFFER_SIZE)
-      yield buffer[0, size]
-      # No need to return buffer since pooling is disabled
-    end
-
-    private def self.use_large_frame_buffer(size : Int32, & : Bytes -> T) : T forall T
       buffer = Bytes.new(size)
       yield buffer
     end
 
+
     # Enhanced with_buffer for optimized sizes
     def self.with_buffer(size : Int32, & : Bytes -> T) : T forall T
       buffer = get_buffer(size)
-      begin
-        yield buffer
-      ensure
-        return_buffer(buffer)
-      end
+      yield buffer
     end
 
     # Performance statistics (only available when stats tracking is enabled)

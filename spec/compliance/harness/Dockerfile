@@ -1,9 +1,9 @@
-FROM golang:1.21-alpine
+FROM golang:1.21-bookworm
 
 WORKDIR /app
 
 # Install openssl for certificate generation
-RUN apk add --no-cache openssl
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Generate SSL certificates
 RUN openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
@@ -15,8 +15,8 @@ COPY go.mod go.sum main.go ./
 # Download dependencies
 RUN go mod download
 
-# Build the harness
-RUN go build -o harness main.go
+# Build the harness with static linking
+RUN CGO_ENABLED=0 go build -ldflags '-s -w' -o harness main.go
 
 EXPOSE 8080
 

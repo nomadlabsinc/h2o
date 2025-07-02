@@ -111,16 +111,17 @@ module H2O
       (@flags & FLAG_PRIORITY) != 0
     end
 
-    def reset_for_reuse : Nil
-      @flags = 0_u8
-      @header_block = Bytes.empty
-      @length = 0_u32
-      @padding_length = 0_u8
-      @priority_dependency = 0_u32
-      @priority_exclusive = false
-      @priority_weight = 0_u8
-      @stream_id = 0_u32
-    end
+    # DISABLED: reset_for_reuse causes memory corruption with object pooling
+    # def reset_for_reuse : Nil
+    #   @flags = 0_u8
+    #   @header_block = Bytes.empty
+    #   @length = 0_u32
+    #   @padding_length = 0_u8
+    #   @priority_dependency = 0_u32
+    #   @priority_exclusive = false
+    #   @priority_weight = 0_u8
+    #   @stream_id = 0_u32
+    # end
 
     def set_header_block(header_block : Bytes) : Nil
       @header_block = header_block

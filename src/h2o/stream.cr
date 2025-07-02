@@ -43,29 +43,29 @@ module H2O
       @dependency = nil
     end
 
-    # Reset stream for object pool reuse
-    def reset_for_reuse(new_id : StreamId) : Nil
-      @id = new_id
-      @state = StreamState::Idle
-      @request = nil
-      @response = nil
-      @headers_complete = false
-      @data_complete = false
-      @incoming_data = IO::Memory.new
-      @response_channel = ResponseChannel.new(0)
-      @created_at = Time.utc
-      @last_activity = Time.utc
-      @closed_at = nil
-      @local_window_size = 65535
-      @remote_window_size = 65535
-      @priority = 16_u8
-      @dependency = nil
-    end
+    # DISABLED: Reset stream for object pool reuse - causes memory corruption
+    # def reset_for_reuse(new_id : StreamId) : Nil
+    #   @id = new_id
+    #   @state = StreamState::Idle
+    #   @request = nil
+    #   @response = nil
+    #   @headers_complete = false
+    #   @data_complete = false
+    #   @incoming_data = IO::Memory.new
+    #   @response_channel = ResponseChannel.new(0)
+    #   @created_at = Time.utc
+    #   @last_activity = Time.utc
+    #   @closed_at = nil
+    #   @local_window_size = 65535
+    #   @remote_window_size = 65535
+    #   @priority = 16_u8
+    #   @dependency = nil
+    # end
 
-    # Check if stream can be returned to object pool
-    def can_be_pooled? : Bool
-      closed? && @incoming_data.size < 1024 # Only pool small streams
-    end
+    # DISABLED: Check if stream can be returned to object pool - causes memory corruption
+    # def can_be_pooled? : Bool
+    #   closed? && @incoming_data.size < 1024 # Only pool small streams
+    # end
 
     def send_headers(headers_frame : HeadersFrame) : Nil
       validate_can_send_headers
@@ -409,8 +409,8 @@ module H2O
       validate_stream_rate_limit
 
       stream_id = allocate_stream_id
-      # Use object pool for efficient stream creation
-      stream = StreamObjectPool.get_stream(stream_id)
+      # DISABLED: Object pool causes memory corruption - create new stream directly
+      stream = Stream.new(stream_id)
       @streams[stream_id] = stream
       invalidate_cache
 
@@ -437,8 +437,8 @@ module H2O
         # Update state metrics
         @stream_state_metrics[stream.state] = (@stream_state_metrics[stream.state]? || 1) - 1
 
-        # Return stream to object pool if possible
-        StreamObjectPool.return_stream(stream)
+        # DISABLED: Object pool causes memory corruption - let stream be garbage collected
+        # StreamObjectPool.return_stream(stream)
       end
       @streams.delete(id)
       invalidate_cache
