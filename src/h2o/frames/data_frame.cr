@@ -53,12 +53,11 @@ module H2O
           raise ArgumentError.new("Padded frame total size overflow: #{total_size}")
         end
 
-        BufferPool.with_frame_buffer(total_size) do |buffer|
-          result = buffer[0, total_size]
-          result[0] = @padding_length
-          result[1, @data.size].copy_from(@data)
-          result.dup
-        end
+        # Don't use BufferPool to avoid memory corruption
+        result = Bytes.new(total_size)
+        result[0] = @padding_length
+        result[1, @data.size].copy_from(@data)
+        result
       else
         @data
       end

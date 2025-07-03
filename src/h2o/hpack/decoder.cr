@@ -146,35 +146,18 @@ module H2O::HPACK
       # Strict validation of string length
       StrictValidation.validate_string_length(length_raw, @security_limits.max_string_length)
 
-      if length <= BufferPool::LARGE_BUFFER_SIZE
-        BufferPool.with_header_buffer do |buffer|
-          data = buffer[0, length]
-          bytes_read = io.read(data)
-          if bytes_read != length
-            Log.debug { "Unexpected end of data while reading string: expected #{length} bytes, got #{bytes_read}" }
-            raise CompressionError.new("Unexpected end of data")
-          end
+      # Don't use BufferPool to avoid memory corruption
+      data = Bytes.new(length)
+      bytes_read = io.read(data)
+      if bytes_read != length
+        Log.debug { "Unexpected end of data while reading string: expected #{length} bytes, got #{bytes_read}" }
+        raise CompressionError.new("Unexpected end of data")
+      end
 
-          if huffman_encoded
-            Huffman.decode(data, @security_limits.max_string_length)
-          else
-            String.new(data)
-          end
-        end
+      if huffman_encoded
+        Huffman.decode(data, @security_limits.max_string_length)
       else
-        # For very large strings, fallback to direct allocation
-        data = Bytes.new(length)
-        bytes_read = io.read(data)
-        if bytes_read != length
-          Log.debug { "Unexpected end of data while reading large string: expected #{length} bytes, got #{bytes_read}" }
-          raise CompressionError.new("Unexpected end of data")
-        end
-
-        if huffman_encoded
-          Huffman.decode(data, @security_limits.max_string_length)
-        else
-          String.new(data)
-        end
+        String.new(data)
       end
     end
 
