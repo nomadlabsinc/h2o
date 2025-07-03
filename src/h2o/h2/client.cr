@@ -90,10 +90,19 @@ module H2O
       {% end %}
 
       def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response
-        @mutex.synchronize do
-          return Response.error(0, "Connection is closed", "HTTP/2") if @closed
+        return Response.error(0, "Connection is closed", "HTTP/2") if @closed
 
-          begin
+        # Use a timeout for the entire request
+        start_time = Time.monotonic
+        
+        begin
+          # Synchronize the request sending and response reading
+          @mutex.synchronize do
+            # Check timeout before starting
+            if Time.monotonic - start_time > @request_timeout
+              return Response.error(0, "Request timeout", "HTTP/2")
+            end
+
             # Use the next odd stream ID
             stream_id = @current_stream_id
             @current_stream_id += 2
@@ -101,12 +110,12 @@ module H2O
             # Send request
             send_request(stream_id, method, path, headers, body)
 
-            # Read response
-            read_response(stream_id)
-          rescue ex : Exception
-            Log.error { "Request failed: #{ex.message}" }
-            Response.error(0, ex.message || "Unknown error", "HTTP/2")
+            # Read response with timeout checking
+            read_response_with_timeout(stream_id, start_time)
           end
+        rescue ex : Exception
+          Log.error { "Request failed: #{ex.message}" }
+          Response.error(0, ex.message || "Unknown error", "HTTP/2")
         end
       end
 
@@ -206,11 +215,31 @@ module H2O
       end
 
       private def read_response(stream_id : StreamId) : Response
+        read_response_with_timeout(stream_id, Time.monotonic)
+      end
+
+      private def read_response_with_timeout(stream_id : StreamId, start_time : Time::Span) : Response
         response_headers = Headers.new
         response_body = IO::Memory.new
         status_code = 0
 
         loop do
+          # Check timeout before each frame read
+          if Time.monotonic - start_time > @request_timeout
+            return Response.error(0, "Request timeout", "HTTP/2")
+          end
+
+          # Set socket timeout for the read operation
+          io = @socket.to_io
+          if io.responds_to?(:read_timeout=)
+            remaining_time = @request_timeout - (Time.monotonic - start_time)
+            if remaining_time > 0.seconds
+              io.read_timeout = remaining_time
+            else
+              return Response.error(0, "Request timeout", "HTTP/2")
+            end
+          end
+
           frame = read_frame
 
           case frame
@@ -265,6 +294,8 @@ module H2O
           body: response_body.to_s,
           protocol: "HTTP/2"
         )
+      rescue IO::TimeoutError
+        Response.error(0, "Request timeout", "HTTP/2")
       end
 
       private def handle_settings_frame(frame : SettingsFrame) : Nil
