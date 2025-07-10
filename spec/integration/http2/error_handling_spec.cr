@@ -15,16 +15,23 @@ describe "HTTP/2 Error Handling and Edge Cases" do
     end
 
     it "handles requests that exceed timeout appropriately" do
-      # Very short timeout to test timeout handling
-      short_timeout_client = H2O::Client.new(timeout: 1.milliseconds, verify_ssl: false)
-
-      # The client returns error responses instead of raising exceptions
-      response = short_timeout_client.get(HTTP2TestHelpers.http2_url("/"))
+      # Ensure clean state before test
+      sleep(5.milliseconds)
       
-      # Should get an error response with status 0
-      response.status.should eq(0)
-      # Client might return empty body for timeout errors
-      response.should_not be_nil
+      # Short timeout to test timeout handling - using slightly longer timeout for reliability
+      short_timeout_client = H2O::Client.new(timeout: 10.milliseconds, verify_ssl: false)
+
+      begin
+        # Use delay endpoint that takes longer than our timeout
+        response = short_timeout_client.get(HTTP2TestHelpers.http2_url("/delay/1"))
+        
+        # Should get an error response with status 0
+        response.status.should eq(0)
+        # Client might return empty body for timeout errors
+        response.should_not be_nil
+      ensure
+        short_timeout_client.close
+      end
     end
   end
 
