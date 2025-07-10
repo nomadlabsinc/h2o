@@ -53,35 +53,36 @@ module H2O::HPACK
     end
 
     def self.encode(data : String) : Bytes
-      BufferPool.with_frame_buffer(data.bytesize * 2) do |buffer|
-        bits = 0_u64
-        bit_count = 0
-        output_pos = 0
+      # Don't use BufferPool to avoid memory corruption
+      # Allocate worst case buffer size (2x input)
+      buffer = Bytes.new(data.bytesize * 2)
+      bits = 0_u64
+      bit_count = 0
+      output_pos = 0
 
-        data.each_byte do |byte|
-          code, length = HUFFMAN_CODES[byte]
-          bits = (bits << length) | code.to_u64
-          bit_count += length
+      data.each_byte do |byte|
+        code, length = HUFFMAN_CODES[byte]
+        bits = (bits << length) | code.to_u64
+        bit_count += length
 
-          while bit_count >= 8
-            bit_count -= 8
-            buffer[output_pos] = (bits >> bit_count).to_u8
-            output_pos += 1
-            bits &= (1_u64 << bit_count) - 1
-          end
-        end
-
-        if bit_count > 0
-          padding = 8 - bit_count
-          bits = (bits << padding) | ((1_u64 << padding) - 1)
-          buffer[output_pos] = bits.to_u8
+        while bit_count >= 8
+          bit_count -= 8
+          buffer[output_pos] = (bits >> bit_count).to_u8
           output_pos += 1
+          bits &= (1_u64 << bit_count) - 1
         end
-
-        result = Bytes.new(output_pos)
-        result.copy_from(buffer[0, output_pos])
-        result
       end
+
+      if bit_count > 0
+        padding = 8 - bit_count
+        bits = (bits << padding) | ((1_u64 << padding) - 1)
+        buffer[output_pos] = bits.to_u8
+        output_pos += 1
+      end
+
+      result = Bytes.new(output_pos)
+      result.copy_from(buffer[0, output_pos])
+      result
     end
 
     def self.decode(data : Bytes, max_decoded_length : Int32 = 8192) : String

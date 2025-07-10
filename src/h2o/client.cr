@@ -431,11 +431,9 @@ module H2O
     end
 
     private def connection_has_stream_capacity?(connection : H2::Client) : Bool
-      max_streams = connection.remote_settings.max_concurrent_streams
-      return true unless max_streams
-
-      active_stream_count = connection.stream_pool.stream_count
-      active_stream_count < max_streams
+      # Without multiplexing, always return true for simplicity
+      # Each connection handles one request at a time
+      true
     end
 
     private def create_new_connection(connection_key : String, host : String, port : Int32) : BaseConnection
