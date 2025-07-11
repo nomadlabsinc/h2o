@@ -19,31 +19,50 @@ module H2O
       @closed = false
       @tcp_socket = nil
 
-      # Use timeout for initial TCP connection
+      # Use timeout for initial TCP connection  
       tcp_socket = begin
         channel = Channel(TCPSocket?).new(1)
-        fiber = spawn do
-          begin
-            socket = TCPSocket.new(hostname, port)
-            channel.send(socket)
-          rescue ex
-            channel.send(nil)
-          end
-        end
-
+        connection_fiber : Fiber? = nil
+        
         begin
+          connection_fiber = spawn do
+            begin
+              socket = TCPSocket.new(hostname, port)
+              # Check if channel is still open before sending
+              select
+              when channel.send(socket)
+                # Successfully sent
+              else
+                # Channel closed, clean up socket
+                socket.close rescue nil
+              end
+            rescue ex
+              # Try to send nil to indicate failure, but don't block if channel is closed
+              select
+              when channel.send(nil)
+                # Successfully sent failure signal
+              else
+                # Channel closed, nothing to do
+              end
+            end
+          end
+
           select
           when socket = channel.receive
             raise IO::Error.new("Failed to connect to #{hostname}:#{port}") unless socket
             socket
           when timeout(connect_timeout)
-            # Close the channel to prevent fiber leak
-            channel.close
             raise IO::TimeoutError.new("Connection timeout to #{hostname}:#{port}")
           end
         ensure
-          # Ensure channel is closed and fiber terminates
-          channel.close rescue nil
+          # Clean up resources
+          begin
+            channel.close rescue nil
+            # Give the connection fiber a chance to clean up
+            Fiber.yield if connection_fiber
+          rescue
+            # Ignore cleanup errors
+          end
         end
       end
 
@@ -141,8 +160,7 @@ module H2O
           end
         end
 
-        # Small delay to allow OpenSSL cleanup
-        sleep 1.millisecond
+        # No delay needed - let GC handle cleanup timing
       end
     end
 
@@ -160,9 +178,8 @@ module H2O
       end
     end
 
-    # Ensure cleanup on GC
-    def finalize
-      close rescue nil
-    end
+    # Remove finalize method entirely - let Crystal handle socket cleanup
+    # Custom finalizers can cause race conditions during GC
+    # The underlying OpenSSL and TCP sockets have their own proper cleanup
   end
 end
