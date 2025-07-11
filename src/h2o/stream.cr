@@ -43,29 +43,6 @@ module H2O
       @dependency = nil
     end
 
-    # DISABLED: Reset stream for object pool reuse - causes memory corruption
-    # def reset_for_reuse(new_id : StreamId) : Nil
-    #   @id = new_id
-    #   @state = StreamState::Idle
-    #   @request = nil
-    #   @response = nil
-    #   @headers_complete = false
-    #   @data_complete = false
-    #   @incoming_data = IO::Memory.new
-    #   @response_channel = ResponseChannel.new(0)
-    #   @created_at = Time.utc
-    #   @last_activity = Time.utc
-    #   @closed_at = nil
-    #   @local_window_size = 65535
-    #   @remote_window_size = 65535
-    #   @priority = 16_u8
-    #   @dependency = nil
-    # end
-
-    # DISABLED: Check if stream can be returned to object pool - causes memory corruption
-    # def can_be_pooled? : Bool
-    #   closed? && @incoming_data.size < 1024 # Only pool small streams
-    # end
 
     def send_headers(headers_frame : HeadersFrame) : Nil
       validate_can_send_headers

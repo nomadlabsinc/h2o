@@ -69,13 +69,6 @@ module H2O
       @settings[identifier] = value
     end
 
-    # DISABLED: reset_for_reuse causes memory corruption with object pooling
-    # def reset_for_reuse : Nil
-    #   @flags = 0_u8
-    #   @length = 0_u32
-    #   @settings.clear
-    #   @stream_id = 0_u32
-    # end
 
     private def validate_ack_frame : Nil
       raise FrameError.new("SETTINGS ACK frame must have empty payload") unless @settings.empty?
