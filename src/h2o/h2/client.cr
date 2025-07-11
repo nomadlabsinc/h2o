@@ -15,6 +15,7 @@ require "../frames/rst_stream_frame"
 require "../frames/goaway_frame"
 require "../frames/ping_frame"
 require "../frames/window_update_frame"
+require "../object_pool"
 
 module H2O
   module H2
@@ -204,13 +205,21 @@ module H2O
 
         # Send HEADERS frame
         flags = body.nil? ? HeadersFrame::FLAG_END_STREAM | HeadersFrame::FLAG_END_HEADERS : HeadersFrame::FLAG_END_HEADERS
-        headers_frame = HeadersFrame.new(stream_id, encoded_headers, flags)
-        write_frame(headers_frame)
+        headers_frame = H2O.frame_pools.acquire_headers_frame(stream_id, encoded_headers, flags)
+        begin
+          write_frame(headers_frame)
+        ensure
+          H2O.frame_pools.release(headers_frame)
+        end
 
         # Send DATA frame if body exists
         if body
-          data_frame = DataFrame.new(stream_id, body.to_slice, DataFrame::FLAG_END_STREAM)
-          write_frame(data_frame)
+          data_frame = H2O.frame_pools.acquire_data_frame(stream_id, body.to_slice, DataFrame::FLAG_END_STREAM)
+          begin
+            write_frame(data_frame)
+          ensure
+            H2O.frame_pools.release(data_frame)
+          end
         end
       end
 
