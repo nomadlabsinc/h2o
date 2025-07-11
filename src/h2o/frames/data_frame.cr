@@ -71,14 +71,6 @@ module H2O
       (@flags & FLAG_PADDED) != 0
     end
 
-    # DISABLED: reset_for_reuse causes memory corruption with object pooling
-    # def reset_for_reuse : Nil
-    #   @data = Bytes.empty
-    #   @flags = 0_u8
-    #   @length = 0_u32
-    #   @padding_length = 0_u8
-    #   @stream_id = 0_u32
-    # end
 
     def set_data(data : Bytes) : Nil
       @data = data
