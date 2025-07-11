@@ -75,6 +75,14 @@ module H2O
     end
 
     def self.get_header_buffer : Bytes
+      # Check if pooling is disabled via environment variable
+      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+        # Optional statistics tracking
+        stats = H2O.buffer_pool_stats?
+        stats.try(&.track_allocation)
+        return Bytes.new(MAX_HEADER_BUFFER_SIZE)
+      end
+      
       # Try to get from pool first, otherwise allocate new
       select
       when buffer = header_pool.receive
@@ -91,6 +99,14 @@ module H2O
     end
 
     def self.return_header_buffer(buffer : Bytes) : Nil
+      # Skip pooling if disabled
+      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+        # Optional statistics tracking
+        stats = H2O.buffer_pool_stats?
+        stats.try(&.track_return)
+        return
+      end
+      
       # Only return buffers of correct size to pool
       if buffer.size == MAX_HEADER_BUFFER_SIZE
         # Try to return to pool, drop if full
@@ -108,6 +124,14 @@ module H2O
     end
 
     def self.get_frame_buffer(size : Int32 = MAX_FRAME_BUFFER_SIZE) : Bytes
+      # Check if pooling is disabled via environment variable
+      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+        # Optional statistics tracking
+        stats = H2O.buffer_pool_stats?
+        stats.try(&.track_allocation)
+        return Bytes.new(size)
+      end
+      
       # For standard size, try pool first
       if size == MAX_FRAME_BUFFER_SIZE
         select
@@ -128,6 +152,14 @@ module H2O
     end
 
     def self.return_frame_buffer(buffer : Bytes) : Nil
+      # Skip pooling if disabled
+      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+        # Optional statistics tracking
+        stats = H2O.buffer_pool_stats?
+        stats.try(&.track_return)
+        return
+      end
+      
       # Only return standard size buffers to pool
       if buffer.size == MAX_FRAME_BUFFER_SIZE
         # Try to return to pool, drop if full
@@ -146,6 +178,14 @@ module H2O
 
     # New optimized small buffer pool
     def self.get_small_buffer : Bytes
+      # Check if pooling is disabled via environment variable
+      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+        # Optional statistics tracking
+        stats = H2O.buffer_pool_stats?
+        stats.try(&.track_allocation)
+        return Bytes.new(SMALL_BUFFER_SIZE)
+      end
+      
       # Try to get from pool first, otherwise allocate new
       select
       when buffer = small_pool.receive
@@ -162,6 +202,14 @@ module H2O
     end
 
     def self.return_small_buffer(buffer : Bytes) : Nil
+      # Skip pooling if disabled
+      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+        # Optional statistics tracking
+        stats = H2O.buffer_pool_stats?
+        stats.try(&.track_return)
+        return
+      end
+      
       # Only return buffers of correct size to pool
       if buffer.size == SMALL_BUFFER_SIZE
         # Try to return to pool, drop if full
@@ -180,6 +228,14 @@ module H2O
 
     # New optimized medium buffer pool
     def self.get_medium_buffer : Bytes
+      # Check if pooling is disabled via environment variable
+      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+        # Optional statistics tracking
+        stats = H2O.buffer_pool_stats?
+        stats.try(&.track_allocation)
+        return Bytes.new(MEDIUM_BUFFER_SIZE)
+      end
+      
       # Try to get from pool first, otherwise allocate new
       select
       when buffer = medium_pool.receive
@@ -196,6 +252,14 @@ module H2O
     end
 
     def self.return_medium_buffer(buffer : Bytes) : Nil
+      # Skip pooling if disabled
+      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+        # Optional statistics tracking
+        stats = H2O.buffer_pool_stats?
+        stats.try(&.track_return)
+        return
+      end
+      
       # Only return buffers of correct size to pool
       if buffer.size == MEDIUM_BUFFER_SIZE
         # Try to return to pool, drop if full
