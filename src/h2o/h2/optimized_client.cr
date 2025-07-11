@@ -1,3 +1,4 @@
+require "./client"
 require "../io_optimizer"
 require "../protocol_optimizer"
 
