@@ -34,12 +34,5 @@ module H2O
       result
     end
 
-    # DISABLED: reset_for_reuse causes memory corruption with object pooling
-    # def reset_for_reuse : Nil
-    #   @flags = 0_u8
-    #   @length = 0_u32
-    #   @stream_id = 0_u32
-    #   @window_size_increment = 0_u32
-    # end
   end
 end
