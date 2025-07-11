@@ -9,7 +9,7 @@ require "./h2o/timeout"
 require "./h2o/types"
 require "./h2o/buffer_pool_stats"
 require "./h2o/buffer_pool"
-# require "./h2o/object_pool"  # DISABLED: Object pooling causes memory corruption
+require "./h2o/object_pool"  # Re-enabled with fiber-safe implementation
 require "./h2o/string_pool"
 require "./h2o/circuit_breaker"
 require "./h2o/tls_cache"

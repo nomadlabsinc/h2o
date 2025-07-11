@@ -3,6 +3,7 @@ module H2O
   # Statistics tracker for buffer pool - can be instance-based for testing
   class BufferPoolStats
     @allocation_count = Atomic(Int64).new(0)
+    @hit_count = Atomic(Int64).new(0)
     @return_count = Atomic(Int64).new(0)
     @mutex = Mutex.new
 
@@ -10,21 +11,28 @@ module H2O
       @allocation_count.add(1)
     end
 
+    def track_hit : Nil
+      @hit_count.add(1)
+    end
+
     def track_return : Nil
       @return_count.add(1)
     end
 
-    def stats : {allocations: Int64, returns: Int64, hit_rate: Float64}
+    def stats : {allocations: Int64, hits: Int64, returns: Int64, hit_rate: Float64}
       allocs = @allocation_count.get
+      hits = @hit_count.get
       returns = @return_count.get
-      hit_rate = returns > 0 ? (returns.to_f64 / allocs.to_f64) * 100.0 : 0.0
+      total_requests = allocs + hits
+      hit_rate = total_requests > 0 ? (hits.to_f64 / total_requests.to_f64) * 100.0 : 0.0
 
-      {allocations: allocs, returns: returns, hit_rate: hit_rate}
+      {allocations: allocs, hits: hits, returns: returns, hit_rate: hit_rate}
     end
 
     def reset : Nil
       @mutex.synchronize do
         @allocation_count.set(0)
+        @hit_count.set(0)
         @return_count.set(0)
       end
     end
@@ -40,12 +48,16 @@ module H2O
       # No-op
     end
 
+    def track_hit : Nil
+      # No-op
+    end
+
     def track_return : Nil
       # No-op
     end
 
-    def stats : {allocations: Int64, returns: Int64, hit_rate: Float64}
-      {allocations: 0_i64, returns: 0_i64, hit_rate: 0.0}
+    def stats : {allocations: Int64, hits: Int64, returns: Int64, hit_rate: Float64}
+      {allocations: 0_i64, hits: 0_i64, returns: 0_i64, hit_rate: 0.0}
     end
 
     def reset : Nil
