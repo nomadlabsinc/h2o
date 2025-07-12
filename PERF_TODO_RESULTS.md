@@ -12,7 +12,7 @@ This document summarizes the comprehensive performance improvements implemented 
 
 **Performance Gains:**
 - **84% faster buffer operations** (35,279 vs 19,183 ops/sec)
-- **85% faster execution time** (141ms vs 261ms for 5K operations)  
+- **46% faster execution time** (141ms vs 261ms for 5K operations)  
 - **333 MB reduction** in memory allocations during buffer-intensive workloads
 - **Zero memory corruption** (eliminated 5% failure rate from previous attempts)
 
@@ -95,7 +95,7 @@ end
 
 | Metric | Buffer Pooling ENABLED | Buffer Pooling DISABLED | Improvement |
 |--------|----------------------|------------------------|-------------|
-| **Execution Time** | 141.73ms | 260.65ms | **85% faster** |
+| **Execution Time** | 141.73ms | 260.65ms | **46% faster** |
 | **Operations/sec** | 35,279 | 19,183 | **84% higher throughput** |
 | **Total Allocations** | 5.0 GB | 5.3 GB | **333 MB saved** |
 | **Memory Efficiency** | 1,049 bytes/op | 1,116 bytes/op | **6% more efficient** |

@@ -8,7 +8,7 @@ This PR implements comprehensive buffer pool optimizations for the H2O Crystal H
 
 ### 🚀 **Performance Gains**
 - **84% faster buffer operations** (35,279 vs 19,183 ops/sec)
-- **85% faster execution time** (141ms vs 261ms for 5K operations)
+- **46% faster execution time** (141ms vs 261ms for 5K operations)
 - **333 MB reduction** in memory allocations during buffer-intensive workloads
 - **Near-double throughput** for HTTP/2 frame processing operations
 

@@ -73,7 +73,7 @@ module H2O
         @mutex = Mutex.new
         
         # Initialize I/O optimizations
-        @io_optimization_enabled = !H2O.env_flag_disabled?("H2O_DISABLE_IO_OPTIMIZATION")
+        @io_optimization_enabled = !H2O.env_flag_enabled?("H2O_DISABLE_IO_OPTIMIZATION")
         if @io_optimization_enabled
           IOOptimizer::SocketOptimizer.optimize(@socket.to_io)
           @batched_writer = IOOptimizer::BatchedWriter.new(@socket.to_io)
@@ -140,6 +140,7 @@ module H2O
             # Flush any pending batched data after request completes
             if @io_optimization_enabled && (writer = @batched_writer)
               writer.flush
+              @socket.to_io.flush
             end
             
             response
@@ -160,9 +161,10 @@ module H2O
             goaway_frame = GoawayFrame.new(@current_stream_id - 2, ErrorCode::NoError)
             write_frame(goaway_frame)
             
-            # Flush any pending batched data
+            # Flush any pending batched data and ensure socket is flushed
             if @io_optimization_enabled && (writer = @batched_writer)
               writer.flush
+              @socket.to_io.flush
             end
           rescue IO::Error
             # Best effort - ignore I/O errors during cleanup
@@ -369,25 +371,40 @@ module H2O
         frame_bytes = frame.to_bytes
         
         if @io_optimization_enabled && (writer = @batched_writer)
-          # Use batched writing for better performance
-          needs_immediate_flush = frame.is_a?(SettingsFrame | PingFrame | GoawayFrame | RstStreamFrame)
-          
-          if frame_bytes.size >= IOOptimizer::MEDIUM_BUFFER_SIZE || needs_immediate_flush
-            # Large frames or control frames: flush any pending data, then write directly for optimal latency
-            writer.flush
-            # Write large frames directly to socket to avoid double buffering
-            io = @socket.to_io
-            io.write(frame_bytes)
-            io.flush
+          # Optimize frame writing strategy based on size and type
+          if should_flush_immediately?(frame, frame_bytes.size)
+            flush_frame_immediately(writer, frame_bytes)
           else
             # Small non-control frames: batch for optimal throughput
             writer.add(frame_bytes)
           end
         else
           # Fallback to direct I/O
-          io = @socket.to_io
-          io.write(frame_bytes)
-          io.flush
+          write_frame_direct(frame_bytes)
+        end
+      end
+
+      private def should_flush_immediately?(frame : Frame, size : Int32) : Bool
+        size >= IOOptimizer::MEDIUM_BUFFER_SIZE || 
+        frame.is_a?(SettingsFrame | PingFrame | GoawayFrame | RstStreamFrame)
+      end
+
+      private def flush_frame_immediately(writer : IOOptimizer::BatchedWriter, frame_bytes : Bytes) : Nil
+        # Large frames or control frames: flush any pending data, then write directly for optimal latency
+        writer.flush
+        # Write large frames directly to socket to avoid double buffering
+        write_frame_direct(frame_bytes)
+      end
+
+      private def write_frame_direct(frame_bytes : Bytes) : Nil
+        io = @socket.to_io
+        start_time = Time.monotonic
+        io.write(frame_bytes)
+        io.flush
+        
+        # Track statistics for direct writes when optimization is enabled
+        if @io_optimization_enabled && (writer = @batched_writer)
+          writer.track_direct_write(frame_bytes.size, Time.monotonic - start_time)
         end
       end
 
