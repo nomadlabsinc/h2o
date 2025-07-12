@@ -162,6 +162,11 @@ module H2O
         @mutex.synchronize { flush_locked }
       end
 
+      # Track direct writes that bypass batching for complete statistics
+      def track_direct_write(bytes : Int32, duration : Time::Span) : Nil
+        @stats.record_write(bytes, duration)
+      end
+
       private def flush_locked : Nil
         return if @buffers.empty?
 
@@ -182,6 +187,9 @@ module H2O
 
           @io.write(combined)
         end
+
+        # Ensure data is sent immediately by flushing the underlying IO
+        @io.flush
 
         @stats.record_write(@total_size, Time.monotonic - start_time)
         @stats.batches_flushed += 1

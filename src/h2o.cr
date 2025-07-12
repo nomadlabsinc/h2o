@@ -47,17 +47,15 @@ require "./h2o/client"
 module H2O
   Log = ::Log.for("h2o")
 
+  # Constants for environment variable parsing
+  TRUTHY_ENV_VALUES = {"true", "yes", "1", "on"}
+
   # Helper for checking if an environment variable is set to a truthy value
-  # Accepts: true, yes, 1 (excluding "on" for consistency with user requirements)
+  # Accepts: true, yes, 1, on for consistency with existing codebase
   def self.env_flag_enabled?(env_var : String) : Bool
-    {"true", "yes", "1"}.includes?(ENV.fetch(env_var, "false").downcase)
+    TRUTHY_ENV_VALUES.includes?(ENV.fetch(env_var, "false").downcase)
   end
 
-  # Helper for checking if a "DISABLE_X" environment variable is set
-  # Same logic as env_flag_enabled? but with clearer semantic meaning for disable flags
-  def self.env_flag_disabled?(env_var : String) : Bool
-    env_flag_enabled?(env_var)
-  end
 
   # Additional type aliases (core ones are in types.cr)
   alias FrameBytes = Bytes

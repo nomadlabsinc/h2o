@@ -19,7 +19,7 @@ module H2O
     @@frame_pool : Channel(Bytes)?
     @@pool_mutex = Mutex.new
     @@initialized = Atomic(Bool).new(false)
-    @@pooling_disabled : Bool = H2O.env_flag_disabled?("H2O_DISABLE_BUFFER_POOLING")
+    @@pooling_disabled : Bool = H2O.env_flag_enabled?("H2O_DISABLE_BUFFER_POOLING")
     
     # Initialize all pools at once to avoid partial initialization issues
     private def self.ensure_pools_initialized
@@ -40,28 +40,28 @@ module H2O
     private def self.small_pool
       ensure_pools_initialized
       pool = @@small_pool
-      raise "Small pool not initialized" unless pool
+      raise "BufferPool: Small buffer pool failed to initialize properly" unless pool
       pool
     end
     
     private def self.medium_pool
       ensure_pools_initialized
       pool = @@medium_pool
-      raise "Medium pool not initialized" unless pool
+      raise "BufferPool: Medium buffer pool failed to initialize properly" unless pool
       pool
     end
     
     private def self.header_pool
       ensure_pools_initialized
       pool = @@header_pool
-      raise "Header pool not initialized" unless pool
+      raise "BufferPool: Header buffer pool failed to initialize properly" unless pool
       pool
     end
     
     private def self.frame_pool
       ensure_pools_initialized
       pool = @@frame_pool
-      raise "Frame pool not initialized" unless pool
+      raise "BufferPool: Frame buffer pool failed to initialize properly" unless pool
       pool
     end
     
