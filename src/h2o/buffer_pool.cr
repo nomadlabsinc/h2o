@@ -19,6 +19,7 @@ module H2O
     @@frame_pool : Channel(Bytes)?
     @@pool_mutex = Mutex.new
     @@initialized = Atomic(Bool).new(false)
+    @@pooling_disabled : Bool = H2O.env_flag_disabled?("H2O_DISABLE_BUFFER_POOLING")
     
     # Initialize all pools at once to avoid partial initialization issues
     private def self.ensure_pools_initialized
@@ -38,28 +39,36 @@ module H2O
     
     private def self.small_pool
       ensure_pools_initialized
-      @@small_pool.not_nil!
+      pool = @@small_pool
+      raise "Small pool not initialized" unless pool
+      pool
     end
     
     private def self.medium_pool
       ensure_pools_initialized
-      @@medium_pool.not_nil!
+      pool = @@medium_pool
+      raise "Medium pool not initialized" unless pool
+      pool
     end
     
     private def self.header_pool
       ensure_pools_initialized
-      @@header_pool.not_nil!
+      pool = @@header_pool
+      raise "Header pool not initialized" unless pool
+      pool
     end
     
     private def self.frame_pool
       ensure_pools_initialized
-      @@frame_pool.not_nil!
+      pool = @@frame_pool
+      raise "Frame pool not initialized" unless pool
+      pool
     end
-
+    
     # Helper method for getting buffers from pools
     private def self.get_pooled_buffer(pool : Channel(Bytes), size : Int32) : Bytes
-      # Check if pooling is disabled via environment variable
-      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+      # Check if pooling is disabled via cached environment variable
+      if @@pooling_disabled
         # Optional statistics tracking
         stats = H2O.buffer_pool_stats?
         stats.try(&.track_allocation)
@@ -69,12 +78,12 @@ module H2O
       # Try to get from pool first, otherwise allocate new
       select
       when buffer = pool.receive
-        # Optional statistics tracking - pool hit
+        # Optional statistics tracking
         stats = H2O.buffer_pool_stats?
         stats.try(&.track_hit)
         buffer
       else
-        # Optional statistics tracking - pool miss (allocation)
+        # Optional statistics tracking
         stats = H2O.buffer_pool_stats?
         stats.try(&.track_allocation)
         Bytes.new(size)
@@ -84,7 +93,7 @@ module H2O
     # Helper method for returning buffers to pools
     private def self.return_pooled_buffer(pool : Channel(Bytes), buffer : Bytes, expected_size : Int32) : Nil
       # Skip pooling if disabled
-      if ENV["H2O_DISABLE_BUFFER_POOLING"]? == "1"
+      if @@pooling_disabled
         # Optional statistics tracking
         stats = H2O.buffer_pool_stats?
         stats.try(&.track_return)
@@ -135,6 +144,8 @@ module H2O
         get_pooled_buffer(frame_pool, size)
       else
         # Non-standard size, allocate directly
+        stats = H2O.buffer_pool_stats?
+        stats.try(&.track_allocation)
         Bytes.new(size)
       end
     end

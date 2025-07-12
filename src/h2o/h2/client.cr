@@ -16,6 +16,8 @@ require "../frames/goaway_frame"
 require "../frames/ping_frame"
 require "../frames/window_update_frame"
 require "../object_pool"
+require "../io_optimizer"
+require "../stream"
 
 module H2O
   module H2
@@ -34,6 +36,11 @@ module H2O
       property closing : Bool = false
       property request_timeout : Time::Span
       property connect_timeout : Time::Span
+      
+      # I/O optimizations
+      property batched_writer : IOOptimizer::BatchedWriter?
+      property zero_copy_reader : IOOptimizer::ZeroCopyReader?
+      property io_optimization_enabled : Bool
       
       # Single mutex for all operations
       property mutex : Mutex
@@ -64,6 +71,17 @@ module H2O
         @request_timeout = request_timeout
         @connect_timeout = connect_timeout
         @mutex = Mutex.new
+        
+        # Initialize I/O optimizations
+        @io_optimization_enabled = !H2O.env_flag_disabled?("H2O_DISABLE_IO_OPTIMIZATION")
+        if @io_optimization_enabled
+          IOOptimizer::SocketOptimizer.optimize(@socket.to_io)
+          @batched_writer = IOOptimizer::BatchedWriter.new(@socket.to_io)
+          @zero_copy_reader = IOOptimizer::ZeroCopyReader.new(@socket.to_io)
+        else
+          @batched_writer = nil
+          @zero_copy_reader = nil
+        end
 
         # Send initial preface and settings
         send_initial_preface
@@ -87,6 +105,11 @@ module H2O
           @request_timeout = request_timeout
           @connect_timeout = connect_timeout
           @mutex = Mutex.new
+          
+          # I/O optimizations disabled for test mocks by default
+          @io_optimization_enabled = false
+          @batched_writer = nil
+          @zero_copy_reader = nil
         end
       {% end %}
 
@@ -112,7 +135,14 @@ module H2O
             send_request(stream_id, method, path, headers, body)
 
             # Read response with timeout checking
-            read_response_with_timeout(stream_id, start_time)
+            response = read_response_with_timeout(stream_id, start_time)
+            
+            # Flush any pending batched data after request completes
+            if @io_optimization_enabled && (writer = @batched_writer)
+              writer.flush
+            end
+            
+            response
           end
         rescue ex : Exception
           Log.error { "Request failed: #{ex.message}" }
@@ -129,8 +159,15 @@ module H2O
             # Send GOAWAY frame
             goaway_frame = GoawayFrame.new(@current_stream_id - 2, ErrorCode::NoError)
             write_frame(goaway_frame)
+            
+            # Flush any pending batched data
+            if @io_optimization_enabled && (writer = @batched_writer)
+              writer.flush
+            end
+          rescue IO::Error
+            # Best effort - ignore I/O errors during cleanup
           rescue
-            # Best effort
+            # Best effort - ignore other errors during cleanup
           end
 
           @socket.close rescue nil
@@ -314,7 +351,8 @@ module H2O
           case identifier
           when SettingIdentifier::HeaderTableSize
             @remote_settings.header_table_size = value
-            # TODO: Handle HPACK table size update
+            # Update HPACK encoder table size to match server setting
+            @hpack_encoder.dynamic_table_size = value.to_i32
           when SettingIdentifier::MaxConcurrentStreams
             @remote_settings.max_concurrent_streams = value
           when SettingIdentifier::InitialWindowSize
@@ -328,13 +366,68 @@ module H2O
       end
 
       private def write_frame(frame : Frame) : Nil
-        io = @socket.to_io
-        io.write(frame.to_bytes)
-        io.flush
+        frame_bytes = frame.to_bytes
+        
+        if @io_optimization_enabled && (writer = @batched_writer)
+          # Use batched writing for better performance
+          needs_immediate_flush = frame.is_a?(SettingsFrame | PingFrame | GoawayFrame | RstStreamFrame)
+          
+          if frame_bytes.size >= IOOptimizer::MEDIUM_BUFFER_SIZE || needs_immediate_flush
+            # Large frames or control frames: flush any pending data, then write directly for optimal latency
+            writer.flush
+            # Write large frames directly to socket to avoid double buffering
+            io = @socket.to_io
+            io.write(frame_bytes)
+            io.flush
+          else
+            # Small non-control frames: batch for optimal throughput
+            writer.add(frame_bytes)
+          end
+        else
+          # Fallback to direct I/O
+          io = @socket.to_io
+          io.write(frame_bytes)
+          io.flush
+        end
       end
 
       private def read_frame : Frame
-        Frame.from_io(@socket.to_io, @remote_settings.max_frame_size)
+        if @io_optimization_enabled && (reader = @zero_copy_reader)
+          # Use optimized frame reading with zero-copy reader through IO wrapper
+          # This maintains code reuse while leveraging optimized I/O
+          io_wrapper = ZeroCopyIOWrapper.new(reader)
+          Frame.from_io(io_wrapper, @remote_settings.max_frame_size)
+        else
+          # Fallback to standard frame reading
+          Frame.from_io(@socket.to_io, @remote_settings.max_frame_size)
+        end
+      end
+
+      # IO wrapper that bridges ZeroCopyReader to standard IO interface
+      # This eliminates code duplication while preserving optimizations
+      private class ZeroCopyIOWrapper < IO
+        def initialize(@reader : IOOptimizer::ZeroCopyReader)
+        end
+
+        def read(slice : Bytes) : Int32
+          @reader.read_into(slice)
+        end
+
+        def write(slice : Bytes) : Nil
+          raise IO::Error.new("Write not supported on ZeroCopyIOWrapper")
+        end
+
+        def read_fully(slice : Bytes) : Nil
+          @reader.read_fully_into(slice)
+        end
+
+        def flush : Nil
+          # No-op for read-only wrapper
+        end
+
+        def close : Nil
+          # No-op - underlying reader is managed externally
+        end
       end
 
       def get(path : String, headers : Headers = Headers.new) : Response
@@ -372,7 +465,12 @@ module H2O
         @mutex.synchronize do
           read_frame
         end
+      rescue IO::Error | IO::TimeoutError
+        # Expected errors during frame reading
+        nil
       rescue
+        # Unexpected errors during frame reading
+        Log.debug { "Unexpected error in receive_frame" }
         nil
       end
 
@@ -382,6 +480,30 @@ module H2O
 
       def ensure_connection_setup : Nil
         # Connection setup happens in initialize
+      end
+
+      # Get I/O performance statistics
+      def io_statistics : IOOptimizer::IOStats?
+        @mutex.synchronize do
+          return nil unless @io_optimization_enabled
+          
+          stats = IOOptimizer::IOStats.new
+          
+          if writer = @batched_writer
+            stats.bytes_written = writer.stats.bytes_written
+            stats.write_operations = writer.stats.write_operations
+            stats.total_write_time = writer.stats.total_write_time
+            stats.batches_flushed = writer.stats.batches_flushed
+          end
+          
+          if reader = @zero_copy_reader
+            stats.bytes_read = reader.stats.bytes_read
+            stats.read_operations = reader.stats.read_operations
+            stats.total_read_time = reader.stats.total_read_time
+          end
+          
+          stats
+        end
       end
     end
   end
