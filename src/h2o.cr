@@ -47,6 +47,18 @@ require "./h2o/client"
 module H2O
   Log = ::Log.for("h2o")
 
+  # Helper for checking if an environment variable is set to a truthy value
+  # Accepts: true, yes, 1 (excluding "on" for consistency with user requirements)
+  def self.env_flag_enabled?(env_var : String) : Bool
+    {"true", "yes", "1"}.includes?(ENV.fetch(env_var, "false").downcase)
+  end
+
+  # Helper for checking if a "DISABLE_X" environment variable is set
+  # Same logic as env_flag_enabled? but with clearer semantic meaning for disable flags
+  def self.env_flag_disabled?(env_var : String) : Bool
+    env_flag_enabled?(env_var)
+  end
+
   # Additional type aliases (core ones are in types.cr)
   alias FrameBytes = Bytes
   alias FramePayload = Bytes
@@ -78,8 +90,8 @@ module H2O
 
     def initialize
       # Check environment variable for SSL verification override
-      if env_value = ENV["H2O_VERIFY_SSL"]?
-        @verify_ssl = env_value.downcase.in?("true", "1", "yes", "on")
+      if ENV["H2O_VERIFY_SSL"]?
+        @verify_ssl = H2O.env_flag_enabled?("H2O_VERIFY_SSL")
       end
     end
   end
