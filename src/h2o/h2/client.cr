@@ -76,7 +76,14 @@ module H2O
         @io_optimization_enabled = !H2O.env_flag_enabled?("H2O_DISABLE_IO_OPTIMIZATION")
         if @io_optimization_enabled
           IOOptimizer::SocketOptimizer.optimize(@socket.to_io)
-          # TODO: Re-enable I/O optimizations. The reader/writer optimizations are currently disabled due to socket state conflicts.
+          # TODO: Re-enable I/O optimizations after resolving socket state conflicts.
+          # The BatchedWriter and ZeroCopyReader optimizations are currently disabled because they cause
+          # socket state conflicts during HTTP/2 frame processing, leading to test timeouts and connection issues.
+          # Future re-enablement strategy:
+          # 1. Investigate socket state management in IOOptimizer classes
+          # 2. Ensure proper coordination between batched writes and frame boundaries
+          # 3. Add comprehensive tests for concurrent I/O operations
+          # 4. Consider alternative buffering strategies that don't interfere with HTTP/2 protocol handling
           @batched_writer = nil   # Disabled - causes socket writing issues
           @zero_copy_reader = nil # Disabled - causes socket reading issues
         else
