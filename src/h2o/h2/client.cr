@@ -377,6 +377,11 @@ module H2O
             raise ConnectionError.new("Connection closed by server: #{frame.error_code}")
           when SettingsFrame
             handle_settings_frame(frame)
+            # Send SETTINGS ACK as required by RFC 9113
+            unless frame.ack?
+              settings_ack = SettingsFrame.new(ack: true)
+              write_frame(settings_ack)
+            end
           when PingFrame
             # Respond to PING if not ACK
             unless frame.ack?
