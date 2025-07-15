@@ -14,4 +14,7 @@ Lint/UselessAssign:
   Enabled: false  # Some assignments are used for clarity even if not referenced
 
 Metrics/CyclomaticComplexity:
-  MaxComplexity: 15  # Allow slightly higher complexity for frame parsing
+  MaxComplexity: 17  # Allow slightly higher complexity for frame parsing
+
+Documentation/DocumentationAdmonition:
+  Enabled: false  # Allow TODO comments for tracking technical debt

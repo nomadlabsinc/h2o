@@ -39,7 +39,6 @@ module H2O
       end
     end
 
-
     def payload_to_bytes : Bytes
       # Validate data size to prevent overflow
       max_data_size = 16_777_215 - 1 - @padding_length # HTTP/2 max frame size minus padding overhead

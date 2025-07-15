@@ -64,10 +64,10 @@ module H2O
       # No-op - nothing to reset
     end
   end
-  
+
   # Create a single dummy instance to avoid allocation issues
   DUMMY_STATS = DummyBufferPoolStats.new
-  
+
   def self.buffer_pool_stats : BufferPoolStats
     # Return the same dummy instance to avoid repeated allocations
     DUMMY_STATS

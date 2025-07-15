@@ -22,7 +22,7 @@ require "../stream"
 module H2O
   module H2
     Log = ::Log.for("h2o.h2")
-    
+
     # Simplified HTTP/2 client without multiplexing
     # Each client handles one request at a time
     class Client < BaseConnection
@@ -36,18 +36,18 @@ module H2O
       property closing : Bool = false
       property request_timeout : Time::Span
       property connect_timeout : Time::Span
-      
+
       # I/O optimizations
       property batched_writer : IOOptimizer::BatchedWriter?
       property zero_copy_reader : IOOptimizer::ZeroCopyReader?
       property io_optimization_enabled : Bool
-      
+
       # Single mutex for all operations
       property mutex : Mutex
-      
+
       # Current stream ID (odd numbers for client-initiated streams)
       property current_stream_id : StreamId
-      
+
       def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true, use_tls : Bool = true)
         if use_tls
           verify_mode : OpenSSL::SSL::VerifyMode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
@@ -71,13 +71,14 @@ module H2O
         @request_timeout = request_timeout
         @connect_timeout = connect_timeout
         @mutex = Mutex.new
-        
-        # Initialize I/O optimizations
+
+        # Initialize I/O optimizations (disable reader/writer optimizations due to socket state conflicts)
         @io_optimization_enabled = !H2O.env_flag_enabled?("H2O_DISABLE_IO_OPTIMIZATION")
         if @io_optimization_enabled
           IOOptimizer::SocketOptimizer.optimize(@socket.to_io)
-          @batched_writer = IOOptimizer::BatchedWriter.new(@socket.to_io)
-          @zero_copy_reader = IOOptimizer::ZeroCopyReader.new(@socket.to_io)
+          # TODO: Re-enable I/O optimizations. The reader/writer optimizations are currently disabled due to socket state conflicts.
+          @batched_writer = nil   # Disabled - causes socket writing issues
+          @zero_copy_reader = nil # Disabled - causes socket reading issues
         else
           @batched_writer = nil
           @zero_copy_reader = nil
@@ -85,7 +86,7 @@ module H2O
 
         # Send initial preface and settings
         send_initial_preface
-        
+
         # Wait for server settings
         unless validate_server_preface
           raise ConnectionError.new("Failed to receive valid server preface")
@@ -105,7 +106,7 @@ module H2O
           @request_timeout = request_timeout
           @connect_timeout = connect_timeout
           @mutex = Mutex.new
-          
+
           # I/O optimizations disabled for test mocks by default
           @io_optimization_enabled = false
           @batched_writer = nil
@@ -118,7 +119,7 @@ module H2O
 
         # Use a timeout for the entire request
         start_time = Time.monotonic
-        
+
         begin
           # Synchronize the request sending and response reading
           @mutex.synchronize do
@@ -136,13 +137,13 @@ module H2O
 
             # Read response with timeout checking
             response = read_response_with_timeout(stream_id, start_time)
-            
+
             # Flush any pending batched data after request completes
             if @io_optimization_enabled && (writer = @batched_writer)
               writer.flush
               @socket.to_io.flush
             end
-            
+
             response
           end
         rescue ex : Exception
@@ -157,10 +158,8 @@ module H2O
           @closed = true
 
           begin
-            # Send GOAWAY frame
-            goaway_frame = GoawayFrame.new(@current_stream_id - 2, ErrorCode::NoError)
-            write_frame(goaway_frame)
-            
+            send_goaway_if_needed
+
             # Flush any pending batched data and ensure socket is flushed
             if @io_optimization_enabled && (writer = @batched_writer)
               writer.flush
@@ -201,7 +200,7 @@ module H2O
 
         # Process server settings
         handle_settings_frame(frame)
-        
+
         # Send SETTINGS ACK
         settings_ack = SettingsFrame.new(ack: true)
         write_frame(settings_ack)
@@ -227,7 +226,7 @@ module H2O
         request_headers[":method"] = method
         request_headers[":path"] = path
         request_headers[":scheme"] = "https"
-        
+
         # Extract host for :authority header
         authority = headers.delete("host")
         if authority.nil? || authority.empty?
@@ -277,33 +276,26 @@ module H2O
             return Response.error(0, "Request timeout", "HTTP/2")
           end
 
-          # Set socket timeout for the read operation
-          io = @socket.to_io
-          if io.responds_to?(:read_timeout=)
-            remaining_time = @request_timeout - (Time.monotonic - start_time)
-            if remaining_time > 0.seconds
-              io.read_timeout = remaining_time
-            else
-              return Response.error(0, "Request timeout", "HTTP/2")
-            end
-          end
+          # Don't set socket timeout - let the overall request timeout handle it
 
           frame = read_frame
 
           case frame
           when HeadersFrame
-            # Decode headers
-            decoded = @hpack_decoder.decode(frame.header_block)
-            decoded.each do |name, value|
-              if name == ":status"
-                status_code = value.to_i
-              else
-                response_headers[name] = value
+            if frame.stream_id == stream_id
+              # Decode headers
+              decoded = @hpack_decoder.decode(frame.header_block)
+              decoded.each do |name, value|
+                if name == ":status"
+                  status_code = value.to_i
+                else
+                  response_headers[name] = value
+                end
               end
-            end
 
-            if frame.end_stream?
-              break
+              if frame.end_stream?
+                break
+              end
             end
           when DataFrame
             if frame.stream_id == stream_id
@@ -369,7 +361,7 @@ module H2O
 
       private def write_frame(frame : Frame) : Nil
         frame_bytes = frame.to_bytes
-        
+
         if @io_optimization_enabled && (writer = @batched_writer)
           # Optimize frame writing strategy based on size and type
           if should_flush_immediately?(frame, frame_bytes.size)
@@ -385,8 +377,8 @@ module H2O
       end
 
       private def should_flush_immediately?(frame : Frame, size : Int32) : Bool
-        size >= IOOptimizer::MEDIUM_BUFFER_SIZE || 
-        frame.is_a?(SettingsFrame | PingFrame | GoawayFrame | RstStreamFrame)
+        size >= IOOptimizer::MEDIUM_BUFFER_SIZE ||
+          frame.is_a?(SettingsFrame | PingFrame | GoawayFrame | RstStreamFrame)
       end
 
       private def flush_frame_immediately(writer : IOOptimizer::BatchedWriter, frame_bytes : Bytes) : Nil
@@ -401,7 +393,7 @@ module H2O
         start_time = Time.monotonic
         io.write(frame_bytes)
         io.flush
-        
+
         # Track statistics for direct writes when optimization is enabled
         if @io_optimization_enabled && (writer = @batched_writer)
           writer.track_direct_write(frame_bytes.size, Time.monotonic - start_time)
@@ -499,26 +491,39 @@ module H2O
         # Connection setup happens in initialize
       end
 
+      # Send GOAWAY frame if needed during connection termination
+      private def send_goaway_if_needed : Nil
+        # Only send GOAWAY if connection isn't already closed and we haven't already sent one
+        # Don't send GOAWAY for normal request completion - only for connection termination
+        if !@closing
+          @closing = true
+          # last_stream_id should be the highest stream ID we've successfully processed
+          last_processed_stream_id = @current_stream_id > 1 ? @current_stream_id - 2 : 0_u32
+          goaway_frame = GoawayFrame.new(last_processed_stream_id, ErrorCode::NoError)
+          write_frame(goaway_frame)
+        end
+      end
+
       # Get I/O performance statistics
       def io_statistics : IOOptimizer::IOStats?
         @mutex.synchronize do
           return nil unless @io_optimization_enabled
-          
+
           stats = IOOptimizer::IOStats.new
-          
+
           if writer = @batched_writer
             stats.bytes_written = writer.stats.bytes_written
             stats.write_operations = writer.stats.write_operations
             stats.total_write_time = writer.stats.total_write_time
             stats.batches_flushed = writer.stats.batches_flushed
           end
-          
+
           if reader = @zero_copy_reader
             stats.bytes_read = reader.stats.bytes_read
             stats.read_operations = reader.stats.read_operations
             stats.total_read_time = reader.stats.total_read_time
           end
-          
+
           stats
         end
       end
