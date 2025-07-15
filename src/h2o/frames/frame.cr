@@ -1,4 +1,6 @@
 require "./frame_validation"
+require "../pooled_buffer"
+require "../frame_payload"
 
 module H2O
   abstract class Frame
@@ -16,6 +18,67 @@ module H2O
     end
 
     def self.from_io(io : IO, max_frame_size : UInt32 = MAX_FRAME_SIZE) : Frame
+      # Check if zero-copy optimization is enabled
+      if ENV.fetch("H2O_DISABLE_ZERO_COPY_FRAMES", "false") == "true"
+        from_io_legacy(io, max_frame_size)
+      else
+        from_io_zero_copy(io, max_frame_size)
+      end
+    end
+
+    # Enhanced zero-copy frame parsing
+    def self.from_io_zero_copy(io : IO, max_frame_size : UInt32 = MAX_FRAME_SIZE) : Frame
+      # Read frame header (still need to copy this small amount)
+      header = Bytes.new(FRAME_HEADER_SIZE)
+      io.read_fully(header)
+
+      length = (header[0].to_u32 << 16) | (header[1].to_u32 << 8) | header[2].to_u32
+      frame_type = FrameType.new(header[3])
+      flags = header[4]
+      stream_id = ((header[5].to_u32 << 24) | (header[6].to_u32 << 16) | (header[7].to_u32 << 8) | header[8].to_u32) & 0x7fffffff_u32
+
+      # STRICT VALIDATION: Fail fast on protocol violations
+
+      # 1. Validate frame size BEFORE reading payload
+      FrameValidation.validate_frame_size(length, max_frame_size)
+
+      # 2. Validate stream ID constraints per frame type
+      FrameValidation.validate_stream_id_for_frame_type(frame_type, stream_id)
+
+      # Zero-copy payload handling
+      payload = if length > 0
+                  # Get pooled buffer sized appropriately for the frame
+                  pooled_buffer = PooledBufferFactory.create_for_frame_reading(length.to_i32)
+                  
+                  # Read directly into the pooled buffer
+                  buffer_slice = pooled_buffer.slice(0, length.to_i32)
+                  io.read_fully(buffer_slice)
+                  
+                  # Create zero-copy payload
+                  ZeroCopyPayloadFactory.from_pooled_buffer(pooled_buffer, 0, length.to_i32)
+                else
+                  ZeroCopyPayloadFactory.empty
+                end
+
+      # For now, convert to bytes for compatibility while keeping the pooled buffer optimization
+      frame = create_frame(frame_type, length, flags, stream_id, payload.to_bytes)
+      
+      # Store the payload reference for cleanup (only for DATA frames for now)
+      if frame.is_a?(DataFrame)
+        frame.as(DataFrame).payload_ref = payload
+      else
+        # Release buffer reference for non-DATA frames since we converted to bytes
+        payload.release
+      end
+
+      # 3. Apply comprehensive frame validation
+      FrameValidation.validate_frame_comprehensive(frame)
+
+      frame
+    end
+
+    # Legacy frame parsing (for compatibility)
+    def self.from_io_legacy(io : IO, max_frame_size : UInt32 = MAX_FRAME_SIZE) : Frame
       # Don't use BufferPool to avoid memory corruption
       header = Bytes.new(FRAME_HEADER_SIZE)
       io.read_fully(header)
@@ -120,11 +183,11 @@ module H2O
       @flags = flags
     end
 
-    private def self.create_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : FramePayload) : Frame
+    private def self.create_frame(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
       create_frame_by_type(frame_type, length, flags, stream_id, payload)
     end
 
-    private def self.create_frame_by_type(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : FramePayload) : Frame
+    private def self.create_frame_by_type(frame_type : FrameType, length : UInt32, flags : UInt8, stream_id : StreamId, payload : Bytes) : Frame
       case frame_type
       when .data?
         DataFrame.from_payload(length, flags, stream_id, payload)
@@ -178,6 +241,7 @@ module H2O
         raise FrameError.new("Invalid connection frame type: #{frame_type}")
       end
     end
+
 
     private def validate_length : Nil
       raise FrameError.new("Frame length exceeds maximum: #{@length}") if @length > MAX_FRAME_SIZE
