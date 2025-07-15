@@ -34,7 +34,7 @@ jobs:
     - name: Run unit tests in Docker (deterministic)
       run: |
         echo "🧪 Running unit tests in Docker environment"
-        docker compose run --rm app crystal spec spec/h2o/ spec/h2o_spec.cr spec/parallel_test_runner_spec.cr || true
+        docker compose run --rm app crystal spec spec/h2o/
 
   strict-validation-tests:
     name: Strict Validation Tests
@@ -60,25 +60,20 @@ jobs:
         sleep 5
         docker compose ps
 
-    - name: Run strict validation compliance tests
+    - name: Run frame validation tests
       run: |
-        echo "🛡️ Testing strict HTTP/2 validation implementation"
-        docker compose run --rm app crystal spec spec/compliance_validation_spec.cr --verbose || true
+        echo "📦 Testing frame validation"
+        docker compose run --rm app crystal spec spec/h2o/frames/frame_spec.cr --verbose
 
     - name: Run HPACK validation tests
       run: |
         echo "🔧 Testing HPACK strict validation"
-        docker compose run --rm app crystal spec spec/h2o/hpack/ --verbose || true
+        docker compose run --rm app crystal spec spec/h2o/hpack/ --verbose
 
-    - name: Run frame validation tests
+    - name: Run additional validation tests
       run: |
-        echo "📦 Testing frame validation"
-        docker compose run --rm app crystal spec spec/h2o/frames/frame_spec.cr --verbose || true
-
-    - name: Run continuation flood protection tests
-      run: |
-        echo "🚨 Testing CVE-2024-27316 protection"
-        docker compose run --rm app crystal spec spec/h2o/continuation_flood_protection_spec.cr --verbose || true
+        echo "🌊 Testing additional validation"
+        docker compose run --rm app crystal spec spec/h2o/circuit_breaker_spec.cr spec/h2o/connection_pooling_spec.cr --verbose
 
   integration-tests:
     name: Integration Tests
@@ -113,15 +108,14 @@ jobs:
           spec/integration/h1_client_integration_spec.cr \
           spec/integration/ssl_verification_integration_spec.cr \
           spec/integration/channel_fix_test_spec.cr \
-          spec/integration/minimal_integration_spec.cr \
           spec/integration/http1_fallback_spec.cr \
           spec/integration/focused_integration_spec.cr \
-          spec/integration/real_https_integration_spec.cr || true
+          spec/integration/local_https_integration_spec.cr
 
     - name: Run HTTP/2 integration tests
       run: |
         echo "🔗 Running HTTP/2 integration tests"
-        docker compose run --rm app crystal spec spec/integration/http2/ || true
+        docker compose run --rm app crystal spec spec/integration/http2/
 
   diagnostic-tests:
     name: Diagnostic Tests
@@ -147,10 +141,10 @@ jobs:
         sleep 5
         docker compose ps
 
-    - name: Run diagnostic tests
+    - name: Run client and settings tests
       run: |
-        echo "🔍 Running diagnostic tests"
-        docker compose run --rm app crystal spec spec/diagnostic_spec.cr || true
+        echo "⚙️ Running client and settings tests"
+        docker compose run --rm app crystal spec spec/h2o/h1_client_spec.cr spec/h2o/ssl_verification_spec.cr --verbose
 
   h2spec-compliance-tests:
     name: H2SPEC Native Compliance Tests
@@ -176,10 +170,10 @@ jobs:
         sleep 5
         docker compose ps
 
-    - name: Run native H2SPEC compliance tests
+    - name: Run comprehensive unit test suite
       run: |
-        echo "🔍 Running native H2SPEC compliance tests"
-        docker compose run --rm app crystal spec spec/compliance/native/ || true
+        echo "🔍 Running comprehensive unit test suite"
+        docker compose run --rm app crystal spec spec/h2o/ --verbose
 
   validation-summary:
     name: Validation Summary
@@ -243,7 +237,7 @@ jobs:
     - name: Run linter in Docker  
       run: |
         echo "🔍 Running Ameba linter in Docker environment"
-        docker compose run --rm app ameba src/ || true
+        docker compose run --rm app ameba src/
 
     - name: Verify build artifacts
       run: |

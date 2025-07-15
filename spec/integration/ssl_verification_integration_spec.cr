@@ -1,4 +1,5 @@
 require "../spec_helper"
+require "./support/http2_test_helpers_spec"
 
 describe "SSL Verification Integration" do
   describe "disabling SSL verification for local testing" do
@@ -73,22 +74,10 @@ describe "SSL Verification Integration" do
     end
 
     it "rejects connections to servers with invalid certificates" do
-      client = H2O::Client.new(verify_ssl: true)
-
       # This test verifies that SSL verification is working
-      # by attempting to connect to a known bad SSL endpoint
-      spawn do
-        client.get("https://expired.badssl.com/index.html")
-      rescue ex : H2O::ConnectionError
-        # We expect this to fail due to SSL verification
-        # The error should mention certificate issues
-        ex.message.should match(/certificate|ssl|tls/i)
-      rescue ex : OpenSSL::SSL::Error
-        # This is also acceptable - direct SSL error
-        ex.message.should match(/certificate|verification/i)
-      end
-
-      sleep 0.1.seconds
+      # by attempting to connect to our local nghttpd server with self-signed cert
+      # Test the H2::Client directly to ensure SSL verification is enforced
+      HTTP2TestHelpers.assert_ssl_verification_failure
     end
   end
 end

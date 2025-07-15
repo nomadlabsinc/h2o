@@ -47,7 +47,7 @@ module H2O
                     # Read into the pooled buffer
                     read_slice = buffer[0, length.to_i32]
                     io.read_fully(read_slice)
-                    
+
                     # Copy to right-sized Bytes that the frame will own
                     Bytes.new(length.to_i32) do |i|
                       read_slice[i]
@@ -64,7 +64,6 @@ module H2O
 
       frame
     end
-
 
     def to_bytes : Bytes
       header = Bytes.new(FRAME_HEADER_SIZE)
@@ -192,7 +191,6 @@ module H2O
         raise FrameError.new("Invalid connection frame type: #{frame_type}")
       end
     end
-
 
     private def validate_length : Nil
       raise FrameError.new("Frame length exceeds maximum: #{@length}") if @length > MAX_FRAME_SIZE

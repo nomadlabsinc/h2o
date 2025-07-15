@@ -23,7 +23,7 @@ module H2O
     def release(item : T) : Nil
       # Reset the object if reset proc provided
       @reset.try(&.call(item))
-      
+
       # Try to return to pool, drop if full
       select
       when @pool.send(item)

@@ -19,51 +19,51 @@ module H2O
     @@frame_pool : Channel(Bytes)?
     @@pool_mutex = Mutex.new
     @@initialized = Atomic(Bool).new(false)
-    
+
     # Initialize all pools at once to avoid partial initialization issues
     private def self.ensure_pools_initialized
       return if @@initialized.get
-      
+
       @@pool_mutex.synchronize do
         return if @@initialized.get
-        
+
         @@small_pool = Channel(Bytes).new(DEFAULT_POOL_SIZE)
-        @@medium_pool = Channel(Bytes).new(DEFAULT_POOL_SIZE)  
+        @@medium_pool = Channel(Bytes).new(DEFAULT_POOL_SIZE)
         @@header_pool = Channel(Bytes).new(DEFAULT_POOL_SIZE)
         @@frame_pool = Channel(Bytes).new(DEFAULT_POOL_SIZE // 2)
-        
+
         @@initialized.set(true)
       end
     end
-    
+
     private def self.small_pool
       ensure_pools_initialized
       pool = @@small_pool
       raise "BufferPool: Small buffer pool failed to initialize properly" unless pool
       pool
     end
-    
+
     private def self.medium_pool
       ensure_pools_initialized
       pool = @@medium_pool
       raise "BufferPool: Medium buffer pool failed to initialize properly" unless pool
       pool
     end
-    
+
     private def self.header_pool
       ensure_pools_initialized
       pool = @@header_pool
       raise "BufferPool: Header buffer pool failed to initialize properly" unless pool
       pool
     end
-    
+
     private def self.frame_pool
       ensure_pools_initialized
       pool = @@frame_pool
       raise "BufferPool: Frame buffer pool failed to initialize properly" unless pool
       pool
     end
-    
+
     # Helper method for getting buffers from pools
     private def self.get_pooled_buffer(pool : Channel(Bytes), size : Int32) : Bytes
       # Check if pooling is disabled via environment variable (dynamic check)
@@ -73,7 +73,7 @@ module H2O
         stats.try(&.track_allocation)
         return Bytes.new(size)
       end
-      
+
       # Try to get from pool first, otherwise allocate new
       select
       when buffer = pool.receive
@@ -98,7 +98,7 @@ module H2O
         stats.try(&.track_return)
         return
       end
-      
+
       # Only return buffers of correct size to pool
       if buffer.size == expected_size
         # Try to return to pool, drop if full
@@ -109,7 +109,7 @@ module H2O
           # Pool is full, buffer will be garbage collected
         end
       end
-      
+
       # Optional statistics tracking
       stats = H2O.buffer_pool_stats?
       stats.try(&.track_return)
@@ -202,7 +202,6 @@ module H2O
         return_frame_buffer(buffer)
       end
     end
-
 
     # Enhanced with_buffer for optimized sizes
     def self.with_buffer(size : Int32, & : Bytes -> T) : T forall T

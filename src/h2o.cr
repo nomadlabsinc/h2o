@@ -9,7 +9,7 @@ require "./h2o/timeout"
 require "./h2o/types"
 require "./h2o/buffer_pool_stats"
 require "./h2o/buffer_pool"
-require "./h2o/object_pool"  # Re-enabled with fiber-safe implementation
+require "./h2o/object_pool" # Re-enabled with fiber-safe implementation
 require "./h2o/string_pool"
 require "./h2o/circuit_breaker"
 require "./h2o/tls_cache"
@@ -55,7 +55,6 @@ module H2O
   def self.env_flag_enabled?(env_var : String) : Bool
     TRUTHY_ENV_VALUES.includes?(ENV.fetch(env_var, "false").downcase)
   end
-
 
   # Additional type aliases (core ones are in types.cr)
   alias FrameBytes = Bytes

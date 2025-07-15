@@ -19,11 +19,11 @@ module H2O
       @closed = false
       @tcp_socket = nil
 
-      # Use timeout for initial TCP connection  
+      # Use timeout for initial TCP connection
       tcp_socket = begin
         channel = Channel(TCPSocket?).new(1)
         connection_fiber : Fiber? = nil
-        
+
         begin
           connection_fiber = spawn do
             begin

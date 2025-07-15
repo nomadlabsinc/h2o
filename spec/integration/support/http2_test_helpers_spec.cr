@@ -95,4 +95,12 @@ module HTTP2TestHelpers
     response.body.should_not be_nil
     response.body.to_s.should contain(expected_content)
   end
+
+  # SSL verification failure helper - reduces code duplication
+  def self.assert_ssl_verification_failure(host : String = "nghttpd", port : Int32 = 4430)
+    expect_raises(H2O::ConnectionError | OpenSSL::SSL::Error) do
+      client = H2O::H2::Client.new(host, port, verify_ssl: true)
+      client.get("/", {"host" => "#{host}:#{port}"})
+    end
+  end
 end
