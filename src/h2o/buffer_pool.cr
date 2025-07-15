@@ -19,7 +19,6 @@ module H2O
     @@frame_pool : Channel(Bytes)?
     @@pool_mutex = Mutex.new
     @@initialized = Atomic(Bool).new(false)
-    @@pooling_disabled : Bool = H2O.env_flag_enabled?("H2O_DISABLE_BUFFER_POOLING")
     
     # Initialize all pools at once to avoid partial initialization issues
     private def self.ensure_pools_initialized
@@ -67,8 +66,8 @@ module H2O
     
     # Helper method for getting buffers from pools
     private def self.get_pooled_buffer(pool : Channel(Bytes), size : Int32) : Bytes
-      # Check if pooling is disabled via cached environment variable
-      if @@pooling_disabled
+      # Check if pooling is disabled via environment variable (dynamic check)
+      if H2O.env_flag_enabled?("H2O_DISABLE_BUFFER_POOLING")
         # Optional statistics tracking
         stats = H2O.buffer_pool_stats?
         stats.try(&.track_allocation)
@@ -92,8 +91,8 @@ module H2O
 
     # Helper method for returning buffers to pools
     private def self.return_pooled_buffer(pool : Channel(Bytes), buffer : Bytes, expected_size : Int32) : Nil
-      # Skip pooling if disabled
-      if @@pooling_disabled
+      # Skip pooling if disabled (dynamic check)
+      if H2O.env_flag_enabled?("H2O_DISABLE_BUFFER_POOLING")
         # Optional statistics tracking
         stats = H2O.buffer_pool_stats?
         stats.try(&.track_return)
