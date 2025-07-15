@@ -4,12 +4,10 @@ module H2O
     FLAG_PADDED     = 0x8_u8
 
     property data : Bytes
-    property payload_ref : ZeroCopyPayload?
     property padding_length : UInt8
 
     def initialize(stream_id : StreamId, data : Bytes, flags : UInt8 = 0_u8, padding_length : UInt8 = 0_u8)
       @data = data
-      @payload_ref = nil
       @padding_length = padding_length
 
       total_length = data.size.to_u32
@@ -41,22 +39,6 @@ module H2O
       end
     end
 
-
-    # Release buffer reference when frame is finalized
-    def finalize
-      if payload_ref = @payload_ref
-        payload_ref.release
-        @payload_ref = nil
-      end
-    end
-
-    # Manual cleanup for deterministic resource management
-    def release_buffer : Nil
-      if payload_ref = @payload_ref
-        payload_ref.release
-        @payload_ref = nil
-      end
-    end
 
     def payload_to_bytes : Bytes
       # Validate data size to prevent overflow
