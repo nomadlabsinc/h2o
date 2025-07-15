@@ -135,6 +135,15 @@ module H2O
               return Response.error(0, "Request timeout", "HTTP/2")
             end
 
+            # Check if we can create a new stream based on MAX_CONCURRENT_STREAMS
+            if max_streams = @remote_settings.max_concurrent_streams
+              # Since we only support one stream at a time currently, we just need to ensure
+              # we're allowed to create at least one stream
+              if max_streams == 0
+                raise ConnectionError.new("Server does not allow any concurrent streams")
+              end
+            end
+
             # Use the next odd stream ID
             stream_id = @current_stream_id
             @current_stream_id += 2
@@ -184,6 +193,53 @@ module H2O
 
       def closed? : Bool
         @closed
+      end
+
+      # Send a PING frame to check connection health and optionally measure RTT
+      def ping(timeout : Time::Span = 5.seconds) : Time::Span?
+        @mutex.synchronize do
+          raise ConnectionError.new("Connection is closed") if @closed
+
+          # Generate random 8-byte payload for this ping
+          ping_data = Bytes.new(8)
+          Random::Secure.random_bytes(ping_data)
+          
+          # Record start time for RTT measurement
+          start_time = Time.monotonic
+          
+          # Send PING frame
+          ping_frame = PingFrame.new(ping_data, ack: false)
+          write_frame(ping_frame)
+          
+          # Wait for PONG response with matching data
+          deadline = start_time + timeout
+          
+          loop do
+            remaining = deadline - Time.monotonic
+            break if remaining <= Time::Span.zero
+            
+            frame = read_frame
+            
+            if frame.is_a?(PingFrame) && frame.ack? && frame.opaque_data == ping_data
+              # Calculate RTT
+              return Time.monotonic - start_time
+            elsif frame.is_a?(SettingsFrame)
+              handle_settings_frame(frame)
+              # Note: ACK is handled elsewhere if needed
+            elsif frame.is_a?(PingFrame) && !frame.ack?
+              # Respond to other PING frames
+              pong = PingFrame.new(frame.opaque_data, ack: true)
+              write_frame(pong)
+            elsif frame.is_a?(GoawayFrame)
+              raise ConnectionError.new("Connection closed by server: #{frame.error_code}")
+            end
+          end
+          
+          # Timeout reached without receiving PONG
+          nil
+        end
+      rescue IO::TimeoutError
+        nil
       end
 
       private def send_initial_preface : Nil
@@ -280,12 +336,14 @@ module H2O
         loop do
           # Check timeout before each frame read
           if Time.monotonic - start_time > @request_timeout
+            Log.debug { "Response reading timed out" }
             return Response.error(0, "Request timeout", "HTTP/2")
           end
 
           # Don't set socket timeout - let the overall request timeout handle it
 
           frame = read_frame
+          Log.debug { "Read frame: #{frame.class} stream_id=#{frame.stream_id}" }
 
           case frame
           when HeadersFrame
@@ -354,6 +412,8 @@ module H2O
             @remote_settings.header_table_size = value
             # Update HPACK encoder table size to match server setting
             @hpack_encoder.dynamic_table_size = value.to_i32
+          when SettingIdentifier::EnablePush
+            @remote_settings.enable_push = value != 0
           when SettingIdentifier::MaxConcurrentStreams
             @remote_settings.max_concurrent_streams = value
           when SettingIdentifier::InitialWindowSize
