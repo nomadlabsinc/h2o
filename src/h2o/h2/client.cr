@@ -45,7 +45,7 @@ module H2O
 
       # Response tracking for synchronous request/response
       property pending_responses : Hash(StreamId, Channel(Response))
-      
+
       # Compatibility properties for interface consistency
       property closing : Bool
 
@@ -74,6 +74,15 @@ module H2O
         @io_optimization_enabled = !H2O.env_flag_enabled?("H2O_DISABLE_IO_OPTIMIZATION")
         if @io_optimization_enabled
           IOOptimizer::SocketOptimizer.optimize(@socket.to_io)
+          # Also set TCP_NODELAY directly on our socket if possible
+          case socket = @socket
+          when H2O::TlsSocket
+            success = socket.set_tcp_nodelay(true)
+            Log.debug { "H2::Client: TLS socket TCP_NODELAY: #{success ? "set" : "failed"}" }
+          when H2O::TcpSocket
+            # TCP socket should already be handled by IOOptimizer
+            Log.debug { "H2::Client: TCP socket TCP_NODELAY handled by IOOptimizer" }
+          end
           # TODO: Re-enable I/O optimizations after resolving socket state conflicts.
           # The BatchedWriter and ZeroCopyReader optimizations are currently disabled because they cause
           # socket state conflicts during HTTP/2 frame processing, leading to test timeouts and connection issues.
@@ -103,7 +112,7 @@ module H2O
       def initialize(@io_adapter : IoAdapter, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds)
         # For IoAdapter constructor, we don't have a direct socket reference
         @socket = uninitialized TlsSocket | TcpSocket
-        
+
         @protocol_engine = ProtocolEngine.new(@io_adapter)
         @request_timeout = request_timeout
         @connect_timeout = connect_timeout
@@ -196,7 +205,7 @@ module H2O
       def close : Nil
         @mutex.synchronize do
           return if @protocol_engine.closed?
-          
+
           @closing = true
 
           begin
@@ -246,7 +255,7 @@ module H2O
           end
           nil
         }
-        
+
         # Set up error callback
         @protocol_engine.on_error = ->(ex : Exception) {
           Log.error { "Protocol error: #{ex.message}" }
@@ -258,9 +267,9 @@ module H2O
           @pending_responses.clear
           nil
         }
-        
+
         # Set up connection closed callback
-        @protocol_engine.on_connection_closed = ->() {
+        @protocol_engine.on_connection_closed = -> {
           # Close any pending response channels
           @pending_responses.each_value(&.close)
           @pending_responses.clear
@@ -639,15 +648,15 @@ module H2O
             @data_callback = nil
             @close_callback = nil
           end
-          
+
           def read_bytes(buffer_size : Int32) : Bytes?
             return nil if @closed
-            
+
             begin
               bytes = Bytes.new(buffer_size)
               bytes_read = @io.read(bytes)
               return nil if bytes_read == 0
-              
+
               result = bytes[0, bytes_read]
               @data_callback.try(&.call(result))
               result
@@ -656,10 +665,10 @@ module H2O
               nil
             end
           end
-          
+
           def write_bytes(bytes : Bytes) : Int32
             return 0 if @closed
-            
+
             begin
               @io.write(bytes)
               @io.flush
@@ -669,22 +678,22 @@ module H2O
               0
             end
           end
-          
+
           def close : Nil
             return if @closed
             @closed = true
             @io.close rescue nil
             @close_callback.try(&.call)
           end
-          
+
           def closed? : Bool
             @closed
           end
-          
+
           def on_data_available(&block : Bytes -> Nil) : Nil
             @data_callback = block
           end
-          
+
           def on_closed(&block : -> Nil) : Nil
             @close_callback = block
           end

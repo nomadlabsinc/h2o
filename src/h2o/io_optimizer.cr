@@ -204,25 +204,59 @@ module H2O
     module SocketOptimizer
       # Optimize socket for HTTP/2 performance
       def self.optimize(io : IO) : Nil
-        # Only optimize if it's a real socket
-        if io.responds_to?(:tcp_nodelay=)
-          # Set socket options for better performance
+        # Get the underlying TCP socket for TLS connections
+        tcp_socket = get_tcp_socket(io)
+        if tcp_socket
+          Log.debug { "IOOptimizer: Setting TCP_NODELAY on underlying TCP socket" }
+          tcp_socket.tcp_nodelay = true # Disable Nagle's algorithm
+          tcp_socket.recv_buffer_size = DEFAULT_RECV_BUFFER
+          tcp_socket.send_buffer_size = DEFAULT_SEND_BUFFER
+          Log.debug { "IOOptimizer: Configured socket buffers (recv: #{DEFAULT_RECV_BUFFER}, send: #{DEFAULT_SEND_BUFFER})" }
+        elsif io.responds_to?(:tcp_nodelay=)
+          Log.debug { "IOOptimizer: Setting TCP_NODELAY on socket" }
           io.tcp_nodelay = true # Disable Nagle's algorithm
+
+          if io.responds_to?(:recv_buffer_size=)
+            # Set larger socket buffers for better throughput
+            io.recv_buffer_size = DEFAULT_RECV_BUFFER
+            io.send_buffer_size = DEFAULT_SEND_BUFFER
+            Log.debug { "IOOptimizer: Configured socket buffers (recv: #{DEFAULT_RECV_BUFFER}, send: #{DEFAULT_SEND_BUFFER})" }
+          end
+        else
+          Log.warn { "IOOptimizer: Unable to set TCP_NODELAY - socket type: #{io.class}" }
         end
 
-        if io.responds_to?(:recv_buffer_size=)
-          # Set larger socket buffers for better throughput
-          io.recv_buffer_size = DEFAULT_RECV_BUFFER
-          io.send_buffer_size = DEFAULT_SEND_BUFFER
-        end
-
-        if io.responds_to?(:keepalive=)
+        if tcp_socket && tcp_socket.responds_to?(:keepalive=)
           # Keep-alive settings for connection health
+          tcp_socket.keepalive = true
+        elsif io.responds_to?(:keepalive=)
           io.keepalive = true
         end
 
         # Platform-specific optimizations would go here
         # (e.g., SO_REUSEPORT, TCP_FASTOPEN, etc.)
+
+      rescue ex
+        # Non-fatal: socket optimization failed, log and continue
+        Log.warn { "IOOptimizer: Socket optimization failed: #{ex.message}" }
+      end
+
+      # Get the underlying TCP socket from various socket types
+      private def self.get_tcp_socket(io : IO) : TCPSocket?
+        case io
+        when TCPSocket
+          io
+        when H2O::TlsSocket
+          # Get the underlying TCP socket from TLS socket
+          io.tcp_socket
+        else
+          # Try to access tcp_socket method if available
+          if io.responds_to?(:tcp_socket)
+            io.tcp_socket
+          else
+            nil
+          end
+        end
       end
 
       # Get optimal buffer size based on IO state

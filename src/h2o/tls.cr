@@ -69,6 +69,14 @@ module H2O
       # Store TCP socket reference for proper cleanup
       @tcp_socket = tcp_socket
 
+      # Set TCP_NODELAY immediately after TCP connection to disable Nagle's algorithm
+      begin
+        tcp_socket.tcp_nodelay = true
+        Log.debug { "TlsSocket: Set TCP_NODELAY on underlying socket during initialization" }
+      rescue ex
+        Log.warn { "TlsSocket: Failed to set TCP_NODELAY: #{ex.message}" }
+      end
+
       # Create SSL context with proper error handling
       context = OpenSSL::SSL::Context::Client.new
       begin
@@ -132,6 +140,29 @@ module H2O
         socket = @socket
         return if @closed || !socket
         socket.flush
+      end
+    end
+
+    # Set TCP_NODELAY on the underlying TCP socket
+    def set_tcp_nodelay(value : Bool) : Bool
+      @mutex.synchronize do
+        tcp_socket = @tcp_socket
+        return false if @closed || !tcp_socket
+
+        begin
+          tcp_socket.tcp_nodelay = value
+          true
+        rescue
+          false
+        end
+      end
+    end
+
+    # Expose the underlying TCP socket for socket option configuration
+    def tcp_socket : TCPSocket?
+      @mutex.synchronize do
+        return nil if @closed
+        @tcp_socket
       end
     end
 

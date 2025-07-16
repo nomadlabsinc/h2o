@@ -210,13 +210,13 @@ module H2O
 
     # RFC 9113 Section 8.2: Field name validation
     # A field name MUST NOT contain characters in the ranges:
-    # - 0x00-0x20 (control characters and space)  
+    # - 0x00-0x20 (control characters and space)
     # - 0x41-0x5a (uppercase A-Z)
     # - 0x7f-0xff (DEL and high ASCII)
     def self.validate_rfc9113_field_name(name : String) : Nil
       name.each_char_with_index do |char, index|
         char_code = char.ord
-        
+
         # Check for invalid character ranges per RFC 9113
         if char_code <= 0x20 || (char_code >= 0x41 && char_code <= 0x5a) || char_code >= 0x7f
           raise CompressionError.new(
@@ -244,18 +244,18 @@ module H2O
     end
 
     # RFC 9113 Section 8.1.2.6: Content-Length semantics with END_STREAM
-    # A Content-Length header field in a HEADERS frame that is followed by an 
-    # END_STREAM flag and no DATA frames MUST indicate a length of 0. 
+    # A Content-Length header field in a HEADERS frame that is followed by an
+    # END_STREAM flag and no DATA frames MUST indicate a length of 0.
     # If it indicates a non-zero length, it's a PROTOCOL_ERROR.
     def self.validate_content_length_end_stream(headers : Headers, end_stream : Bool, actual_data_length : Int32) : Nil
-      return unless end_stream  # Only validate when END_STREAM is set
-      
+      return unless end_stream # Only validate when END_STREAM is set
+
       content_length_header = headers["content-length"]?
-      return unless content_length_header  # No Content-Length header is valid
-      
+      return unless content_length_header # No Content-Length header is valid
+
       # Parse Content-Length value
       content_length = parse_content_length(content_length_header)
-      
+
       # RFC 9113: Content-Length must match actual data length when END_STREAM is set
       if content_length != actual_data_length
         raise ProtocolError.new(
@@ -264,7 +264,7 @@ module H2O
         )
       end
     end
-    
+
     # Parse and validate Content-Length header value
     def self.parse_content_length(value : String) : Int32
       # Content-Length must be a non-negative integer
@@ -278,11 +278,11 @@ module H2O
         raise ProtocolError.new("Invalid Content-Length: not a valid integer '#{value}'")
       end
     end
-    
+
     # Validate multiple Content-Length headers have the same value
     def self.validate_multiple_content_length(values : Array(String)) : Nil
       return if values.size <= 1
-      
+
       # All values must be identical
       first_value = values.first
       values.each do |value|
