@@ -151,7 +151,9 @@ module H2O
       end
 
       # Set stream priority based on content type
+      # NOTE: RFC 9113 deprecated RFC 7540 priority signaling. Consider using RFC 9218 HTTP-PRIORITY instead.
       def optimize_by_content_type(stream_id : StreamId, content_type : String?) : Nil
+        Log.debug { "Using deprecated RFC 7540 priority signaling (RFC 9113 recommends RFC 9218 HTTP-PRIORITY)" }
         return unless content_type
 
         weight = case content_type

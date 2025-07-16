@@ -198,15 +198,32 @@ module H2O
 
     # Validate header name compliance
     private def self.validate_header_name_compliance(name : String) : Nil
-      # HTTP/2 header names must be lowercase
-      if name != name.downcase
-        raise CompressionError.new("Header names must be lowercase: #{name}")
-      end
+      # RFC 9113 Section 8.2: Field name validation with strict character checking
+      validate_rfc9113_field_name(name)
 
       # Connection-specific headers are forbidden in HTTP/2
       forbidden_headers = ["connection", "upgrade", "proxy-connection", "keep-alive", "transfer-encoding"]
       if forbidden_headers.includes?(name.downcase)
         raise CompressionError.new("Forbidden header in HTTP/2: #{name}")
+      end
+    end
+
+    # RFC 9113 Section 8.2: Field name validation
+    # A field name MUST NOT contain characters in the ranges:
+    # - 0x00-0x20 (control characters and space)  
+    # - 0x41-0x5a (uppercase A-Z)
+    # - 0x7f-0xff (DEL and high ASCII)
+    def self.validate_rfc9113_field_name(name : String) : Nil
+      name.each_char_with_index do |char, index|
+        char_code = char.ord
+        
+        # Check for invalid character ranges per RFC 9113
+        if char_code <= 0x20 || (char_code >= 0x41 && char_code <= 0x5a) || char_code >= 0x7f
+          raise CompressionError.new(
+            "Invalid character in field name '#{name}' at position #{index}: " \
+            "0x#{char_code.to_s(16)} (RFC 9113 forbids 0x00-0x20, 0x41-0x5a, 0x7f-0xff)"
+          )
+        end
       end
     end
 
@@ -224,6 +241,57 @@ module H2O
     private def self.validate_no_duplicate_pseudo_headers(pseudo_headers : Hash(String, String)) : Nil
       # This is inherently validated by using Hash, but we check for completeness
       # In practice, the HPACK decoder would have already handled duplicates
+    end
+
+    # RFC 9113 Section 8.1.2.6: Content-Length semantics with END_STREAM
+    # A Content-Length header field in a HEADERS frame that is followed by an 
+    # END_STREAM flag and no DATA frames MUST indicate a length of 0. 
+    # If it indicates a non-zero length, it's a PROTOCOL_ERROR.
+    def self.validate_content_length_end_stream(headers : Headers, end_stream : Bool, actual_data_length : Int32) : Nil
+      return unless end_stream  # Only validate when END_STREAM is set
+      
+      content_length_header = headers["content-length"]?
+      return unless content_length_header  # No Content-Length header is valid
+      
+      # Parse Content-Length value
+      content_length = parse_content_length(content_length_header)
+      
+      # RFC 9113: Content-Length must match actual data length when END_STREAM is set
+      if content_length != actual_data_length
+        raise ProtocolError.new(
+          "Content-Length mismatch with END_STREAM: declared #{content_length}, " \
+          "actual #{actual_data_length} (RFC 9113 Section 8.1.2.6)"
+        )
+      end
+    end
+    
+    # Parse and validate Content-Length header value
+    def self.parse_content_length(value : String) : Int32
+      # Content-Length must be a non-negative integer
+      begin
+        length = value.to_i
+        if length < 0
+          raise ProtocolError.new("Invalid Content-Length: negative value #{length}")
+        end
+        length
+      rescue ArgumentError
+        raise ProtocolError.new("Invalid Content-Length: not a valid integer '#{value}'")
+      end
+    end
+    
+    # Validate multiple Content-Length headers have the same value
+    def self.validate_multiple_content_length(values : Array(String)) : Nil
+      return if values.size <= 1
+      
+      # All values must be identical
+      first_value = values.first
+      values.each do |value|
+        if value != first_value
+          raise ProtocolError.new(
+            "Multiple Content-Length headers with different values: #{values.join(", ")}"
+          )
+        end
+      end
     end
 
     # Validate connection-specific headers are not present

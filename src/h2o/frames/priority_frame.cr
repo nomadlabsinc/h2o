@@ -1,4 +1,6 @@
 module H2O
+  # RFC 9113 Note: Priority signaling from RFC 7540 is deprecated.
+  # This frame is retained for wire compatibility but RFC 9218 HTTP-PRIORITY is recommended.
   class PriorityFrame < Frame
     property exclusive : Bool
     property dependency : StreamId
