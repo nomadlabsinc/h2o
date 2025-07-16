@@ -1,4 +1,5 @@
 require "../spec_helper"
+require "../support/protocol_engine_test_helper"
 require "../support/in_memory_transport"
 
 describe "H2O::ProtocolEngine" do
@@ -16,11 +17,10 @@ describe "H2O::ProtocolEngine" do
       transport = H2O::Test::InMemoryTransport.new
       engine = H2O::ProtocolEngine.new(transport)
 
-      # Establish connection
-      result = engine.establish_connection
+      # Establish connection with proper handshake simulation
+      result = H2O::Test::ProtocolEngineTestHelper.establish_test_connection(engine, transport)
       result.should be_true
-      engine.connection_established.should be_true
-
+      
       # Verify preface was sent
       outgoing = transport.get_outgoing_data
       outgoing.size.should be > 0
@@ -28,6 +28,9 @@ describe "H2O::ProtocolEngine" do
       # Should start with HTTP/2 connection preface
       preface_string = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
       String.new(outgoing[0, preface_string.size]).should eq(preface_string)
+      
+      # Connection should be established
+      engine.connection_established.should be_true
     end
 
     it "should handle connection closure" do
@@ -50,8 +53,8 @@ describe "H2O::ProtocolEngine" do
       transport = H2O::Test::InMemoryTransport.new
       engine = H2O::ProtocolEngine.new(transport)
 
-      # Establish connection first
-      engine.establish_connection
+      # Establish connection with proper handshake
+      H2O::Test::ProtocolEngineTestHelper.establish_test_connection(engine, transport)
       transport.clear_outgoing_data # Clear preface data
 
       # Send a request
@@ -90,7 +93,7 @@ describe "H2O::ProtocolEngine" do
     it "should validate RFC 9113 header compliance" do
       transport = H2O::Test::InMemoryTransport.new
       engine = H2O::ProtocolEngine.new(transport)
-      engine.establish_connection
+      H2O::Test::ProtocolEngineTestHelper.establish_test_connection(engine, transport)
 
       # Test with invalid header (uppercase)
       headers = H2O::Headers.new
@@ -105,7 +108,7 @@ describe "H2O::ProtocolEngine" do
     it "should allocate stream IDs correctly" do
       transport = H2O::Test::InMemoryTransport.new
       engine = H2O::ProtocolEngine.new(transport)
-      engine.establish_connection
+      H2O::Test::ProtocolEngineTestHelper.establish_test_connection(engine, transport)
 
       headers = H2O::Headers.new
       headers["host"] = "example.com"
@@ -125,7 +128,7 @@ describe "H2O::ProtocolEngine" do
     it "should send data frames" do
       transport = H2O::Test::InMemoryTransport.new
       engine = H2O::ProtocolEngine.new(transport)
-      engine.establish_connection
+      H2O::Test::ProtocolEngineTestHelper.establish_test_connection(engine, transport)
 
       headers = H2O::Headers.new
       headers["host"] = "example.com"
