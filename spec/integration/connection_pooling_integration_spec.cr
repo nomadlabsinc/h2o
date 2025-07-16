@@ -23,7 +23,7 @@ describe H2O::Client do
         if success
           # Should only create one connection for the same host
           client.connections.size.should eq(initial_count + 1)
-          
+
           # Verify connection is reused for subsequent requests
           3.times do
             response = client.get("#{TestConfig.http2_url}/index.html")
@@ -34,7 +34,7 @@ describe H2O::Client do
         else
           # If no network available, connections might be created but should be closed
           # Just verify we don't accumulate open connections
-          open_connections = client.connections.values.reject(&.closed?).size
+          open_connections = client.connections.values.count { |conn| !conn.closed? }
           open_connections.should eq(0)
         end
       ensure
@@ -119,7 +119,7 @@ describe H2O::Client do
           end
         else
           # If network is not available, just verify no open connections accumulate
-          open_connections = client.connections.values.reject(&.closed?).size
+          open_connections = client.connections.values.count { |conn| !conn.closed? }
           open_connections.should eq(0)
         end
       ensure

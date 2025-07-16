@@ -11,7 +11,7 @@ module H2SpecTestHelpers
     property highest_stream_id : UInt32
     property max_concurrent_streams : UInt32
     property concurrent_stream_count : UInt32
-    
+
     def initialize(@socket : IO::Memory)
       @frames_received = [] of Bytes
       @last_error = nil
@@ -21,47 +21,47 @@ module H2SpecTestHelpers
       @max_concurrent_streams = UInt32::MAX
       @concurrent_stream_count = 0_u32
     end
-    
+
     def request(method : String, path : String) : H2O::Response?
       begin
         # Check if socket is empty
         if @socket.bytesize == 0
           raise IO::EOFError.new("No data in socket")
         end
-        
+
         # Read frames from the mock socket
         while @socket.pos < @socket.bytesize
           frame = read_frame
           @frames_received << frame
-          
+
           # Process frame and check for errors
           frame_type = frame[3]
           stream_id = (frame[5].to_u32 << 24) | (frame[6].to_u32 << 16) | (frame[7].to_u32 << 8) | frame[8].to_u32
-          
+
           case frame_type
-          when 0x0  # DATA
+          when 0x0 # DATA
             check_data_frame(frame, stream_id)
-          when 0x1  # HEADERS
+          when 0x1 # HEADERS
             check_headers_frame(frame, stream_id)
-          when 0x2  # PRIORITY
+          when 0x2 # PRIORITY
             check_priority_frame(frame, stream_id)
-          when 0x3  # RST_STREAM
+          when 0x3 # RST_STREAM
             check_rst_stream_frame(frame, stream_id)
-          when 0x4  # SETTINGS
+          when 0x4 # SETTINGS
             check_settings_frame(frame, stream_id)
-          when 0x5  # PUSH_PROMISE
+          when 0x5 # PUSH_PROMISE
             check_push_promise_frame(frame, stream_id)
-          when 0x6  # PING
+          when 0x6 # PING
             check_ping_frame(frame, stream_id)
-          when 0x7  # GOAWAY
+          when 0x7 # GOAWAY
             check_goaway_frame(frame, stream_id)
-          when 0x8  # WINDOW_UPDATE
+          when 0x8 # WINDOW_UPDATE
             check_window_update_frame(frame, stream_id)
-          when 0x9  # CONTINUATION
+          when 0x9 # CONTINUATION
             check_continuation_frame(frame, stream_id)
           end
         end
-        
+
         # Return a mock successful response if no errors
         H2O::Response.new(200, {} of String => String, "")
       rescue ex
@@ -69,46 +69,46 @@ module H2SpecTestHelpers
         raise ex
       end
     end
-    
+
     def get(url : String) : H2O::Response
       request("GET", url) || raise "No response"
     end
-    
+
     def close : Nil
       # No-op for mock
     end
-    
+
     private def read_frame : Bytes
       header = Bytes.new(9)
       @socket.read_fully(header)
-      
+
       length = (header[0].to_u32 << 16) | (header[1].to_u32 << 8) | header[2].to_u32
-      
+
       # Check frame size before allocating
       if length > @max_frame_size
         raise H2O::FrameSizeError.new("Frame size #{length} exceeds max #{@max_frame_size}")
       end
-      
+
       frame = Bytes.new(9 + length)
       header.copy_to(frame)
-      
+
       if length > 0
         @socket.read_fully(frame + 9)
       end
-      
+
       frame
     end
-    
+
     private def check_data_frame(frame : Bytes, stream_id : UInt32)
       if stream_id == 0
         raise H2O::ConnectionError.new("DATA frame on connection stream")
       end
-      
+
       # Check for DATA on idle stream
       if !@active_streams.includes?(stream_id) && stream_id > @highest_stream_id
         raise H2O::ConnectionError.new("DATA frame on idle stream")
       end
-      
+
       flags = frame[4]
       if (flags & FLAG_PADDED) != 0
         length = (frame[0].to_u32 << 16) | (frame[1].to_u32 << 8) | frame[2].to_u32
@@ -121,32 +121,32 @@ module H2SpecTestHelpers
         end
       end
     end
-    
+
     private def check_headers_frame(frame : Bytes, stream_id : UInt32)
       if stream_id == 0
         raise H2O::ConnectionError.new("HEADERS frame on connection stream")
       end
-      
+
       # Check for even-numbered stream ID from server
       if stream_id % 2 == 0
         raise H2O::ConnectionError.new("HEADERS frame with even-numbered stream ID")
       end
-      
+
       # Check stream ID ordering
       if stream_id <= @highest_stream_id
         raise H2O::ConnectionError.new("Stream ID not greater than previous")
       end
-      
+
       # Check concurrent streams limit
       if @concurrent_stream_count >= @max_concurrent_streams
         raise H2O::StreamError.new("Exceeded MAX_CONCURRENT_STREAMS", stream_id, H2O::ErrorCode::RefusedStream)
       end
-      
+
       # Update tracking
       @highest_stream_id = stream_id
       @active_streams.add(stream_id)
       @concurrent_stream_count += 1
-      
+
       flags = frame[4]
       if (flags & FLAG_PADDED) != 0
         length = (frame[0].to_u32 << 16) | (frame[1].to_u32 << 8) | frame[2].to_u32
@@ -157,41 +157,41 @@ module H2SpecTestHelpers
           end
         end
       end
-      
+
       # Check for invalid HPACK data (simplified check)
       if frame.size > 9 && frame[9] == 0xFF && frame.size > 10 && frame[10] == 0xFF
         raise H2O::CompressionError.new("Invalid HPACK encoding")
       end
-      
+
       # Decode headers and check for connection-specific headers
       header_block_start = 9
       padding_size = 0
-      
+
       if (flags & FLAG_PADDED) != 0
         padding_length = frame[9]
         header_block_start += 1
         padding_size = padding_length
       end
-      
+
       if (flags & FLAG_PRIORITY) != 0
         header_block_start += 5
       end
-      
+
       # Calculate actual header block size (excluding padding)
       header_block_end = frame.size - padding_size
-      
+
       if header_block_end > header_block_start
         header_block = frame[header_block_start, header_block_end - header_block_start]
-        
+
         # Use the actual HPACK decoder to check headers
         begin
           decoder = H2O::HPACK::Decoder.new(4096, H2O::HpackSecurityLimits.new)
           headers = decoder.decode(header_block)
-          
+
           # Check for connection-specific headers
           headers.each do |name, value|
-            if name.downcase == "connection" || name.downcase == "transfer-encoding" || 
-               name.downcase == "upgrade" || name.downcase == "keep-alive" || 
+            if name.downcase == "connection" || name.downcase == "transfer-encoding" ||
+               name.downcase == "upgrade" || name.downcase == "keep-alive" ||
                name.downcase == "proxy-connection"
               raise H2O::ProtocolError.new("Connection-specific header '#{name}' in HEADERS frame")
             end
@@ -206,56 +206,56 @@ module H2SpecTestHelpers
         end
       end
     end
-    
+
     private def check_priority_frame(frame : Bytes, stream_id : UInt32)
       if stream_id == 0
         raise H2O::ConnectionError.new("PRIORITY frame on connection stream")
       end
-      
+
       length = (frame[0].to_u32 << 16) | (frame[1].to_u32 << 8) | frame[2].to_u32
       if length != 5
         raise H2O::FrameSizeError.new("PRIORITY frame must be 5 octets")
       end
     end
-    
+
     private def check_rst_stream_frame(frame : Bytes, stream_id : UInt32)
       if stream_id == 0
         raise H2O::ConnectionError.new("RST_STREAM frame on connection stream")
       end
-      
+
       length = (frame[0].to_u32 << 16) | (frame[1].to_u32 << 8) | frame[2].to_u32
       if length != 4
         raise H2O::FrameSizeError.new("RST_STREAM frame must be 4 octets")
       end
-      
+
       # Check for RST_STREAM on idle stream (simplified)
       if stream_id > 1 && stream_id % 2 == 1
         raise H2O::ConnectionError.new("RST_STREAM on idle stream")
       end
     end
-    
+
     private def check_settings_frame(frame : Bytes, stream_id : UInt32)
       if stream_id != 0
         raise H2O::ConnectionError.new("SETTINGS frame on non-zero stream")
       end
-      
+
       length = (frame[0].to_u32 << 16) | (frame[1].to_u32 << 8) | frame[2].to_u32
       flags = frame[4]
-      
+
       if (flags & FLAG_ACK) != 0 && length != 0
         raise H2O::FrameSizeError.new("SETTINGS ACK must have empty payload")
       end
-      
+
       if length % 6 != 0
         raise H2O::FrameSizeError.new("SETTINGS payload must be multiple of 6")
       end
-      
+
       # Check settings values
       i = 9
       while i < frame.size
         setting_id = (frame[i].to_u16 << 8) | frame[i + 1].to_u16
         value = (frame[i + 2].to_u32 << 24) | (frame[i + 3].to_u32 << 16) | (frame[i + 4].to_u32 << 8) | frame[i + 5].to_u32
-        
+
         case setting_id
         when SETTINGS_ENABLE_PUSH
           if value > 1
@@ -273,34 +273,34 @@ module H2SpecTestHelpers
         when SETTINGS_MAX_CONCURRENT_STREAMS
           @max_concurrent_streams = value
         end
-        
+
         i += 6
       end
     end
-    
+
     private def check_push_promise_frame(frame : Bytes, stream_id : UInt32)
       # Push promise validation would go here
     end
-    
+
     private def check_ping_frame(frame : Bytes, stream_id : UInt32)
       # Ping validation would go here
     end
-    
+
     private def check_goaway_frame(frame : Bytes, stream_id : UInt32)
       # Goaway validation would go here
     end
-    
+
     private def check_window_update_frame(frame : Bytes, stream_id : UInt32)
       # Check for WINDOW_UPDATE on idle stream
       if stream_id != 0 && !@active_streams.includes?(stream_id) && stream_id > @highest_stream_id
         raise H2O::ConnectionError.new("WINDOW_UPDATE frame on idle stream")
       end
-      
+
       length = (frame[0].to_u32 << 16) | (frame[1].to_u32 << 8) | frame[2].to_u32
       if length != 4
         raise H2O::FrameSizeError.new("WINDOW_UPDATE frame must be 4 octets")
       end
-      
+
       if frame.size >= 13
         increment = (frame[9].to_u32 << 24) | (frame[10].to_u32 << 16) | (frame[11].to_u32 << 8) | frame[12].to_u32
         if increment == 0
@@ -308,7 +308,7 @@ module H2SpecTestHelpers
         end
       end
     end
-    
+
     private def check_continuation_frame(frame : Bytes, stream_id : UInt32)
       # For now, always error on CONTINUATION without HEADERS
       raise H2O::ConnectionError.new("CONTINUATION without HEADERS")
@@ -368,10 +368,10 @@ module H2SpecTestHelpers
   FRAME_TYPE_CONTINUATION  = 0x9_u8
 
   # Common flags
-  FLAG_END_STREAM  = 0x1_u8
-  FLAG_ACK         = 0x1_u8
-  FLAG_END_HEADERS = 0x4_u8
-  FLAG_PADDED      = 0x8_u8
+  FLAG_END_STREAM  =  0x1_u8
+  FLAG_ACK         =  0x1_u8
+  FLAG_END_HEADERS =  0x4_u8
+  FLAG_PADDED      =  0x8_u8
   FLAG_PRIORITY    = 0x20_u8
 
   # Helper to create settings frame payload

@@ -32,7 +32,7 @@ describe "H2O Focused Integration Tests" do
 
       client = H2O::Client.new(timeout: 5.seconds, verify_ssl: false)
       response = client.get("#{TestConfig.http2_url}/index.html")
-      
+
       response.should_not be_nil
       response.status.should eq(200)
       client.close

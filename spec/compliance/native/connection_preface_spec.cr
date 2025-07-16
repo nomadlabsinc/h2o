@@ -9,11 +9,11 @@ describe "H2SPEC Connection Preface Compliance" do
     # These tests validate that the server sends proper connection preface
     # In our mock setup, we're simulating what a server would send
     mock_socket = IO::Memory.new
-    
+
     # Write invalid preface (server would normally send proper preface)
     mock_socket.write("INVALID PREFACE\r\n\r\n".to_slice)
     mock_socket.rewind
-    
+
     # MockH2Client expects to read frames, not the preface
     # So this will fail when trying to read frame header
     client = MockH2Client.new(mock_socket)
@@ -30,7 +30,7 @@ describe "H2SPEC Connection Preface Compliance" do
     mock_socket = IO::Memory.new
     # Don't write anything - simulate a server that sends nothing
     # The socket is empty, so any read will immediately fail
-    
+
     # This will fail immediately when trying to read frames
     client = MockH2Client.new(mock_socket)
 

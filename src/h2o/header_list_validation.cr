@@ -268,15 +268,13 @@ module H2O
     # Parse and validate Content-Length header value
     def self.parse_content_length(value : String) : Int32
       # Content-Length must be a non-negative integer
-      begin
-        length = value.to_i
-        if length < 0
-          raise ProtocolError.new("Invalid Content-Length: negative value #{length}")
-        end
-        length
-      rescue ArgumentError
-        raise ProtocolError.new("Invalid Content-Length: not a valid integer '#{value}'")
+      length = value.to_i
+      if length < 0
+        raise ProtocolError.new("Invalid Content-Length: negative value #{length}")
       end
+      length
+    rescue ArgumentError
+      raise ProtocolError.new("Invalid Content-Length: not a valid integer '#{value}'")
     end
 
     # Validate multiple Content-Length headers have the same value

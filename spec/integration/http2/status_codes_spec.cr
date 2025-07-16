@@ -58,7 +58,7 @@ describe "HTTP/2 Status Codes" do
       end
 
       response.should_not be_nil
-      response.status.should be >= 400  # Should get 404 for non-existent path
+      response.status.should be >= 400 # Should get 404 for non-existent path
       response.protocol.should eq("HTTP/2")
     end
   end

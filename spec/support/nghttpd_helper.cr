@@ -2,15 +2,15 @@
 module NghttpdHelper
   @@process : Process? = nil
   @@started = false
-  
+
   # Start nghttpd if we're not in docker-compose environment
   def self.ensure_running
     return if ENV["TEST_NGHTTPD_URL"]? # Already available via docker-compose
     return if @@started
-    
+
     start_local_nghttpd
   end
-  
+
   private def self.start_local_nghttpd
     # Check if nghttpd is installed
     unless system("which nghttpd > /dev/null 2>&1")
@@ -18,14 +18,14 @@ module NghttpdHelper
       puts "Install with: apt-get install nghttp2-server"
       return
     end
-    
+
     # Create certificates if needed
     cert_dir = "/tmp/nghttpd_test_certs"
     Dir.mkdir_p(cert_dir)
-    
+
     cert_path = File.join(cert_dir, "cert.pem")
     key_path = File.join(cert_dir, "key.pem")
-    
+
     unless File.exists?(cert_path) && File.exists?(key_path)
       # Generate self-signed certificate
       system(%Q{
@@ -36,7 +36,7 @@ module NghttpdHelper
           2>/dev/null
       })
     end
-    
+
     # Create a simple HTML file to serve
     html_dir = "/tmp/nghttpd_test_html"
     Dir.mkdir_p(html_dir)
@@ -51,7 +51,7 @@ module NghttpdHelper
         </body>
       </html>
     HTML
-    
+
     # Start nghttpd
     begin
       @@process = Process.new(
@@ -60,10 +60,10 @@ module NghttpdHelper
         output: Process::Redirect::Close,
         error: Process::Redirect::Close
       )
-      
+
       # Give it time to start
       sleep 0.5.seconds
-      
+
       # Check if it's running
       if @@process.try(&.terminated?)
         puts "ERROR: nghttpd failed to start"
@@ -71,7 +71,7 @@ module NghttpdHelper
       else
         @@started = true
         puts "Started local nghttpd on port 4430"
-        
+
         # Register cleanup
         at_exit { cleanup }
       end
@@ -79,7 +79,7 @@ module NghttpdHelper
       puts "ERROR starting nghttpd: #{ex.message}"
     end
   end
-  
+
   def self.cleanup
     if process = @@process
       unless process.terminated?

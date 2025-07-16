@@ -513,7 +513,7 @@ module H2O
       @closing = true
 
       # Notify all pending responses of connection closure
-      @response_builders.each do |stream_id, builder|
+      @response_builders.each do |stream_id, _builder|
         if stream_id > frame.last_stream_id
           error = ConnectionError.new("Connection closed by server: #{frame.error_code}")
           handle_stream_error(stream_id, error)

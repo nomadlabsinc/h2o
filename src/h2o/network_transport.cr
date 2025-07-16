@@ -124,16 +124,14 @@ module H2O
 
     # TLS write without background reader interference
     private def write_tls_with_error_handling(socket : H2O::TlsSocket, bytes : Bytes) : Int32
-      begin
-        written = socket.write(bytes)
-        socket.flush
-        Log.debug { "TLS write completed: requested #{bytes.size}, wrote #{written}" }
-        written
-      rescue ex : IO::Error
-        Log.error { "TLS write error: #{ex.message}" }
-        mark_closed
-        raise ex
-      end
+      written = socket.write(bytes)
+      socket.flush
+      Log.debug { "TLS write completed: requested #{bytes.size}, wrote #{written}" }
+      written
+    rescue ex : IO::Error
+      Log.error { "TLS write error: #{ex.message}" }
+      mark_closed
+      raise ex
     end
 
     # Check if SSL error is recoverable (WANT_READ/WANT_WRITE)

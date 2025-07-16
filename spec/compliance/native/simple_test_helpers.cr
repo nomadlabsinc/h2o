@@ -5,18 +5,18 @@ module H2SpecSimpleHelpers
   # Validates that processing the given frames raises the expected error
   def expect_protocol_error(frames : Array(Bytes), error_type : Exception.class, message : String? = nil)
     validator = H2O::MockH2Validator.new
-    
+
     expect_raises(error_type, message) do
       validator.validate_frames(frames)
     end
   end
-  
+
   # Validates that processing the given frames succeeds
   def expect_valid_frames(frames : Array(Bytes))
     validator = H2O::MockH2Validator.new
     validator.validate_frames(frames).should be_true
   end
-  
+
   # Builds a raw frame with header and payload
   def build_raw_frame(length : Int32, type : UInt8, flags : UInt8, stream_id : UInt32, payload : Bytes = Bytes.empty) : Bytes
     frame = Bytes.new(9 + payload.size)
@@ -37,7 +37,7 @@ module H2SpecSimpleHelpers
     payload.copy_to(frame + 9) unless payload.empty?
     frame
   end
-  
+
   # Common frame type constants
   FRAME_TYPE_DATA          = 0x0_u8
   FRAME_TYPE_HEADERS       = 0x1_u8
@@ -49,14 +49,14 @@ module H2SpecSimpleHelpers
   FRAME_TYPE_GOAWAY        = 0x7_u8
   FRAME_TYPE_WINDOW_UPDATE = 0x8_u8
   FRAME_TYPE_CONTINUATION  = 0x9_u8
-  
+
   # Common flags
-  FLAG_END_STREAM  = 0x1_u8
-  FLAG_ACK         = 0x1_u8
-  FLAG_END_HEADERS = 0x4_u8
-  FLAG_PADDED      = 0x8_u8
+  FLAG_END_STREAM  =  0x1_u8
+  FLAG_ACK         =  0x1_u8
+  FLAG_END_HEADERS =  0x4_u8
+  FLAG_PADDED      =  0x8_u8
   FLAG_PRIORITY    = 0x20_u8
-  
+
   # Helper to create settings frame payload
   def build_settings_payload(settings : Hash(UInt16, UInt32)) : Bytes
     payload = Bytes.new(settings.size * 6)
@@ -74,7 +74,7 @@ module H2SpecSimpleHelpers
     end
     payload
   end
-  
+
   # Helper to create GOAWAY payload
   def build_goaway_payload(last_stream_id : UInt32, error_code : UInt32, debug_data : String = "") : Bytes
     debug_bytes = debug_data.to_slice
@@ -93,7 +93,7 @@ module H2SpecSimpleHelpers
     debug_bytes.copy_to(payload + 8) unless debug_bytes.empty?
     payload
   end
-  
+
   # Helper to create WINDOW_UPDATE payload
   def build_window_update_payload(increment : UInt32) : Bytes
     payload = Bytes.new(4)
@@ -103,7 +103,7 @@ module H2SpecSimpleHelpers
     payload[3] = (increment & 0xFF).to_u8
     payload
   end
-  
+
   # Helper to create RST_STREAM payload
   def build_rst_stream_payload(error_code : UInt32) : Bytes
     payload = Bytes.new(4)
@@ -113,7 +113,7 @@ module H2SpecSimpleHelpers
     payload[3] = (error_code & 0xFF).to_u8
     payload
   end
-  
+
   # Helper to create PRIORITY payload
   def build_priority_payload(stream_dependency : UInt32, weight : UInt8, exclusive : Bool = false) : Bytes
     payload = Bytes.new(5)
@@ -125,7 +125,7 @@ module H2SpecSimpleHelpers
     payload[4] = weight
     payload
   end
-  
+
   # Helper to create PING payload
   def build_ping_payload(data : UInt64 = 0_u64) : Bytes
     payload = Bytes.new(8)
@@ -139,7 +139,7 @@ module H2SpecSimpleHelpers
     payload[7] = (data & 0xFF).to_u8
     payload
   end
-  
+
   # Error code constants
   ERROR_NO_ERROR            = 0x0_u32
   ERROR_PROTOCOL_ERROR      = 0x1_u32
@@ -155,7 +155,7 @@ module H2SpecSimpleHelpers
   ERROR_ENHANCE_YOUR_CALM   = 0xb_u32
   ERROR_INADEQUATE_SECURITY = 0xc_u32
   ERROR_HTTP_1_1_REQUIRED   = 0xd_u32
-  
+
   # Settings identifiers
   SETTINGS_HEADER_TABLE_SIZE      = 0x1_u16
   SETTINGS_ENABLE_PUSH            = 0x2_u16

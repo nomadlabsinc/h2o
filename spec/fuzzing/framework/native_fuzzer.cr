@@ -6,31 +6,31 @@ module Crystal::Fuzzing
   class NativeFuzzer < Fuzzer
     property random : Random
     property config : FuzzConfig
-    
+
     def initialize(seed : UInt32? = nil)
       @config = FuzzConfig.new(seed: seed)
       @random = seed ? Random.new(seed) : Random.new
     end
-    
+
     def configure(@config : FuzzConfig) : Nil
       if seed = @config.seed
         @random = Random.new(seed)
       end
     end
-    
+
     def fuzz(target : FuzzTarget, iterations : Int32) : FuzzResult
       result = FuzzResult.new(target.name)
       start_time = Time.monotonic
-      
+
       iterations.times do |i|
         result.iterations += 1
-        
+
         # Generate input based on strategy
         input = generate_input(target)
-        
+
         # Execute with timeout
         outcome = execute_with_timeout(target, input)
-        
+
         case outcome
         when FuzzOutcome::Success
           result.successes += 1
@@ -41,11 +41,11 @@ module Crystal::Fuzzing
           result.crash_inputs << input
         end
       end
-      
+
       result.duration = Time.monotonic - start_time
       result
     end
-    
+
     private def generate_input(target : FuzzTarget) : Bytes
       case @config.mutation_strategy
       when .random?
@@ -68,7 +68,7 @@ module Crystal::Fuzzing
         generate_random_input
       end
     end
-    
+
     private def generate_random_input : Bytes
       size = 1 + @random.rand(@config.max_input_size)
       bytes = Bytes.new(size)
@@ -77,28 +77,28 @@ module Crystal::Fuzzing
       end
       bytes
     end
-    
+
     private def generate_mutated_input(target : FuzzTarget) : Bytes
       seeds = target.seed_inputs
       if seeds.empty?
         return generate_random_input
       end
-      
+
       # Pick random seed and mutate it
       seed = seeds.sample(@random)
       mutate_bytes(seed)
     end
-    
+
     private def generate_structured_input(target : FuzzTarget) : Bytes
       # For now, same as random - can be overridden for specific domains
       generate_random_input
     end
-    
+
     private def mutate_bytes(original : Bytes) : Bytes
       # Create a copy to mutate
       mutated = Bytes.new(original.size + @random.rand(10)) # Slightly vary size
       original.copy_to(mutated)
-      
+
       # Apply random mutations
       max_mutations = [mutated.size // 4, 10].min
       max_mutations = 1 if max_mutations == 0 # Ensure at least 1
@@ -146,7 +146,7 @@ module Crystal::Fuzzing
             seq_start = @random.rand(mutated.size - 2)
             seq_len = 1 + @random.rand([4, mutated.size - seq_start].min)
             dup_pos = @random.rand(mutated.size + 1)
-            
+
             new_mutated = Bytes.new(mutated.size + seq_len)
             new_mutated[0, dup_pos].copy_from(mutated[0, dup_pos])
             new_mutated[dup_pos, seq_len].copy_from(mutated[seq_start, seq_len])
@@ -161,14 +161,14 @@ module Crystal::Fuzzing
           end
         end
       end
-      
+
       mutated
     end
-    
+
     private def execute_with_timeout(target : FuzzTarget, input : Bytes) : FuzzOutcome
       # Simple timeout implementation using spawn and channels
       result_channel = Channel(FuzzOutcome).new
-      
+
       spawn do
         begin
           outcome = target.execute(input)
@@ -177,7 +177,7 @@ module Crystal::Fuzzing
           result_channel.send(FuzzOutcome::Crash)
         end
       end
-      
+
       select
       when outcome = result_channel.receive
         outcome

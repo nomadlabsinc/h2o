@@ -4,7 +4,6 @@ require "./test_helpers"
 include H2SpecTestHelpers
 
 describe "H2SPEC PRIORITY Frames Compliance (Section 6.3)" do
-
   # Test for 6.3/1: Sends a PRIORITY frame with 0x0 stream identifier
   it "sends a PRIORITY frame with 0x0 stream identifier and expects a connection error" do
     mock_socket, client = create_mock_client
@@ -14,7 +13,7 @@ describe "H2SPEC PRIORITY Frames Compliance (Section 6.3)" do
       stream_dependency: 1_u32,
       weight: 16_u8
     )
-    
+
     priority_frame = build_raw_frame(
       length: 5,
       type: FRAME_TYPE_PRIORITY,

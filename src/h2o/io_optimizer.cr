@@ -236,6 +236,7 @@ module H2O
         # Platform-specific optimizations would go here
         # (e.g., SO_REUSEPORT, TCP_FASTOPEN, etc.)
 
+
       rescue ex
         # Non-fatal: socket optimization failed, log and continue
         Log.warn { "IOOptimizer: Socket optimization failed: #{ex.message}" }

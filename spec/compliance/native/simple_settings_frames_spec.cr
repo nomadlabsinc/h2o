@@ -10,7 +10,7 @@ describe "H2SPEC SETTINGS Frames Compliance (Section 6.5)" do
     settings_payload = build_settings_payload({
       SETTINGS_MAX_CONCURRENT_STREAMS => 100_u32,
     })
-    
+
     settings_frame = build_raw_frame(
       length: settings_payload.size,
       type: FRAME_TYPE_SETTINGS,
@@ -18,10 +18,10 @@ describe "H2SPEC SETTINGS Frames Compliance (Section 6.5)" do
       stream_id: 1_u32,
       payload: settings_payload
     )
-    
+
     expect_protocol_error([settings_frame], H2O::ConnectionError, "SETTINGS frame on non-zero stream")
   end
-  
+
   # Test for 6.5/2: Sends a SETTINGS frame with a length other than a multiple of 6 octets
   it "sends a SETTINGS frame with invalid length and expects a frame size error" do
     # SETTINGS frame with length not multiple of 6
@@ -32,17 +32,17 @@ describe "H2SPEC SETTINGS Frames Compliance (Section 6.5)" do
       stream_id: 0_u32,
       payload: Bytes[0x00, 0x03, 0x00, 0x00, 0x64] # 5 bytes
     )
-    
+
     expect_protocol_error([settings_frame], H2O::FrameSizeError, "SETTINGS payload must be multiple of 6")
   end
-  
+
   # Test for 6.5/3: Sends a SETTINGS frame with ACK flag and non-empty payload
   it "sends a SETTINGS frame with ACK flag and payload and expects a frame size error" do
     # SETTINGS frame with ACK flag and payload (invalid)
     settings_payload = build_settings_payload({
       SETTINGS_MAX_CONCURRENT_STREAMS => 100_u32,
     })
-    
+
     settings_frame = build_raw_frame(
       length: settings_payload.size,
       type: FRAME_TYPE_SETTINGS,
@@ -50,7 +50,7 @@ describe "H2SPEC SETTINGS Frames Compliance (Section 6.5)" do
       stream_id: 0_u32,
       payload: settings_payload
     )
-    
+
     expect_protocol_error([settings_frame], H2O::FrameSizeError, "SETTINGS ACK must have empty payload")
   end
 end
@@ -62,7 +62,7 @@ describe "H2SPEC SETTINGS Parameters Compliance (Section 6.5.2)" do
     settings_payload = build_settings_payload({
       SETTINGS_ENABLE_PUSH => 2_u32, # Invalid - must be 0 or 1
     })
-    
+
     settings_frame = build_raw_frame(
       length: settings_payload.size,
       type: FRAME_TYPE_SETTINGS,
@@ -70,17 +70,17 @@ describe "H2SPEC SETTINGS Parameters Compliance (Section 6.5.2)" do
       stream_id: 0_u32,
       payload: settings_payload
     )
-    
+
     expect_protocol_error([settings_frame], H2O::ProtocolError, "SETTINGS_ENABLE_PUSH must be 0 or 1")
   end
-  
+
   # Test for 6.5.2/2: Sends a SETTINGS_INITIAL_WINDOW_SIZE with a value above the maximum
   it "sends SETTINGS_INITIAL_WINDOW_SIZE above maximum and expects a flow control error" do
     # SETTINGS with INITIAL_WINDOW_SIZE > 2^31-1
     settings_payload = build_settings_payload({
       SETTINGS_INITIAL_WINDOW_SIZE => 0x80000000_u32, # 2^31 (too large)
     })
-    
+
     settings_frame = build_raw_frame(
       length: settings_payload.size,
       type: FRAME_TYPE_SETTINGS,
@@ -88,17 +88,17 @@ describe "H2SPEC SETTINGS Parameters Compliance (Section 6.5.2)" do
       stream_id: 0_u32,
       payload: settings_payload
     )
-    
+
     expect_protocol_error([settings_frame], H2O::FlowControlError, "SETTINGS_INITIAL_WINDOW_SIZE too large")
   end
-  
+
   # Test for 6.5.2/3: Sends a SETTINGS_MAX_FRAME_SIZE with a value below the minimum
   it "sends SETTINGS_MAX_FRAME_SIZE below minimum and expects a protocol error" do
     # SETTINGS with MAX_FRAME_SIZE < 16384
     settings_payload = build_settings_payload({
       SETTINGS_MAX_FRAME_SIZE => 16383_u32, # Below minimum
     })
-    
+
     settings_frame = build_raw_frame(
       length: settings_payload.size,
       type: FRAME_TYPE_SETTINGS,
@@ -106,17 +106,17 @@ describe "H2SPEC SETTINGS Parameters Compliance (Section 6.5.2)" do
       stream_id: 0_u32,
       payload: settings_payload
     )
-    
+
     expect_protocol_error([settings_frame], H2O::ProtocolError, "SETTINGS_MAX_FRAME_SIZE out of range")
   end
-  
+
   # Test for 6.5.2/4: Sends a SETTINGS_MAX_FRAME_SIZE with a value above the maximum
   it "sends SETTINGS_MAX_FRAME_SIZE above maximum and expects a protocol error" do
     # SETTINGS with MAX_FRAME_SIZE > 2^24-1
     settings_payload = build_settings_payload({
       SETTINGS_MAX_FRAME_SIZE => 0x01000000_u32, # 2^24
     })
-    
+
     settings_frame = build_raw_frame(
       length: settings_payload.size,
       type: FRAME_TYPE_SETTINGS,
@@ -124,17 +124,17 @@ describe "H2SPEC SETTINGS Parameters Compliance (Section 6.5.2)" do
       stream_id: 0_u32,
       payload: settings_payload
     )
-    
+
     expect_protocol_error([settings_frame], H2O::ProtocolError, "SETTINGS_MAX_FRAME_SIZE out of range")
   end
-  
+
   # Test for 6.5.2/5: Sends a SETTINGS frame with unknown identifier
   it "sends SETTINGS frame with unknown identifier and expects it to be ignored" do
     # SETTINGS with unknown identifier
     settings_payload = build_settings_payload({
       0xFF_u16 => 12345_u32, # Unknown setting ID
     })
-    
+
     settings_frame = build_raw_frame(
       length: settings_payload.size,
       type: FRAME_TYPE_SETTINGS,
@@ -142,7 +142,7 @@ describe "H2SPEC SETTINGS Parameters Compliance (Section 6.5.2)" do
       stream_id: 0_u32,
       payload: settings_payload
     )
-    
+
     # Should not raise error - unknown settings are ignored
     expect_valid_frames([settings_frame])
   end
@@ -162,7 +162,7 @@ describe "H2SPEC SETTINGS Synchronization Compliance (Section 6.5.3)" do
       stream_id: 0_u32,
       payload: settings1
     )
-    
+
     # Second SETTINGS with different INITIAL_WINDOW_SIZE
     settings2 = build_settings_payload({
       SETTINGS_INITIAL_WINDOW_SIZE => 200_u32,
@@ -174,7 +174,7 @@ describe "H2SPEC SETTINGS Synchronization Compliance (Section 6.5.3)" do
       stream_id: 0_u32,
       payload: settings2
     )
-    
+
     # Should handle multiple settings updates without error
     expect_valid_frames([settings_frame1, settings_frame2])
   end
