@@ -18,22 +18,20 @@ require "../frames/window_update_frame"
 require "../object_pool"
 require "../io_optimizer"
 require "../stream"
+require "../io_adapter"
+require "../protocol_engine"
+require "../network_transport"
 
 module H2O
   module H2
     Log = ::Log.for("h2o.h2")
 
-    # Simplified HTTP/2 client without multiplexing
-    # Each client handles one request at a time
+    # HTTP/2 client using ProtocolEngine architecture
+    # Supports both network and custom transports through IoAdapter
     class Client < BaseConnection
       property socket : TlsSocket | TcpSocket
-      property local_settings : Settings
-      property remote_settings : Settings
-      property hpack_encoder : HPACK::Encoder
-      property hpack_decoder : HPACK::Decoder
-      property connection_window_size : Int32
-      property closed : Bool
-      property closing : Bool = false
+      property io_adapter : IoAdapter
+      property protocol_engine : ProtocolEngine
       property request_timeout : Time::Span
       property connect_timeout : Time::Span
 
@@ -45,8 +43,11 @@ module H2O
       # Single mutex for all operations
       property mutex : Mutex
 
-      # Current stream ID (odd numbers for client-initiated streams)
-      property current_stream_id : StreamId
+      # Response tracking for synchronous request/response
+      property pending_responses : Hash(StreamId, Channel(Response))
+      
+      # Compatibility properties for interface consistency
+      property closing : Bool
 
       def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true, use_tls : Bool = true)
         if use_tls
@@ -61,16 +62,13 @@ module H2O
           Log.debug { "TCP connection established for #{hostname}:#{port}" }
         end
 
-        @local_settings = Settings.new
-        @remote_settings = Settings.new
-        @hpack_encoder = HPACK::Encoder.new
-        @hpack_decoder = HPACK::Decoder.new(4096, HpackSecurityLimits.new)
-        @connection_window_size = 65535
-        @current_stream_id = 1_u32
-        @closed = false
+        @io_adapter = NetworkTransport.new(@socket)
+        @protocol_engine = ProtocolEngine.new(@io_adapter)
         @request_timeout = request_timeout
         @connect_timeout = connect_timeout
         @mutex = Mutex.new
+        @pending_responses = Hash(StreamId, Channel(Response)).new
+        @closing = false
 
         # Initialize I/O optimizations (disable reader/writer optimizations due to socket state conflicts)
         @io_optimization_enabled = !H2O.env_flag_enabled?("H2O_DISABLE_IO_OPTIMIZATION")
@@ -91,38 +89,66 @@ module H2O
           @zero_copy_reader = nil
         end
 
-        # Send initial preface and settings
-        send_initial_preface
+        # Set up response callback
+        setup_protocol_callbacks
 
-        # Wait for server settings
-        unless validate_server_preface
-          raise ConnectionError.new("Failed to receive valid server preface")
+        # Establish connection through protocol engine
+        unless @protocol_engine.establish_connection
+          raise ConnectionError.new("Failed to establish HTTP/2 connection")
         end
       end
 
-      # Test-only initializer for injecting a mock IO
+      # Alternative constructor accepting an IoAdapter directly
+      # Useful for testing with InMemoryTransport or custom transport implementations
+      def initialize(@io_adapter : IoAdapter, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds)
+        # For IoAdapter constructor, we don't have a direct socket reference
+        @socket = uninitialized TlsSocket | TcpSocket
+        
+        @protocol_engine = ProtocolEngine.new(@io_adapter)
+        @request_timeout = request_timeout
+        @connect_timeout = connect_timeout
+        @mutex = Mutex.new
+        @pending_responses = Hash(StreamId, Channel(Response)).new
+        @closing = false
+
+        # I/O optimizations disabled for custom adapters by default
+        @io_optimization_enabled = false
+        @batched_writer = nil
+        @zero_copy_reader = nil
+
+        # Set up response callback
+        setup_protocol_callbacks
+
+        # Establish connection through protocol engine
+        unless @protocol_engine.establish_connection
+          raise ConnectionError.new("Failed to establish HTTP/2 connection")
+        end
+      end
+
+      # Test-only initializer for injecting a mock IO (legacy compatibility)
       {% if flag?(:test) %}
         def initialize(@socket : IO, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds)
-          @local_settings = Settings.new
-          @remote_settings = Settings.new
-          @hpack_encoder = HPACK::Encoder.new
-          @hpack_decoder = HPACK::Decoder.new(4096, HpackSecurityLimits.new)
-          @connection_window_size = 65535
-          @current_stream_id = 1_u32
-          @closed = false
+          # Wrap the IO in a simple adapter for legacy test compatibility
+          @io_adapter = TestIOAdapter.new(@socket)
+          @protocol_engine = ProtocolEngine.new(@io_adapter)
           @request_timeout = request_timeout
           @connect_timeout = connect_timeout
           @mutex = Mutex.new
+          @pending_responses = Hash(StreamId, Channel(Response)).new
+          @closing = false
 
           # I/O optimizations disabled for test mocks by default
           @io_optimization_enabled = false
           @batched_writer = nil
           @zero_copy_reader = nil
+
+          # Set up response callback
+          setup_protocol_callbacks
         end
       {% end %}
 
       def request(method : String, path : String, headers : Headers = Headers.new, body : String? = nil) : Response
-        return Response.error(0, "Connection is closed", "HTTP/2") if @closed
+        return Response.error(0, "Connection is closed", "HTTP/2") if @protocol_engine.closed?
 
         # Use a timeout for the entire request
         start_time = Time.monotonic
@@ -136,7 +162,7 @@ module H2O
             end
 
             # Check if we can create a new stream based on MAX_CONCURRENT_STREAMS
-            if max_streams = @remote_settings.max_concurrent_streams
+            if max_streams = @protocol_engine.remote_settings.max_concurrent_streams
               # Since we only support one stream at a time currently, we just need to ensure
               # we're allowed to create at least one stream
               if max_streams == 0
@@ -144,23 +170,22 @@ module H2O
               end
             end
 
-            # Use the next odd stream ID
-            stream_id = @current_stream_id
-            @current_stream_id += 2
+            # Send request through protocol engine
+            stream_id = @protocol_engine.send_request(method, path, headers, body)
 
-            # Send request
-            send_request(stream_id, method, path, headers, body)
+            # Set up response channel for this stream
+            response_channel = Channel(Response).new
+            @pending_responses[stream_id] = response_channel
 
-            # Read response with timeout checking
-            response = read_response_with_timeout(stream_id, start_time)
-
-            # Flush any pending batched data after request completes
-            if @io_optimization_enabled && (writer = @batched_writer)
-              writer.flush
-              @socket.to_io.flush
+            # Wait for response with timeout
+            select
+            when response = response_channel.receive
+              @pending_responses.delete(stream_id)
+              response
+            when timeout(@request_timeout)
+              @pending_responses.delete(stream_id)
+              Response.error(0, "Request timeout", "HTTP/2")
             end
-
-            response
           end
         rescue ex : Exception
           Log.error { "Request failed: #{ex.message}" }
@@ -170,16 +195,20 @@ module H2O
 
       def close : Nil
         @mutex.synchronize do
-          return if @closed
-          @closed = true
+          return if @protocol_engine.closed?
+          
+          @closing = true
 
           begin
-            send_goaway_if_needed
+            # Close through protocol engine (sends GOAWAY)
+            @protocol_engine.close
 
             # Flush any pending batched data and ensure socket is flushed
             if @io_optimization_enabled && (writer = @batched_writer)
               writer.flush
-              @socket.to_io.flush
+              if !@socket.class.name.includes?("uninitialized")
+                @socket.to_io.flush
+              end
             end
           rescue IO::Error
             # Best effort - ignore I/O errors during cleanup
@@ -187,59 +216,56 @@ module H2O
             # Best effort - ignore other errors during cleanup
           end
 
-          @socket.close rescue nil
+          # Close any pending response channels
+          @pending_responses.each_value(&.close)
+          @pending_responses.clear
         end
       end
 
       def closed? : Bool
-        @closed
+        @protocol_engine.closed?
       end
 
       # Send a PING frame to check connection health and optionally measure RTT
       def ping(timeout : Time::Span = 5.seconds) : Time::Span?
         @mutex.synchronize do
-          raise ConnectionError.new("Connection is closed") if @closed
+          raise ConnectionError.new("Connection is closed") if @protocol_engine.closed?
 
-          # Generate random 8-byte payload for this ping
-          ping_data = Bytes.new(8)
-          Random::Secure.random_bytes(ping_data)
-          
-          # Record start time for RTT measurement
-          start_time = Time.monotonic
-          
-          # Send PING frame
-          ping_frame = PingFrame.new(ping_data, ack: false)
-          write_frame(ping_frame)
-          
-          # Wait for PONG response with matching data
-          deadline = start_time + timeout
-          
-          loop do
-            remaining = deadline - Time.monotonic
-            break if remaining <= Time::Span.zero
-            
-            frame = read_frame
-            
-            if frame.is_a?(PingFrame) && frame.ack? && frame.opaque_data == ping_data
-              # Calculate RTT
-              return Time.monotonic - start_time
-            elsif frame.is_a?(SettingsFrame)
-              handle_settings_frame(frame)
-              # Note: ACK is handled elsewhere if needed
-            elsif frame.is_a?(PingFrame) && !frame.ack?
-              # Respond to other PING frames
-              pong = PingFrame.new(frame.opaque_data, ack: true)
-              write_frame(pong)
-            elsif frame.is_a?(GoawayFrame)
-              raise ConnectionError.new("Connection closed by server: #{frame.error_code}")
-            end
-          end
-          
-          # Timeout reached without receiving PONG
-          nil
+          # Delegate to protocol engine
+          @protocol_engine.ping(timeout)
         end
       rescue IO::TimeoutError
         nil
+      end
+
+      private def setup_protocol_callbacks : Nil
+        # Set up response callback for the protocol engine
+        @protocol_engine.on_response = ->(stream_id : StreamId, response : Response) {
+          if channel = @pending_responses[stream_id]?
+            channel.send(response)
+          end
+          nil
+        }
+        
+        # Set up error callback
+        @protocol_engine.on_error = ->(ex : Exception) {
+          Log.error { "Protocol error: #{ex.message}" }
+          # Close any pending response channels with error
+          @pending_responses.each_value do |channel|
+            error_response = Response.error(0, ex.message || "Protocol error", "HTTP/2")
+            channel.send(error_response) rescue nil
+          end
+          @pending_responses.clear
+          nil
+        }
+        
+        # Set up connection closed callback
+        @protocol_engine.on_connection_closed = ->() {
+          # Close any pending response channels
+          @pending_responses.each_value(&.close)
+          @pending_responses.clear
+          nil
+        }
       end
 
       private def send_initial_preface : Nil
@@ -594,6 +620,76 @@ module H2O
           stats
         end
       end
+
+      # Get access to the underlying ProtocolEngine for advanced usage
+      def protocol_engine : ProtocolEngine
+        @protocol_engine
+      end
+
+      # Get access to the underlying IoAdapter for advanced usage
+      def io_adapter : IoAdapter
+        @io_adapter
+      end
+
+      # Simple IoAdapter wrapper for legacy test compatibility
+      {% if flag?(:test) %}
+        private class TestIOAdapter < IoAdapter
+          def initialize(@io : IO)
+            @closed = false
+            @data_callback = nil
+            @close_callback = nil
+          end
+          
+          def read_bytes(buffer_size : Int32) : Bytes?
+            return nil if @closed
+            
+            begin
+              bytes = Bytes.new(buffer_size)
+              bytes_read = @io.read(bytes)
+              return nil if bytes_read == 0
+              
+              result = bytes[0, bytes_read]
+              @data_callback.try(&.call(result))
+              result
+            rescue
+              @closed = true
+              nil
+            end
+          end
+          
+          def write_bytes(bytes : Bytes) : Int32
+            return 0 if @closed
+            
+            begin
+              @io.write(bytes)
+              @io.flush
+              bytes.size
+            rescue
+              @closed = true
+              0
+            end
+          end
+          
+          def close : Nil
+            return if @closed
+            @closed = true
+            @io.close rescue nil
+            @close_callback.try(&.call)
+          end
+          
+          def closed? : Bool
+            @closed
+          end
+          
+          def on_data_available(&block : Bytes -> Nil) : Nil
+            @data_callback = block
+          end
+          
+          def on_closed(&block : -> Nil) : Nil
+            @close_callback = block
+          end
+        end
+      {% end %}
     end
   end
 end
