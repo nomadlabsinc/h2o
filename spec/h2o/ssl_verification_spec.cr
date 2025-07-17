@@ -83,7 +83,7 @@ describe "SSL Verification Configuration" do
       client = H2O::Client.new(verify_ssl: false)
 
       # Force HTTP/1.1 by caching the protocol
-      client.@protocol_cache.cache_protocol("example.com", 4430, H2O::ProtocolVersion::Http11)
+      client.@protocol_cache.cache_protocol("example.com", 443, H2O::ProtocolVersion::Http11)
 
       # Mock the TLS connection to avoid actual network calls
       spawn do
