@@ -7,11 +7,11 @@ on:
     branches: [ main, verify-spec-working ]
 
 jobs:
-  # Single comprehensive test job that matches local Docker exactly
-  test-suite:
-    name: Complete Test Suite (Docker)
+  # Unit tests job - fast tests without heavy I/O
+  unit-tests:
+    name: Unit Tests (Docker)
     runs-on: ubicloud-standard-4
-    timeout-minutes: 10
+    timeout-minutes: 8
 
     steps:
     - name: Checkout code
@@ -36,11 +36,61 @@ jobs:
         sleep 5
         docker compose ps
 
-    - name: Run complete test suite (matches local Docker)
+    - name: Run unit tests
       run: |
-        echo "🧪 Running complete test suite in Docker (identical to local)"
-        echo "This matches exactly: docker compose run --remove-orphans app crystal spec"
-        docker compose run --remove-orphans app crystal spec
+        echo "🧪 Running unit tests (frames, hpack, protocol negotiation, connection pooling)"
+        docker compose run --remove-orphans app crystal spec \
+          'spec/h2o/frames/' \
+          'spec/h2o/hpack/' \
+          'spec/h2o/protocol_negotiator_spec.cr' \
+          'spec/h2o/connection_pool_spec.cr' \
+          'spec/h2o/http_client_spec.cr' \
+          'spec/h2o/request_translator_spec.cr' \
+          'spec/h2o/response_translator_spec.cr' \
+          'spec/h2o/h1_client_spec.cr' \
+          'spec/h2o/h2_prior_knowledge_spec.cr' \
+          'spec/h2o/io_optimization_spec.cr' \
+          'spec/h2o/circuit_breaker_spec.cr' \
+          'spec/h2o/response_type_spec.cr' \
+          'spec/h2o/tcp_socket_spec.cr' \
+          'spec/h2o/continuation_flood_protection_spec.cr' \
+          'spec/h2o/ssl_verification_spec.cr' \
+          'spec/compliance/native/'
+
+  # Integration tests job - slower tests with real network I/O
+  integration-tests:
+    name: Integration Tests (Docker)
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 8
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: |
+        echo "🐳 Building Docker image"
+        docker compose build app
+
+    - name: Start services
+      run: |
+        echo "🚀 Starting test services"
+        docker compose up -d --remove-orphans httpbin nghttpd nghttpd2
+
+    - name: Wait for services to be ready
+      run: |
+        echo "⏳ Waiting for services to be ready..."
+        sleep 5
+        docker compose ps
+
+    - name: Run integration tests
+      run: |
+        echo "🧪 Running integration tests (HTTP/1.1, HTTP/2 real network I/O)"
+        docker compose run --remove-orphans app crystal spec \
+          'spec/integration/'
 
   # Separate build and lint job for faster feedback
   build-and-lint:
@@ -86,17 +136,18 @@ jobs:
     name: CI Success Summary
     runs-on: ubicloud-standard-4
     timeout-minutes: 2
-    needs: [test-suite, build-and-lint]
+    needs: [unit-tests, integration-tests, build-and-lint]
 
     steps:
     - name: Display success summary
       run: |
         echo "🎉 CI SUCCESS: All checks passed!"
         echo "=================================="
-        echo "✅ Complete test suite passed (554 examples)"
+        echo "✅ Unit tests passed (~482 examples - frames, hpack, compliance)"
+        echo "✅ Integration tests passed (~72 examples - network I/O)"
         echo "✅ Build completed successfully"
         echo "✅ Code style validation passed"
         echo ""
         echo "🚀 H2O is ready for deployment!"
-        echo "📊 CI runtime optimized - matches local Docker performance"
-        echo "🔧 Zero test duplication - single comprehensive test run"
+        echo "📊 CI runtime optimized - parallel test execution"
+        echo "🔧 Split test suite for faster feedback (target: ~1:15 each)"

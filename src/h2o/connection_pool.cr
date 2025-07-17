@@ -5,6 +5,11 @@ module H2O
   # Connection pool manager following SRP principles
   # Manages connection lifecycle, scoring, and pooling for HTTP/1.1 and HTTP/2 connections
   class ConnectionPool
+    # Configuration constants for connection health and lifecycle management
+    private HEALTHY_SCORE_THRESHOLD = 60.0
+    private MAX_IDLE_TIME           = 5.minutes
+    private MAX_CONNECTION_AGE      = 1.hour
+
     # Enhanced connection metadata for scoring and lifecycle management
     private class ConnectionMetadata
       property connection : BaseConnection
@@ -148,13 +153,13 @@ module H2O
       return false unless metadata
 
       age = Time.utc - metadata.created_at
-      return false if age > 1.hour
+      return false if age > MAX_CONNECTION_AGE
 
       # Check score threshold
-      return false if metadata.score < 60.0
+      return false if metadata.score < HEALTHY_SCORE_THRESHOLD
 
-      # Check idle timeout (5 minutes)
-      return false if metadata.idle_time > 5.minutes
+      # Check idle timeout
+      return false if metadata.idle_time > MAX_IDLE_TIME
 
       # Connection type specific checks
       case connection
@@ -206,7 +211,7 @@ module H2O
         expired_keys = [] of String
 
         @connection_metadata.each do |key, metadata|
-          if metadata.idle_time > 5.minutes || (Time.utc - metadata.created_at) > 1.hour
+          if metadata.idle_time > MAX_IDLE_TIME || (Time.utc - metadata.created_at) > MAX_CONNECTION_AGE
             expired_keys << key
           end
         end
