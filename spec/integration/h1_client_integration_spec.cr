@@ -1,10 +1,6 @@
 require "../spec_helper"
 
-
-
-
-
-  describe H2O::H1::Client do
+describe H2O::H1::Client do
   describe "#initialize" do
     it "should create a new HTTP/1.1 connection" do
       # Use local HTTPBin server (HTTP/1.1) with longer timeout for CI
@@ -123,8 +119,8 @@ require "../spec_helper"
         {"method" => "PUT", "path" => "/put"},
         {"method" => "DELETE", "path" => "/delete"},
         {"method" => "PATCH", "path" => "/patch"},
-        {"method" => "HEAD", "path" => "/get"},  # httpbin doesn't have /head
-        {"method" => "OPTIONS", "path" => "/get"},  # httpbin doesn't have /options
+        {"method" => "HEAD", "path" => "/get"},    # httpbin doesn't have /head
+        {"method" => "OPTIONS", "path" => "/get"}, # httpbin doesn't have /options
       ]
 
       successful_requests = 0

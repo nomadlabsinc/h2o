@@ -43,6 +43,12 @@ require "./h2o/h1/client"
 require "./h2o/h2/client"
 # require "./h2o/h2/optimized_client"  # Temporarily disabled due to compilation issues
 require "./h2o/client"
+require "./h2o/http_client"
+require "./h2o/connection_pool"
+require "./h2o/protocol_negotiator"
+require "./h2o/circuit_breaker_manager"
+require "./h2o/request_translator"
+require "./h2o/response_translator"
 
 module H2O
   Log = ::Log.for("h2o")
