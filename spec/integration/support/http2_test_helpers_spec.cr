@@ -38,12 +38,12 @@ module HTTP2TestHelpers
     attempts = 0
     last_error = nil
     last_response = nil
-    
+
     while attempts < max_attempts
       attempts += 1
       begin
         response = yield
-        
+
         # If we have acceptable_statuses defined, check if response status is in range
         if acceptable_statuses && response.is_a?(H2O::Response)
           if acceptable_statuses.includes?(response.status)
@@ -61,7 +61,7 @@ module HTTP2TestHelpers
         sleep 10.milliseconds if attempts < max_attempts
       end
     end
-    
+
     # Return last response if available, otherwise error response
     if last_response
       last_response
@@ -73,22 +73,17 @@ module HTTP2TestHelpers
   # Validation helper
   def self.assert_valid_http2_response(response : H2O::Response, expected_status : Int32? = nil)
     response.should_not be_nil
-    
+
     if expected_status
       response.status.should eq(expected_status)
     else
       response.status.should be >= 200
       response.status.should be < 600
     end
-    
+
     response.protocol.should eq("HTTP/2")
   end
-  
-  # Additional URL helpers that might be needed
-  def self.http2_only_url(path : String = "/")
-    "#{TestConfig.http2_url}#{path}"
-  end
-  
+
   # Content assertion helper
   def self.assert_response_contains(response : H2O::Response, expected_content : String)
     response.should_not be_nil
@@ -97,13 +92,13 @@ module HTTP2TestHelpers
   end
 
   # SSL verification failure helper - reduces code duplication
-  def self.assert_ssl_verification_failure(host : String = "nghttpd", port : Int32 = 4430)
+  def self.assert_ssl_verification_failure(host : String = "nghttpd", port : Int32 = 443)
     expect_raises(H2O::ConnectionError | OpenSSL::SSL::Error) do
       client = H2O::H2::Client.new(host, port, verify_ssl: true)
       begin
         client.get("/", {"host" => "#{host}:#{port}"})
       ensure
-        client.close rescue nil  # Ignore errors during cleanup since we expect the connection to fail
+        client.close rescue nil # Ignore errors during cleanup since we expect the connection to fail
       end
     end
   end

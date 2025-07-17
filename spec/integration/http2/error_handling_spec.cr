@@ -21,17 +21,17 @@ describe "HTTP/2 Error Handling and Edge Cases" do
 
       begin
         start_time = Time.monotonic
-        
+
         # Use a non-routable IP address that will hang on connection attempt
         # This is more reliable than trying to create a mock server
         # 10.255.255.1 is in the private IP range and unlikely to be routable
         response = short_timeout_client.get("https://10.255.255.1:443/test")
-        
+
         elapsed = Time.monotonic - start_time
-        
+
         # Should timeout within reasonable bounds (100ms + some overhead)
         elapsed.should be < 500.milliseconds
-        
+
         # Should get a timeout error (status 0)
         response.status.should eq(0)
         response.should_not be_nil
@@ -48,7 +48,7 @@ describe "HTTP/2 Error Handling and Edge Cases" do
       # Test with non-existent host
       # The client returns error responses instead of raising exceptions
       response = client.get("https://nonexistent.invalid.host.example.com/index.html")
-      
+
       # Should get an error response with status 0
       response.status.should eq(0)
       # Client returns empty body for connection errors
