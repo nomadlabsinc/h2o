@@ -53,40 +53,8 @@ module H2O
     end
   end
 
-  # Stream object pool for performance optimization
-  # DISABLED: Stream pooling disabled due to reset_for_reuse method being disabled for memory safety
-  class StreamObjectPool
-    def initialize(capacity : Int32 = 1000)
-      # Pooling disabled - reset_for_reuse causes memory corruption
-    end
-
-    def acquire(stream_id : StreamId) : Stream
-      # Create new stream without pooling for memory safety
-      Stream.new(stream_id)
-    end
-
-    def release(stream : Stream) : Nil
-      # No-op since we're not pooling streams due to memory corruption issues
-    end
-
-    # Static pool instance
-    @@instance : StreamObjectPool? = nil
-
-    def self.instance : StreamObjectPool
-      @@instance ||= StreamObjectPool.new
-    end
-
-    def self.get_stream(stream_id : StreamId) : Stream
-      instance.acquire(stream_id)
-    end
-
-    def self.release_stream(stream : Stream) : Nil
-      instance.release(stream)
-    end
-  end
-
-  # Simplified frame pool manager without reset methods for stability
-  # Since reset_for_reuse methods are disabled, we use a simpler approach
+  # Simplified frame pool manager for stability
+  # Frame pooling disabled for memory safety
   class FramePoolManager
     def initialize(capacity : Int32 = 500)
       # For now, disable pooling until reset methods are stable

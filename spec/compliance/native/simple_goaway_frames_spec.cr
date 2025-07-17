@@ -12,7 +12,7 @@ describe "H2SPEC GOAWAY Frames Compliance (Section 6.8)" do
       error_code: ERROR_NO_ERROR,
       debug_data: "closing connection"
     )
-    
+
     goaway_frame = build_raw_frame(
       length: goaway_payload.size,
       type: FRAME_TYPE_GOAWAY,
@@ -20,10 +20,10 @@ describe "H2SPEC GOAWAY Frames Compliance (Section 6.8)" do
       stream_id: 1_u32,
       payload: goaway_payload
     )
-    
+
     expect_protocol_error([goaway_frame], H2O::ConnectionError, "GOAWAY frame on non-zero stream")
   end
-  
+
   # Test for valid GOAWAY frame
   it "sends a valid GOAWAY frame and expects success" do
     # Valid GOAWAY frame
@@ -31,7 +31,7 @@ describe "H2SPEC GOAWAY Frames Compliance (Section 6.8)" do
       last_stream_id: 0_u32,
       error_code: ERROR_NO_ERROR
     )
-    
+
     goaway_frame = build_raw_frame(
       length: goaway_payload.size,
       type: FRAME_TYPE_GOAWAY,
@@ -39,11 +39,11 @@ describe "H2SPEC GOAWAY Frames Compliance (Section 6.8)" do
       stream_id: 0_u32,
       payload: goaway_payload
     )
-    
+
     # Should not raise error for valid GOAWAY
     expect_valid_frames([goaway_frame])
   end
-  
+
   # Test for GOAWAY with debug data
   it "sends a GOAWAY frame with debug data and expects success" do
     # GOAWAY frame with debug information
@@ -52,7 +52,7 @@ describe "H2SPEC GOAWAY Frames Compliance (Section 6.8)" do
       error_code: ERROR_PROTOCOL_ERROR,
       debug_data: "Protocol violation detected"
     )
-    
+
     goaway_frame = build_raw_frame(
       length: goaway_payload.size,
       type: FRAME_TYPE_GOAWAY,
@@ -60,7 +60,7 @@ describe "H2SPEC GOAWAY Frames Compliance (Section 6.8)" do
       stream_id: 0_u32,
       payload: goaway_payload
     )
-    
+
     # Should not raise error for valid GOAWAY with debug data
     expect_valid_frames([goaway_frame])
   end
