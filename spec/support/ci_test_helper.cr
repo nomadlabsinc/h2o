@@ -28,8 +28,6 @@ module CITestHelper
         last_error = ex
 
         if attempts < MAX_RETRIES
-          
-          
           sleep RETRY_DELAY
         else
           break

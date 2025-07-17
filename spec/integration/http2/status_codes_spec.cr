@@ -15,7 +15,7 @@ describe "HTTP/2 Status Codes" do
 
       # Test HTTP/2-only endpoint
       response_h2_only = HTTP2TestHelpers.retry_request do
-        client.get(HTTP2TestHelpers.http2_only_url("/"))
+        client.get(HTTP2TestHelpers.http2_url("/"))
       end
       HTTP2TestHelpers.assert_valid_http2_response(response_h2_only, 200)
     end
@@ -58,7 +58,7 @@ describe "HTTP/2 Status Codes" do
       end
 
       response.should_not be_nil
-      response.status.should be >= 400  # Should get 404 for non-existent path
+      response.status.should be >= 400 # Should get 404 for non-existent path
       response.protocol.should eq("HTTP/2")
     end
   end

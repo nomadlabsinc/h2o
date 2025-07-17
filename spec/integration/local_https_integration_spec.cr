@@ -5,10 +5,10 @@ describe "Local HTTPS Integration Tests" do
   describe "HTTPS connectivity with local nghttpd server" do
     it "can connect to HTTPS endpoints with SSL verification disabled" do
       client = H2O::Client.new(verify_ssl: false)
-      
+
       begin
         response = client.get(TestConfig.http2_url("/"))
-        
+
         response.status.should be >= 200
         response.status.should be < 300
         response.headers["server"]?.should_not be_nil
@@ -20,14 +20,14 @@ describe "Local HTTPS Integration Tests" do
 
     it "can handle HTTPS requests with custom headers" do
       client = H2O::Client.new(verify_ssl: false)
-      
+
       begin
         headers = {
           "user-agent" => "h2o-crystal-client",
-          "accept" => "text/html"
+          "accept"     => "text/html",
         }
         response = client.get(TestConfig.http2_url("/"), headers)
-        
+
         response.status.should be >= 200
         response.status.should be < 300
       ensure
@@ -37,16 +37,16 @@ describe "Local HTTPS Integration Tests" do
 
     it "can perform POST requests over HTTPS" do
       client = H2O::Client.new(verify_ssl: false)
-      
+
       begin
         headers = {
-          "content-type" => "application/json"
+          "content-type" => "application/json",
         }
         body = "{\"test\": \"data\"}"
         response = client.post(TestConfig.http2_url("/"), body, headers)
-        
+
         response.status.should be >= 200
-        response.status.should be < 500  # nghttpd may return 404 for POST, which is fine
+        response.status.should be < 500 # nghttpd may return 404 for POST, which is fine
       ensure
         client.close
       end
@@ -57,10 +57,10 @@ describe "Local HTTPS Integration Tests" do
     it "handles connection timeout gracefully" do
       # Use invalid IP that will timeout
       client = H2O::Client.new(timeout: 1.seconds)
-      
+
       begin
-        response = client.get("https://10.255.255.1/")  # Non-routable IP - guaranteed to timeout
-        
+        response = client.get("https://10.255.255.1/") # Non-routable IP - guaranteed to timeout
+
         # High-level client returns error response instead of raising
         response.error?.should be_true
         response.status.should eq(0)
@@ -79,10 +79,10 @@ describe "Local HTTPS Integration Tests" do
 
     it "handles invalid hostnames gracefully" do
       client = H2O::Client.new(timeout: 2.seconds)
-      
+
       begin
         response = client.get("https://invalid-hostname-that-does-not-exist-12345.test/")
-        
+
         # High-level client returns error response instead of raising
         response.error?.should be_true
         response.status.should eq(0)
@@ -96,7 +96,7 @@ describe "Local HTTPS Integration Tests" do
   describe "SSL verification configuration" do
     it "respects verify_ssl: false configuration" do
       client = H2O::Client.new(verify_ssl: false)
-      
+
       begin
         # Should succeed with self-signed cert
         response = client.get(TestConfig.http2_url("/"))

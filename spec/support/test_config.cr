@@ -12,7 +12,7 @@ module TestConfig
   end
 
   def self.http2_port
-    ENV["TEST_HTTP2_PORT"]? || "4430"
+    ENV["TEST_HTTP2_PORT"]? || "443"
   end
 
   def self.http2_url(path = "")
