@@ -16,7 +16,7 @@ output = IO::Memory.new
 error = IO::Memory.new
 
 status = Process.run(
-  "crystal", 
+  "crystal",
   ["spec", "spec/compliance_validation_spec.cr", "--verbose"],
   output: output,
   error: error
