@@ -22,47 +22,37 @@ module H2O
       # Use timeout for initial TCP connection
       tcp_socket = begin
         channel = Channel(TCPSocket?).new(1)
-        connection_fiber : Fiber? = nil
+        success_channel = Channel(Bool).new(1)
 
-        begin
-          connection_fiber = spawn do
-            begin
-              socket = TCPSocket.new(hostname, port)
-              # Check if channel is still open before sending
-              select
-              when channel.send(socket)
-                # Successfully sent
-              else
-                # Channel closed, clean up socket
-                socket.close rescue nil
-              end
-            rescue ex
-              # Try to send nil to indicate failure, but don't block if channel is closed
-              select
-              when channel.send(nil)
-                # Successfully sent failure signal
-              else
-                # Channel closed, nothing to do
-              end
-            end
+        spawn do
+          begin
+            socket = TCPSocket.new(hostname, port)
+            # Send success signal first, then the socket
+            success_channel.send(true)
+            channel.send(socket)
+          rescue ex
+            # Send failure signal, then nil
+            success_channel.send(false)
+            channel.send(nil)
           end
+        end
 
-          select
-          when socket = channel.receive
+        # Wait for connection result with timeout
+        select
+        when success = success_channel.receive
+          if success
+            socket = channel.receive
             raise IO::Error.new("Failed to connect to #{hostname}:#{port}") unless socket
             socket
-          when timeout(connect_timeout)
-            raise IO::TimeoutError.new("Connection timeout to #{hostname}:#{port}")
+          else
+            channel.receive # consume the nil value
+            raise IO::Error.new("Failed to connect to #{hostname}:#{port}")
           end
-        ensure
-          # Clean up resources
-          begin
-            channel.close rescue nil
-            # Give the connection fiber a chance to clean up
-            Fiber.yield if connection_fiber
-          rescue
-            # Ignore cleanup errors
-          end
+        when timeout(connect_timeout)
+          # Close channels to signal fiber to stop
+          success_channel.close rescue nil
+          channel.close rescue nil
+          raise IO::TimeoutError.new("Connection timeout to #{hostname}:#{port}")
         end
       end
 
