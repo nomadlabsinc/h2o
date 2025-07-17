@@ -13,12 +13,12 @@ describe "HTTP/1.1 Support" do
 
   it "handles different response codes correctly" do
     client = H2O::Client.new(timeout: TestConfig.client_timeout, verify_ssl: false)
-    
+
     # Test 404 response
     response = client.get("#{TestConfig.http2_url}/nonexistent")
     response.status.should eq(404)
     response.protocol.should eq("HTTP/2")
-    
+
     client.close
   end
 end
