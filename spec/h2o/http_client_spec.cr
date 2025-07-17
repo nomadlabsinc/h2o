@@ -8,32 +8,47 @@ describe H2O::HttpClient do
   describe "#initialize" do
     it "creates client with default settings" do
       client = H2O::HttpClient.new
-      client.should_not be_nil
-      client.close
+      begin
+        client.should_not be_nil
+      ensure
+        client.close
+      end
     end
 
     it "creates client with custom connection pool size" do
       client = H2O::HttpClient.new(connection_pool_size: 5)
-      client.should_not be_nil
-      client.close
+      begin
+        client.should_not be_nil
+      ensure
+        client.close
+      end
     end
 
     it "creates client with h2 prior knowledge enabled" do
       client = H2O::HttpClient.new(h2_prior_knowledge: true)
-      client.should_not be_nil
-      client.close
+      begin
+        client.should_not be_nil
+      ensure
+        client.close
+      end
     end
 
     it "creates client with custom timeout" do
       client = H2O::HttpClient.new(timeout: 5.seconds)
-      client.should_not be_nil
-      client.close
+      begin
+        client.should_not be_nil
+      ensure
+        client.close
+      end
     end
 
     it "creates client with circuit breaker disabled" do
       client = H2O::HttpClient.new(circuit_breaker_enabled: false)
-      client.should_not be_nil
-      client.close
+      begin
+        client.should_not be_nil
+      ensure
+        client.close
+      end
     end
   end
 

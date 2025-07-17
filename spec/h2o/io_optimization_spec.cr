@@ -11,7 +11,8 @@ describe H2O::IOOptimizer do
         temp_file.close
 
         output = IO::Memory.new
-        reader = H2O::IOOptimizer::ZeroCopyReader.new(output)
+        mutex = Mutex.new
+        reader = H2O::IOOptimizer::ZeroCopyReader.new(output, mutex)
 
         transferred = reader.transfer_file(temp_file.path, output)
 
@@ -30,7 +31,8 @@ describe H2O::IOOptimizer do
         temp_file.close
 
         output = IO::Memory.new
-        reader = H2O::IOOptimizer::ZeroCopyReader.new(output)
+        mutex = Mutex.new
+        reader = H2O::IOOptimizer::ZeroCopyReader.new(output, mutex)
 
         transferred = reader.transfer_file(temp_file.path, output)
 
