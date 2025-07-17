@@ -54,6 +54,46 @@ Adhere to these principles to ensure a high-quality, performant, and maintainabl
 8.  **Docker Practices:**
     *   Don't use version fields in docker-compose -- that's outdated.
     *   When running tests, run them inside Docker to allow dependencies like HTTP and HTTP2 servers to run correctly.
+    *   Always clean up orphaned containers: use `docker compose run --remove-orphans` or `docker compose up --remove-orphans` to prevent warnings and resource leaks.
+    
+    **Docker Test Infrastructure:**
+    *   The project uses Docker Compose to provide isolated test environments with real HTTP/1.1 and HTTP/2 servers
+    *   Available test services:
+        - `httpbin` (kennethreitz/httpbin): HTTP/1.1 server on port 80 for basic HTTP testing
+        - `nghttpd` (svagi/nghttp2): HTTP/2 server on port 443 with TLS for HTTP/2 testing
+        - `nghttpd2` (svagi/nghttp2): Second HTTP/2 server on port 4433 with TLS for multi-endpoint testing
+    *   Network aliases for tests requiring external connections:
+        - Use `test-0.example.com` through `test-4.example.com` for numbered test hosts
+        - Use `test.example.com` and `example.com` for single test host scenarios
+        - All above aliases resolve to the nghttpd HTTP/2 server (port 443 with TLS)
+        - Use `secondexample.com` for tests requiring a second distinct endpoint (resolves to nghttpd2 on port 4433 with TLS)
+    *   Never use real external hostnames in tests - always use the provided aliases
+    *   Run tests with: `docker compose run --remove-orphans app crystal spec`
+    *   Available environment variables in Docker:
+        - `TEST_HTTPBIN_URL=http://httpbin:80` - for HTTP/1.1 integration tests
+        - `TEST_NGHTTPD_URL=https://nghttpd:443` - for HTTP/2 integration tests
+        - `H2O_VERIFY_SSL=false` - disables SSL verification for testing
+
+9.  **Semantic Naming Conventions:**
+    *   File names and class names should describe WHAT the code does, not HOW it was created or its implementation qualities
+    *   Avoid descriptive adjectives like "refactored", "simple", "modular", "optimized", "enhanced", "improved", etc. in file and class names
+    *   Use domain-specific, functional names that describe the purpose or responsibility
+    *   Examples:
+        - ❌ `client_refactored.cr`, `SimpleClient`, `ModularClient`, `EnhancedConnectionPool`
+        - ✅ `http_client.cr`, `Client`, `ConnectionPool`, `RequestTranslator`
+    *   The code quality and architectural decisions should be evident from the implementation, not advertised in naming
+
+10. **Self-Documenting Code and Comments:**
+    *   Write code that reads cleanly enough that it explains WHAT happens naturally
+    *   Use comments ONLY to explain WHY something happens, not WHAT happens
+    *   Comments should provide context, reasoning, business logic, or non-obvious implications
+    *   Examples:
+        - ❌ `# Create a new connection` (obvious from code)
+        - ❌ `# Set the timeout to 5 seconds` (obvious from code)
+        - ✅ `# Use shorter timeout for health checks to fail fast and avoid blocking other requests`
+        - ✅ `# HTTP/2 spec requires SETTINGS_HEADER_TABLE_SIZE to be acknowledged before sending headers`
+    *   Remove comments that simply restate what the code does
+    *   Prefer meaningful variable/method names over comments explaining unclear code
 
 ## 🚨 CRITICAL: Code Quality and Formatting Standards
 
