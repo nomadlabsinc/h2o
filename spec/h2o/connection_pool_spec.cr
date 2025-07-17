@@ -31,16 +31,17 @@ describe H2O::ConnectionPool do
   describe "#get_connection" do
     it "creates new HTTP/2 connection for HTTPS" do
       pool = H2O::ConnectionPool.new(pool_size: 2, verify_ssl: false)
+      begin
+        connection = pool.get_connection("example.com", 443, use_tls: true)
 
-      connection = pool.get_connection("example.com", 443, use_tls: true)
+        connection.should be_a(H2O::BaseConnection)
+        connection.should be_a(H2O::H2::Client)
 
-      connection.should be_a(H2O::BaseConnection)
-      connection.should be_a(H2O::H2::Client)
-
-      stats = pool.statistics
-      stats[:total_connections].should eq(1)
-
-      pool.close
+        stats = pool.statistics
+        stats[:total_connections].should eq(1)
+      ensure
+        pool.close
+      end
     end
 
     it "reuses existing healthy connection" do

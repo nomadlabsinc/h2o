@@ -38,7 +38,7 @@ module H2O
       property connect_timeout : Time::Span
 
       # I/O optimizations
-      property batched_writer : IOOptimizer::BatchedWriter?
+      property batched_writer : IOOptimizer::SynchronizedWriter?
       property zero_copy_reader : IOOptimizer::ZeroCopyReader?
       property io_optimization_enabled : Bool
 
@@ -72,24 +72,10 @@ module H2O
         @connect_timeout = connect_timeout
         @mutex = Mutex.new
 
-        # Initialize I/O optimizations (disable reader/writer optimizations due to socket state conflicts)
-        @io_optimization_enabled = !H2O.env_flag_enabled?("H2O_DISABLE_IO_OPTIMIZATION")
-        if @io_optimization_enabled
-          IOOptimizer::SocketOptimizer.optimize(@socket.to_io)
-          # TODO: Re-enable I/O optimizations after resolving socket state conflicts.
-          # The BatchedWriter and ZeroCopyReader optimizations are currently disabled because they cause
-          # socket state conflicts during HTTP/2 frame processing, leading to test timeouts and connection issues.
-          # Future re-enablement strategy:
-          # 1. Investigate socket state management in IOOptimizer classes
-          # 2. Ensure proper coordination between batched writes and frame boundaries
-          # 3. Add comprehensive tests for concurrent I/O operations
-          # 4. Consider alternative buffering strategies that don't interfere with HTTP/2 protocol handling
-          @batched_writer = nil   # Disabled - causes socket writing issues
-          @zero_copy_reader = nil # Disabled - causes socket reading issues
-        else
-          @batched_writer = nil
-          @zero_copy_reader = nil
-        end
+        # Initialize I/O optimizations (temporarily disabled for stability)
+        @io_optimization_enabled = false # Disabled until socket state conflicts are fully resolved
+        @batched_writer = nil
+        @zero_copy_reader = nil
 
         # Send initial preface and settings
         send_initial_preface
@@ -213,8 +199,20 @@ module H2O
         write_frame(settings_ack)
 
         true
+      rescue ex : IO::Error
+        Log.error { "I/O error during server preface validation: #{ex.message}" }
+        false
+      rescue ex : Socket::Error
+        Log.error { "Socket error during server preface validation: #{ex.message}" }
+        false
+      rescue ex : OpenSSL::Error
+        Log.error { "SSL error during server preface validation: #{ex.message}" }
+        false
+      rescue ex : H2O::ProtocolError
+        Log.error { "HTTP/2 protocol error during server preface validation: #{ex.message}" }
+        false
       rescue ex
-        Log.error { "Failed to validate server preface: #{ex.message}" }
+        Log.error { "Unexpected error during server preface validation: #{ex.class}: #{ex.message}" }
         false
       end
 
@@ -388,7 +386,7 @@ module H2O
           frame.is_a?(SettingsFrame | PingFrame | GoawayFrame | RstStreamFrame)
       end
 
-      private def flush_frame_immediately(writer : IOOptimizer::BatchedWriter, frame_bytes : Bytes) : Nil
+      private def flush_frame_immediately(writer : IOOptimizer::SynchronizedWriter, frame_bytes : Bytes) : Nil
         # Large frames or control frames: flush any pending data, then write directly for optimal latency
         writer.flush
         # Write large frames directly to socket to avoid double buffering

@@ -15,28 +15,33 @@ module H2O
     DEFAULT_RECV_BUFFER = 262_144 # 256KB
     DEFAULT_SEND_BUFFER = 262_144 # 256KB
 
-    # Zero-copy I/O helper for reading directly into buffers
+    # Zero-copy reader with proper synchronization for concurrent access
     struct ZeroCopyReader
       property io : IO
       property stats : IOStats
+      property mutex : Mutex
 
-      def initialize(@io : IO)
+      def initialize(@io : IO, @mutex : Mutex)
         @stats = IOStats.new
       end
 
-      # Read directly into a pre-allocated buffer without copying
+      # Read directly into a pre-allocated buffer without copying, with mutex protection
       def read_into(buffer : Bytes) : Int32
-        start_time = Time.monotonic
-        bytes_read = @io.read(buffer)
-        @stats.record_read(bytes_read, Time.monotonic - start_time)
-        bytes_read
+        @mutex.synchronize do
+          start_time = Time.monotonic
+          bytes_read = @io.read(buffer)
+          @stats.record_read(bytes_read, Time.monotonic - start_time)
+          bytes_read
+        end
       end
 
-      # Read exact amount into buffer or raise
+      # Read exact amount into buffer or raise, with mutex protection
       def read_fully_into(buffer : Bytes) : Nil
-        start_time = Time.monotonic
-        @io.read_fully(buffer)
-        @stats.record_read(buffer.size, Time.monotonic - start_time)
+        @mutex.synchronize do
+          start_time = Time.monotonic
+          @io.read_fully(buffer)
+          @stats.record_read(buffer.size, Time.monotonic - start_time)
+        end
       end
 
       # Peek at data without consuming it (if supported)
@@ -197,6 +202,86 @@ module H2O
         # Create new array instead of clearing to avoid reuse
         @buffers = Array(Bytes).new
         @total_size = 0
+      end
+    end
+
+    # Synchronized writer for concurrent access
+    struct SynchronizedWriter
+      property io : IO
+      property stats : IOStats
+      property mutex : Mutex
+      property frame_boundary_mutex : Mutex
+
+      @buffers : Array(Bytes)
+      @total_size : Int32
+      @last_flush : Time::Span
+
+      def initialize(@io : IO, @mutex : Mutex)
+        @stats = IOStats.new
+        @frame_boundary_mutex = Mutex.new
+        @buffers = Array(Bytes).new
+        @total_size = 0
+        @last_flush = Time.monotonic
+      end
+
+      # Add buffer to batch, respecting frame boundaries
+      def add_buffer(buffer : Bytes) : Nil
+        @frame_boundary_mutex.synchronize do
+          @buffers << buffer
+          @total_size += buffer.size
+
+          # Flush if we have enough data or timeout reached
+          if should_flush?
+            flush_internal
+          end
+        end
+      end
+
+      # Force flush all pending buffers
+      def flush : Nil
+        @frame_boundary_mutex.synchronize do
+          flush_internal unless @buffers.empty?
+        end
+      end
+
+      # Check if we should flush based on size or timeout
+      private def should_flush? : Bool
+        @buffers.size >= MIN_BATCH_SIZE ||
+          @total_size >= MEDIUM_BUFFER_SIZE ||
+          (Time.monotonic - @last_flush) > BATCH_TIMEOUT
+      end
+
+      # Internal flush with proper socket synchronization
+      private def flush_internal : Nil
+        return if @buffers.empty?
+
+        @mutex.synchronize do
+          start_time = Time.monotonic
+          total_bytes = 0
+
+          @buffers.each do |buffer|
+            @io.write(buffer)
+            total_bytes += buffer.size
+          end
+
+          @stats.record_write(total_bytes, Time.monotonic - start_time)
+          @stats.batches_flushed += 1
+        end
+
+        # Reset batch state
+        @buffers = Array(Bytes).new
+        @total_size = 0
+        @last_flush = Time.monotonic
+      end
+
+      # Track direct write operation for statistics
+      def track_direct_write(bytes : Int32, duration : Time::Span) : Nil
+        @stats.record_write(bytes, duration)
+      end
+
+      # Alias for compatibility with BatchedWriter interface
+      def add(buffer : Bytes) : Nil
+        add_buffer(buffer)
       end
     end
 
