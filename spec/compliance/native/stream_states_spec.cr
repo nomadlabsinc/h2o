@@ -61,7 +61,7 @@ describe "H2SPEC Stream States Compliance" do
   # Test for 5.1.1/1: Sends a stream identifier that is numerically smaller than the previous.
   it "sends a stream identifier that is numerically smaller than the previous and expects a connection error" do
     # First, create a HEADERS frame with stream ID 3
-    hpack_data = Bytes[0x88_u8]  # Indexed header field for :status: 200
+    hpack_data = Bytes[0x88_u8] # Indexed header field for :status: 200
     headers_frame1 = build_raw_frame(hpack_data.size, FRAME_TYPE_HEADERS, FLAG_END_HEADERS | FLAG_END_STREAM, 3_u32, hpack_data)
     # Then, create a HEADERS frame with stream ID 1 (lower than previous)
     headers_frame2 = build_raw_frame(hpack_data.size, FRAME_TYPE_HEADERS, FLAG_END_HEADERS | FLAG_END_STREAM, 1_u32, hpack_data)
@@ -77,7 +77,7 @@ describe "H2SPEC Stream States Compliance" do
   # Test for 5.1.1/2: Sends a stream with an even-numbered identifier.
   it "sends a stream with an even-numbered identifier and expects a connection error" do
     # HEADERS frame on an even-numbered stream
-    hpack_data = Bytes[0x88_u8]  # Indexed header field for :status: 200
+    hpack_data = Bytes[0x88_u8] # Indexed header field for :status: 200
     headers_frame = build_raw_frame(hpack_data.size, FRAME_TYPE_HEADERS, FLAG_END_HEADERS | FLAG_END_STREAM, 2_u32, hpack_data)
     mock_socket, client = create_mock_client_with_frames([headers_frame])
 
