@@ -43,30 +43,6 @@ module H2O
       @dependency = nil
     end
 
-    # DISABLED: Reset stream for object pool reuse - causes memory corruption
-    # def reset_for_reuse(new_id : StreamId) : Nil
-    #   @id = new_id
-    #   @state = StreamState::Idle
-    #   @request = nil
-    #   @response = nil
-    #   @headers_complete = false
-    #   @data_complete = false
-    #   @incoming_data = IO::Memory.new
-    #   @response_channel = ResponseChannel.new(0)
-    #   @created_at = Time.utc
-    #   @last_activity = Time.utc
-    #   @closed_at = nil
-    #   @local_window_size = 65535
-    #   @remote_window_size = 65535
-    #   @priority = 16_u8
-    #   @dependency = nil
-    # end
-
-    # DISABLED: Check if stream can be returned to object pool - causes memory corruption
-    # def can_be_pooled? : Bool
-    #   closed? && @incoming_data.size < 1024 # Only pool small streams
-    # end
-
     def send_headers(headers_frame : HeadersFrame) : Nil
       validate_can_send_headers
       transition_on_send_headers(headers_frame.end_stream?)
@@ -357,29 +333,6 @@ module H2O
     end
   end
 
-  # Stream object pool for efficient stream creation and reuse
-  class StreamObjectPool
-    DEFAULT_POOL_SIZE = 50
-
-    # REMOVED: Global pool to prevent malloc corruption
-    # @@pool_size = Atomic(Int32).new(0)
-
-    def self.get_stream(id : StreamId) : Stream
-      # Disabled pooling to avoid memory issues
-      Stream.new(id)
-    end
-
-    def self.return_stream(stream : Stream) : Nil
-      # Disabled pooling to avoid memory issues
-      # Let stream be garbage collected
-    end
-
-    def self.pool_stats : {size: Int32, capacity: Int32}
-      # Return dummy stats since pooling is disabled
-      {size: 0, capacity: DEFAULT_POOL_SIZE}
-    end
-  end
-
   class StreamPool
     property streams : StreamsHash
     property next_stream_id : StreamId
@@ -438,8 +391,7 @@ module H2O
         # Update state metrics
         @stream_state_metrics[stream.state] = (@stream_state_metrics[stream.state]? || 1) - 1
 
-        # DISABLED: Object pool causes memory corruption - let stream be garbage collected
-        # StreamObjectPool.return_stream(stream)
+        # Let stream be garbage collected for memory safety
       end
       @streams.delete(id)
       invalidate_cache
