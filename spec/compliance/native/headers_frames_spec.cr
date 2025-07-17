@@ -4,7 +4,6 @@ require "./test_helpers"
 include H2SpecTestHelpers
 
 describe "H2SPEC HEADERS Frames Compliance (Section 6.2)" do
-
   # Test for 6.2/1: Sends a HEADERS frame with 0x0 stream identifier
   it "sends a HEADERS frame with 0x0 stream identifier and expects a connection error" do
     mock_socket, client = create_mock_client
@@ -38,7 +37,7 @@ describe "H2SPEC HEADERS Frames Compliance (Section 6.2)" do
     padded_payload = Bytes.new(1 + headers_data.size)
     padded_payload[0] = 0xFF_u8 # Pad Length: 255 (exceeds frame length)
     headers_data.copy_to(padded_payload + 1)
-    
+
     headers_frame = build_raw_frame(
       padded_payload.size,
       FRAME_TYPE_HEADERS,
@@ -62,7 +61,7 @@ describe "H2SPEC HEADERS Frames Compliance (Section 6.2)" do
 
     # Invalid HPACK data (random bytes that don't form valid HPACK)
     invalid_hpack = Bytes[0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
-    
+
     headers_frame = build_raw_frame(
       length: invalid_hpack.size,
       type: FRAME_TYPE_HEADERS,
@@ -89,7 +88,7 @@ describe "H2SPEC HEADERS Frames Compliance (Section 6.2)" do
       ":status"    => "200",
       "connection" => "keep-alive",
     })
-    
+
     headers_frame = build_raw_frame(
       headers_with_connection.size,
       FRAME_TYPE_HEADERS,

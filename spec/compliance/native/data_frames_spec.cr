@@ -4,7 +4,6 @@ require "./test_helpers"
 include H2SpecTestHelpers
 
 describe "H2SPEC DATA Frames Compliance (Section 6.1)" do
-
   # Test for 6.1/1: Sends a DATA frame with 0x0 stream identifier
   it "sends a DATA frame with 0x0 stream identifier and expects a connection error" do
     mock_socket, client = create_mock_client
@@ -40,10 +39,10 @@ describe "H2SPEC DATA Frames Compliance (Section 6.1)" do
       ":scheme"    => "https",
       ":authority" => "example.com",
     }
-    
+
     # Manually construct response to control timing
     mock_socket.write(H2O::Preface.create_initial_settings.to_bytes)
-    
+
     # Server sends HEADERS without END_STREAM
     encoder = H2O::HPACK::Encoder.new
     response_headers = H2O::HeadersFrame.new(
@@ -52,21 +51,21 @@ describe "H2SPEC DATA Frames Compliance (Section 6.1)" do
       FLAG_END_HEADERS
     )
     mock_socket.write(response_headers.to_bytes)
-    
+
     # Server sends DATA frames (valid in half-closed local)
     data_frame = H2O::DataFrame.new(1, "response data".to_slice)
     mock_socket.write(data_frame.to_bytes)
-    
+
     # Server ends stream
     end_frame = H2O::DataFrame.new(1, Bytes.empty, FLAG_END_STREAM)
     mock_socket.write(end_frame.to_bytes)
-    
+
     mock_socket.rewind
 
     # Should complete successfully
     response = client.get("https://example.com/")
     response.status.should eq(200)
-    
+
     client.close
   end
 
@@ -74,10 +73,10 @@ describe "H2SPEC DATA Frames Compliance (Section 6.1)" do
   it "sends a DATA frame with invalid pad length and expects a connection error" do
     # DATA frame with PADDED flag and pad length > payload length
     padded_data = Bytes[
-      0xFF, # Pad Length: 255 (exceeds frame length)
+      0xFF,                  # Pad Length: 255 (exceeds frame length)
       0x01, 0x02, 0x03, 0x04 # Actual data (4 bytes)
     ]
-    
+
     data_frame = build_raw_frame(
       5,
       FRAME_TYPE_DATA,

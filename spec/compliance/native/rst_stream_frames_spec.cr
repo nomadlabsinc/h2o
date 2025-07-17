@@ -4,14 +4,13 @@ require "./test_helpers"
 include H2SpecTestHelpers
 
 describe "H2SPEC RST_STREAM Frames Compliance (Section 6.4)" do
-
   # Test for 6.4/1: Sends a RST_STREAM frame with 0x0 stream identifier
   it "sends a RST_STREAM frame with 0x0 stream identifier and expects a connection error" do
     mock_socket, client = create_mock_client
 
     # RST_STREAM frame on stream 0 (connection stream)
     rst_payload = build_rst_stream_payload(ERROR_CANCEL)
-    
+
     rst_frame = build_raw_frame(
       length: 4,
       type: FRAME_TYPE_RST_STREAM,
@@ -59,7 +58,7 @@ describe "H2SPEC RST_STREAM Frames Compliance (Section 6.4)" do
 
     # RST_STREAM frame on stream 3 which hasn't been opened
     rst_payload = build_rst_stream_payload(ERROR_CANCEL)
-    
+
     rst_frame = build_raw_frame(
       length: 4,
       type: FRAME_TYPE_RST_STREAM,
