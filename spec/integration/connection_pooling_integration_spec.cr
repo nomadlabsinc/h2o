@@ -23,7 +23,7 @@ describe H2O::Client do
         if success
           # Should only create one connection for the same host
           client.connections.size.should eq(initial_count + 1)
-          
+
           # Verify connection is reused for subsequent requests
           3.times do
             response = client.get("#{TestConfig.http2_url}/index.html")
@@ -165,7 +165,7 @@ describe H2O::Client do
 
       begin
         # This should timeout connecting to a non-existent service
-        response = client.get("https://10.255.255.1:84430/index.html") # Non-routable IP
+        response = client.get("https://10.255.255.1:8443/index.html") # Non-routable IP
         # Should return error response, not crash
         response.error?.should be_true
         response.status.should eq(0)
