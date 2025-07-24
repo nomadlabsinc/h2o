@@ -54,6 +54,26 @@ require "./h2o/response_translator"
 module H2O
   Log = ::Log.for("h2o")
 
+  # Configure log level from environment variable
+  def self.configure_logging
+    log_level = ENV.fetch("LOG_LEVEL", "INFO").upcase
+    case log_level
+    when "DEBUG"
+      Log.level = ::Log::Severity::Debug
+    when "INFO"
+      Log.level = ::Log::Severity::Info
+    when "WARN"
+      Log.level = ::Log::Severity::Warn
+    when "ERROR"
+      Log.level = ::Log::Severity::Error
+    else
+      Log.level = ::Log::Severity::Info
+    end
+  end
+
+  # Call this during module initialization
+  configure_logging
+
   # Constants for environment variable parsing
   TRUTHY_ENV_VALUES = {"true", "yes", "1", "on"}
 

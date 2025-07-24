@@ -90,6 +90,10 @@ module H2O
       @protocol_cache = ProtocolCache.new
       @connection_metadata = ConnectionMetadataHash.new
       @warmup_hosts = HostSet.new
+
+      Log.debug { "H2O Client initialized: pool_size=#{@connection_pool_size}, timeout=#{@timeout}" }
+      Log.debug { "H2O Client config: h2_prior_knowledge=#{@h2_prior_knowledge}, verify_ssl=#{@verify_ssl}" }
+      Log.debug { "H2O Client circuit_breaker: enabled=#{@circuit_breaker_enabled}" }
     end
 
     def get(url : String, headers : Headers = Headers.new, *, bypass_circuit_breaker : Bool = false, circuit_breaker : Bool? = nil) : Response
@@ -204,10 +208,17 @@ module H2O
         key << host << ':' << port
       end
 
+      Log.debug { "Getting connection for #{connection_key}" }
+      Log.debug { "Current pool size: #{@connections.size}/#{@connection_pool_size}" }
+
       # Try to find the best existing connection using scoring
       best_connection = find_best_connection(connection_key)
-      return best_connection if best_connection
+      if best_connection
+        Log.debug { "Reusing existing connection for #{connection_key}" }
+        return best_connection
+      end
 
+      Log.debug { "Creating new connection for #{connection_key}" }
       create_new_connection(connection_key, host, port)
     end
 
@@ -308,6 +319,16 @@ module H2O
     private def execute_request(connection : BaseConnection, method : String, path : String, headers : Headers, body : String?) : Response
       start_time : MonotonicTime = Time.monotonic
 
+      # DEBUG level logging for request details
+      Log.debug { "REQUEST: #{method} #{path}" }
+      Log.debug { "REQUEST Headers: #{headers.inspect}" }
+      if body && !body.empty?
+        body_preview = body.size > 200 ? "#{body[0, 200]}..." : body
+        Log.debug { "REQUEST Body: #{body_preview}" }
+      else
+        Log.debug { "REQUEST Body: nil" }
+      end
+
       begin
         result : Response = Timeout(Response).execute_with_handler(@timeout, -> { Response.error(0, "Request timed out", "HTTP/2") }) do
           connection.request(method, path, headers, body)
@@ -318,8 +339,24 @@ module H2O
         response_time = end_time - start_time
         update_connection_metrics(connection, response_time, true)
 
+        # DEBUG level logging for response details
+        Log.debug { "RESPONSE: #{result.status} in #{response_time.total_milliseconds}ms" }
+        Log.debug { "RESPONSE Headers: #{result.headers.inspect}" }
+        if result.body && !result.body.empty?
+          body_preview = result.body.size > 200 ? "#{result.body[0, 200]}..." : result.body
+          Log.debug { "RESPONSE Body: #{body_preview}" }
+        else
+          Log.debug { "RESPONSE Body: empty" }
+        end
+
         result
-      rescue ex : TimeoutError | ConnectionError
+      rescue ex : TimeoutError
+        elapsed = Time.monotonic - start_time
+        Log.warn { "REQUEST TIMEOUT after #{elapsed.total_milliseconds}ms: #{method} #{path}" }
+        Log.debug { "Timeout context: connection=#{connection.class}, timeout=#{@timeout}" }
+        update_connection_metrics(connection, elapsed, false)
+        raise ex
+      rescue ex : ConnectionError
         # Track failed request
         end_time = Time.monotonic
         response_time = end_time - start_time

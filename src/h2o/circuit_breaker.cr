@@ -325,6 +325,11 @@ module H2O
     end
 
     private def notify_state_change(old_state : CircuitBreaker::State, new_state : CircuitBreaker::State) : Nil
+      if old_state != new_state
+        Log.info { "Circuit breaker '#{@name}' state transition: #{old_state} -> #{new_state}" }
+        Log.debug { "Circuit breaker stats: failures=#{@statistics.consecutive_failures}, threshold=#{@failure_threshold}" }
+        Log.debug { "Circuit breaker stats: success=#{@statistics.success_count}, total=#{@statistics.total_requests}" }
+      end
       @state_change_callbacks.each(&.call(old_state, new_state))
     end
 

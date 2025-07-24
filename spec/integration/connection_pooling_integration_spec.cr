@@ -177,5 +177,53 @@ describe H2O::Client do
         client.close
       end
     end
+    
+    it "maintains flow control during connection pooling operations" do
+      client = H2O::Client.new(connection_pool_size: 3, timeout: 2.seconds, verify_ssl: false)
+      
+      begin
+        # Test that flow control works correctly when reusing pooled connections
+        # This is a regression test for the WINDOW_UPDATE frame transmission bug
+        
+        pooling_requests = 15  # Enough to trigger flow control and test pooling
+        responses = [] of H2O::Response
+        
+        puts "Testing flow control with connection pooling (#{pooling_requests} requests)..."
+        start_time = Time.monotonic
+        
+        pooling_requests.times do |i|
+          begin
+            response = client.get("#{TestConfig.http2_url}/?pooling_test=#{i}")
+            if response && response.success?
+              responses << response
+            end
+          rescue ex
+            # Some requests may fail due to network conditions, but we should not hang
+            puts "Request #{i} failed: #{ex.message}"
+          end
+          
+          # Brief delay to test connection reuse patterns
+          sleep(0.02.seconds) if i % 5 == 4
+        end
+        
+        duration = Time.monotonic - start_time
+        
+        # Should complete quickly without flow control hangs
+        duration.total_seconds.should be < 3.0
+        
+        # At least half the requests should succeed (account for network variability)
+        success_rate = responses.size.to_f / pooling_requests
+        success_rate.should be >= 0.5
+        
+        puts "✅ Connection pooling with flow control: #{responses.size}/#{pooling_requests} requests"
+        puts "   Duration: #{duration.total_seconds.round(2)}s (no hangs detected)"
+        
+        # Verify connections are properly managed
+        client.connections.size.should be <= 3  # Should respect pool size limit
+        
+      ensure
+        client.close
+      end
+    end
   end
 end
