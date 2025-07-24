@@ -1,3 +1,4 @@
+# Debug instrumentation for Frame parsing
 {% if flag?(:h2o_debug) %}
   module H2O
     abstract class Frame

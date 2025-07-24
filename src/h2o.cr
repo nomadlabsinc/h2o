@@ -52,6 +52,12 @@ require "./h2o/error_handling"
 require "./h2o/request_translator"
 require "./h2o/response_translator"
 
+# Load debug instrumentation last to ensure all classes are defined
+{% if flag?(:h2o_debug) %}
+  require "./h2o/debug_logger/frame"
+  require "./h2o/debug_logger/hpack"
+{% end %}
+
 module H2O
   Log = ::Log.for("h2o")
 

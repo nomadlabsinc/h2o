@@ -198,7 +198,3 @@ module H2O
     end
   end
 end
-
-{% if flag?(:h2o_debug) %}
-  require "./frame_debug"
-{% end %}
