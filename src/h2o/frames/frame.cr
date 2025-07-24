@@ -18,20 +18,8 @@ module H2O
     end
 
     def self.from_io(io : IO, max_frame_size : UInt32 = MAX_FRAME_SIZE) : Frame
-      {% if flag?(:h2o_debug) %}
-        start_time = Time.monotonic
-        H2O::Log.debug { "[FRAME] Starting frame parse from IO" }
-      {% end %}
-      
       # Use simple buffer pool optimization (safe approach)
-      frame = from_io_with_buffer_pool(io, max_frame_size)
-      
-      {% if flag?(:h2o_debug) %}
-        duration = Time.monotonic - start_time
-        H2O::Log.debug { "[FRAME] Completed #{frame.class} parse in #{"%.2f" % duration.total_milliseconds}ms (Length: #{frame.length}, Stream: #{frame.stream_id})" }
-      {% end %}
-      
-      frame
+      from_io_with_buffer_pool(io, max_frame_size)
     end
 
     # Simple buffer pool frame parsing (safe approach)
@@ -210,3 +198,7 @@ module H2O
     end
   end
 end
+
+{% if flag?(:h2o_debug) %}
+  require "./frame_debug"
+{% end %}
