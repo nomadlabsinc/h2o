@@ -33,7 +33,6 @@ module H2O
       property remote_settings : Settings
       property hpack_encoder : HPACK::Encoder
       property hpack_decoder : HPACK::Decoder
-      property connection_window_size : Int32
       property closed : Bool
       property closing : Bool = false
       property request_timeout : Time::Span
@@ -69,7 +68,6 @@ module H2O
         @hpack_decoder = HPACK::Decoder.new(4096, HpackSecurityLimits.new)
         @connection_flow_control = H2O::Connection::FlowControl.new
         @stream_flow_controls = Hash(StreamId, H2O::Stream::FlowControl).new
-        @connection_window_size = 65535 # Keep for backward compatibility, but use flow control classes
         @current_stream_id = 1_u32
         @closed = false
         @request_timeout = request_timeout
@@ -97,7 +95,6 @@ module H2O
           @remote_settings = Settings.new
           @hpack_encoder = HPACK::Encoder.new
           @hpack_decoder = HPACK::Decoder.new(4096, HpackSecurityLimits.new)
-          @connection_window_size = 65535
           @current_stream_id = 1_u32
           @closed = false
           @request_timeout = request_timeout
@@ -571,7 +568,6 @@ module H2O
         # Update flow control windows using proper flow control classes
         if frame.stream_id == 0
           @connection_flow_control.update_window(frame.window_size_increment)
-          @connection_window_size += frame.window_size_increment # Keep legacy field in sync
         else
           # Update stream-level flow control
           if stream_flow_control = @stream_flow_controls[frame.stream_id]?
