@@ -77,3 +77,4 @@ describe "HTTP/2 WINDOW_UPDATE Fix Verification" do
     puts "✅ Rapid requests completed: #{responses.size}/#{rapid_count} in #{duration.total_seconds.round(2)}s"
   end
 end
+

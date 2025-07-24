@@ -285,3 +285,4 @@ class H2O::H2::Client
     @current_stream_id = stream_id
   end
 end
+
