@@ -8,6 +8,8 @@ require "../preface"
 require "../hpack/encoder"
 require "../hpack/decoder"
 require "../frames/frame"
+require "../connection/flow_control"
+require "../stream/flow_control"
 require "../frames/headers_frame"
 require "../frames/data_frame"
 require "../frames/settings_frame"
@@ -65,7 +67,9 @@ module H2O
         @remote_settings = Settings.new
         @hpack_encoder = HPACK::Encoder.new
         @hpack_decoder = HPACK::Decoder.new(4096, HpackSecurityLimits.new)
-        @connection_window_size = 65535
+        @connection_flow_control = H2O::Connection::FlowControl.new
+        @stream_flow_controls = Hash(StreamId, H2O::Stream::FlowControl).new
+        @connection_window_size = 65535 # Keep for backward compatibility, but use flow control classes
         @current_stream_id = 1_u32
         @closed = false
         @request_timeout = request_timeout
@@ -277,7 +281,8 @@ module H2O
 
         loop do
           # Check timeout before each frame read
-          if Time.monotonic - start_time > @request_timeout
+          elapsed = Time.monotonic - start_time
+          if elapsed > @request_timeout
             return Response.error(0, "Request timeout", "HTTP/2")
           end
 
@@ -305,7 +310,11 @@ module H2O
           when DataFrame
             if frame.stream_id == stream_id
               response_body.write(frame.data)
+              handle_data_frame_flow_control(frame, stream_id)
+
               if frame.end_stream?
+                # Clean up stream flow control when stream ends
+                @stream_flow_controls.delete(stream_id)
                 break
               end
             end
@@ -324,10 +333,7 @@ module H2O
               write_frame(pong)
             end
           when WindowUpdateFrame
-            # Update flow control windows
-            if frame.stream_id == 0
-              @connection_window_size += frame.window_size_increment
-            end
+            handle_window_update_frame(frame)
           else
             # Ignore other frames
           end
@@ -396,6 +402,7 @@ module H2O
       private def write_frame_direct(frame_bytes : Bytes) : Nil
         io = @socket.to_io
         start_time = Time.monotonic
+
         io.write(frame_bytes)
         io.flush
 
@@ -406,15 +413,17 @@ module H2O
       end
 
       private def read_frame : Frame
-        if @io_optimization_enabled && (reader = @zero_copy_reader)
-          # Use optimized frame reading with zero-copy reader through IO wrapper
-          # This maintains code reuse while leveraging optimized I/O
-          io_wrapper = ZeroCopyIOWrapper.new(reader)
-          Frame.from_io(io_wrapper, @remote_settings.max_frame_size)
-        else
-          # Fallback to standard frame reading
-          Frame.from_io(@socket.to_io, @remote_settings.max_frame_size)
-        end
+        frame = if @io_optimization_enabled && (reader = @zero_copy_reader)
+                  # Use optimized frame reading with zero-copy reader through IO wrapper
+                  # This maintains code reuse while leveraging optimized I/O
+                  io_wrapper = ZeroCopyIOWrapper.new(reader)
+                  Frame.from_io(io_wrapper, @remote_settings.max_frame_size)
+                else
+                  # Fallback to standard frame reading
+                  Frame.from_io(@socket.to_io, @remote_settings.max_frame_size)
+                end
+
+        frame
       end
 
       # IO wrapper that bridges ZeroCopyReader to standard IO interface
@@ -530,6 +539,44 @@ module H2O
           end
 
           stats
+        end
+      end
+
+      # Handle DATA frame flow control to prevent connection hangs
+      private def handle_data_frame_flow_control(frame : DataFrame, stream_id : StreamId) : Nil
+        data_size = frame.data.size
+        return if data_size <= 0
+
+        # Get or create stream flow control
+        stream_flow_control = @stream_flow_controls[stream_id]? || H2O::Stream::FlowControl.new
+        @stream_flow_controls[stream_id] = stream_flow_control
+
+        # Consume local windows (we received data)
+        stream_flow_control.consume_local_window(data_size, stream_id)
+
+        # Send WINDOW_UPDATE frames to replenish flow control windows
+        # This prevents the connection hang after ~14 requests
+
+        # Send stream-level WINDOW_UPDATE
+        stream_window_update = WindowUpdateFrame.new(stream_id, data_size.to_u32)
+        write_frame(stream_window_update)
+
+        # Send connection-level WINDOW_UPDATE
+        connection_window_update = WindowUpdateFrame.new(0_u32, data_size.to_u32)
+        write_frame(connection_window_update)
+      end
+
+      # Handle WINDOW_UPDATE frame processing
+      private def handle_window_update_frame(frame : WindowUpdateFrame) : Nil
+        # Update flow control windows using proper flow control classes
+        if frame.stream_id == 0
+          @connection_flow_control.update_window(frame.window_size_increment)
+          @connection_window_size += frame.window_size_increment # Keep legacy field in sync
+        else
+          # Update stream-level flow control
+          if stream_flow_control = @stream_flow_controls[frame.stream_id]?
+            stream_flow_control.update_remote_window(frame.window_size_increment, frame.stream_id)
+          end
         end
       end
     end
