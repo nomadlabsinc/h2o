@@ -4,6 +4,7 @@ require "socket"
 require "uri"
 
 require "./h2o/version"
+require "./h2o/debug_logger"
 require "./h2o/exceptions"
 require "./h2o/timeout"
 require "./h2o/types"
