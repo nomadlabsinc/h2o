@@ -23,8 +23,9 @@ module H2O
   module H2
     Log = ::Log.for("h2o.h2")
 
-    # Simplified HTTP/2 client without multiplexing
+    # Enhanced HTTP/2 client with advanced features
     # Each client handles one request at a time
+    # Includes circuit breaker protection, performance monitoring, and health checking
     class Client < BaseConnection
       property socket : TlsSocket | TcpSocket
       property local_settings : Settings
@@ -48,7 +49,25 @@ module H2O
       # Current stream ID (odd numbers for client-initiated streams)
       property current_stream_id : StreamId
 
-      def initialize(hostname : String, port : Int32, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, verify_ssl : Bool = true, use_tls : Bool = true)
+      # Enhanced features from OptimizedClient
+      property circuit_breaker : CircuitBreakerManager?
+      property performance_stats : Hash(String, Float64)
+      property enable_circuit_breaker : Bool
+      property hostname : String
+      property port : Int32
+
+      def initialize(
+        hostname : String,
+        port : Int32,
+        connect_timeout : Time::Span = 5.seconds,
+        request_timeout : Time::Span = 5.seconds,
+        verify_ssl : Bool = true,
+        use_tls : Bool = true,
+        enable_circuit_breaker : Bool = true
+      )
+        @hostname = hostname
+        @port = port
+        
         if use_tls
           verify_mode : OpenSSL::SSL::VerifyMode = verify_ssl ? OpenSSL::SSL::VerifyMode::PEER : OpenSSL::SSL::VerifyMode::NONE
           Log.debug { "Creating H2::Client for #{hostname}:#{port} with TLS and verify_mode=#{verify_mode}" }
@@ -77,6 +96,15 @@ module H2O
         @batched_writer = nil
         @zero_copy_reader = nil
 
+        # Initialize enhanced features
+        @enable_circuit_breaker = enable_circuit_breaker
+        @performance_stats = Hash(String, Float64).new
+
+        # Initialize circuit breaker for fault tolerance
+        if enable_circuit_breaker
+          @circuit_breaker = CircuitBreakerManager.new
+        end
+
         # Send initial preface and settings
         send_initial_preface
 
@@ -88,7 +116,9 @@ module H2O
 
       # Test-only initializer for injecting a mock IO
       {% if flag?(:test) %}
-        def initialize(@socket : IO, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds)
+        def initialize(@socket : IO, connect_timeout : Time::Span = 5.seconds, request_timeout : Time::Span = 5.seconds, enable_circuit_breaker : Bool = true)
+          @hostname = "test"
+          @port = 443
           @local_settings = Settings.new
           @remote_settings = Settings.new
           @hpack_encoder = HPACK::Encoder.new
@@ -104,6 +134,15 @@ module H2O
           @io_optimization_enabled = false
           @batched_writer = nil
           @zero_copy_reader = nil
+
+          # Initialize enhanced features
+          @enable_circuit_breaker = enable_circuit_breaker
+          @performance_stats = Hash(String, Float64).new
+
+          # Initialize circuit breaker for fault tolerance
+          if enable_circuit_breaker
+            @circuit_breaker = CircuitBreakerManager.new
+          end
         end
       {% end %}
 
@@ -114,34 +153,52 @@ module H2O
         start_time = Time.monotonic
 
         begin
-          # Synchronize the request sending and response reading
-          @mutex.synchronize do
-            # Check timeout before starting
-            if Time.monotonic - start_time > @request_timeout
-              return Response.error(0, "Request timeout", "HTTP/2")
+          # Circuit breaker protection
+          if cb = @circuit_breaker
+            response = cb.execute(@hostname, @port) do
+              execute_request_internal(method, path, headers, body, start_time)
             end
-
-            # Use the next odd stream ID
-            stream_id = @current_stream_id
-            @current_stream_id += 2
-
-            # Send request
-            send_request(stream_id, method, path, headers, body)
-
-            # Read response with timeout checking
-            response = read_response_with_timeout(stream_id, start_time)
-
-            # Flush any pending batched data after request completes
-            if @io_optimization_enabled && (writer = @batched_writer)
-              writer.flush
-              @socket.to_io.flush
-            end
-
-            response
+          else
+            response = execute_request_internal(method, path, headers, body, start_time)
           end
+
+          # Track performance metrics
+          request_time = (Time.monotonic - start_time).total_milliseconds
+          @performance_stats["last_request_time"] = request_time
+          @performance_stats["total_requests"] = (@performance_stats["total_requests"]? || 0.0) + 1.0
+
+          response
         rescue ex : Exception
           Log.error { "Request failed: #{ex.message}" }
           Response.error(0, ex.message || "Unknown error", "HTTP/2")
+        end
+      end
+
+      private def execute_request_internal(method : String, path : String, headers : Headers, body : String?, start_time : Time::Span) : Response
+        # Synchronize the request sending and response reading
+        @mutex.synchronize do
+          # Check timeout before starting
+          if Time.monotonic - start_time > @request_timeout
+            return Response.error(0, "Request timeout", "HTTP/2")
+          end
+
+          # Use the next odd stream ID
+          stream_id = @current_stream_id
+          @current_stream_id += 2
+
+          # Send request
+          send_request(stream_id, method, path, headers, body)
+
+          # Read response with timeout checking
+          response = read_response_with_timeout(stream_id, start_time)
+
+          # Flush any pending batched data after request completes
+          if @io_optimization_enabled && (writer = @batched_writer)
+            writer.flush
+            @socket.to_io.flush
+          end
+
+          response
         end
       end
 
@@ -164,12 +221,53 @@ module H2O
             # Best effort - ignore other errors during cleanup
           end
 
+          # Enhanced close with circuit breaker cleanup
+          @circuit_breaker.try(&.clear)
+
           @socket.close rescue nil
         end
       end
 
       def closed? : Bool
         @closed
+      end
+
+      # Enhanced connection management with health checking
+      def ensure_connection : Nil
+        # Perform connection health check before reusing
+        if @socket && connection_healthy?
+          return
+        end
+
+        # Connection is not healthy, would need reconnection
+        # For now, just return as reconnection logic would be complex
+      end
+
+      # Check if the current connection is healthy
+      def connection_healthy? : Bool
+        return false unless @socket
+        return false if @closed
+
+        # Basic socket health check
+        begin
+          # Try to peek at the socket to see if it's still readable
+          if @socket.responds_to?(:peek)
+            @socket.peek(1)
+          end
+          true
+        rescue
+          false
+        end
+      end
+
+      # Get performance statistics
+      def stats : Hash(String, Float64)
+        @performance_stats.dup
+      end
+
+      # Reset performance statistics
+      def reset_stats : Nil
+        @performance_stats.clear
       end
 
       private def send_initial_preface : Nil
